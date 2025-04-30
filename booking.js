@@ -2,6 +2,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     console.log("✅ booking.js loaded?");
 
+    
+  try {
+    const testEl = document.querySelector('#date-picker');
+    console.log("🧪 #date-picker exists:", !!testEl);
+
+    await initBookingConfig(LISTING_UUID, LOCATION_UUID);
+    console.log("✅ Config loaded");
+
+    await initCalendar();
+    console.log("✅ Calendar initialized");
+
+    const jumped = await checkIfGuestHasActiveHold();
+    console.log("✅ Guest hold check result:", jumped);
+
+    if (!jumped) {
+      await initBookingDate();
+      console.log("✅ Booking date initialized");
+
+      await generateStartTimeOptions({ allowFallback: true });
+      console.log("✅ Start time options generated");
+
+      await initSliderSection();
+      console.log("✅ Slider initialized");
+
+      await refreshAvailableTimesForDate();
+      console.log("✅ Available times refreshed");
+    }
+
+    safeDisableUnavailableDates();
+    console.log("✅ Disabled unavailable dates");
+
+  } catch (err) {
+    console.error("🔥 Fatal booking init error:", err);
+  }
+
 // ================================== //
 // ===========  CONSTANTS  ========== //
 // ================================== //
