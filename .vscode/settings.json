@@ -3,9 +3,10 @@
       "commands": [
         {
           "match": "\\.scripts/\\.bookings/.*\\.js$",
-          "cmd": "node .scripts/.bookings/combine.js && gop"
+          "cmd": "/Users/rcastrillon/.nvm/versions/node/v22.15.0/bin/node .scripts/.bookings/combine.js && gop"
         }
-      ]
+      ],
+      "output": "console"
     }
   }
   
