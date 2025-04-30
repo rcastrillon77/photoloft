@@ -2,7 +2,8 @@
 // ===========  CONSTANTS  ========== //
 // ================================== //
 
-// === Booking Constants (Populated from Supabase) ===
+// === Booking Constants (Populated from Supabase) === //
+
 let MIN_DURATION = 1;
 let MAX_DURATION = 4;
 let INTERVAL = 0.5;
