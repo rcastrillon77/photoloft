@@ -1,5 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
 
+    console.log("✅ booking.js loaded?");
+
 // ================================== //
 // ===========  CONSTANTS  ========== //
 // ================================== //
