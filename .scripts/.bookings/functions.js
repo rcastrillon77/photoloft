@@ -702,416 +702,408 @@ function getAvailableStartTimes(eventsForDay, durationMinutes = window.bookingGl
 }
 
 function renderStartTimeOptions(startTimes) {
-const container = document.getElementById('booking-start-time-options');
-const noTimesMessage = document.getElementById('no-timeslots-message');
-const summaryEl = document.getElementById('booking-summary-wrapper');
+    const container = document.getElementById('booking-start-time-options');
+    const noTimesMessage = document.getElementById('no-timeslots-message');
+    const summaryEl = document.getElementById('booking-summary-wrapper');
 
-container.innerHTML = '';
+    container.innerHTML = '';
 
-const radiosHTML = startTimes.map((minutes) => {
-    const value = minutesToTimeValue(minutes);
-    const label = formatTime(minutes);
-    return `
-    <label class="radio-option-container">
-        <input type="radio" name="start-time" id="${value}" class="radio-option-button" value="${value}">
-        <span class="radio-option-label">${label}</span>
-    </label>`;
-}).join('');
+    const radiosHTML = startTimes.map((minutes) => {
+        const value = minutesToTimeValue(minutes);
+        const label = formatTime(minutes);
+        return `
+        <label class="radio-option-container">
+            <input type="radio" name="start-time" id="${value}" class="radio-option-button" value="${value}">
+            <span class="radio-option-label">${label}</span>
+        </label>`;
+    }).join('');
 
-container.innerHTML = radiosHTML;
+    container.innerHTML = radiosHTML;
 
-const radios = container.querySelectorAll('input[type=radio]');
-const containers = container.querySelectorAll('.radio-option-container');
+    const radios = container.querySelectorAll('input[type=radio]');
+    const containers = container.querySelectorAll('.radio-option-container');
 
-// Wait for markHeldTimeSlotsForDay to finish first before continuing logic
-return markHeldTimeSlotsForDay(bookingGlobals.booking_date).then(() => {
-    const validRadios = Array.from(radios).filter(r =>
-    !r.closest('.radio-option-container')?.classList.contains('on-hold')
-    );
+    return markHeldTimeSlotsForDay(bookingGlobals.booking_date).then(() => {
+        const validRadios = Array.from(radios).filter(r =>
+        !r.closest('.radio-option-container')?.classList.contains('on-hold')
+        );
 
-    if (!validRadios.length) {
-        const totalRadios = radios.length;
-        const heldRadios = Array.from(radios).filter(r =>
-        r.closest('.radio-option-container')?.classList.contains('on-hold')
-        ).length;
-    
-        if (totalRadios > 0 && heldRadios === totalRadios) {
-        noTimesMessage.textContent = "No time slots available for this duration — all options are currently on hold.";
-        } else {
-        noTimesMessage.textContent = "No available time slots match your selected duration.";
+        if (!validRadios.length) {
+            const totalRadios = radios.length;
+            const heldRadios = Array.from(radios).filter(r =>
+                r.closest('.radio-option-container')?.classList.contains('on-hold')
+            ).length;
+        
+            if (totalRadios > 0 && heldRadios === totalRadios) {
+                noTimesMessage.textContent = "No time slots available for this duration — all options are currently on hold.";
+            } else {
+                noTimesMessage.textContent = "No available time slots match your selected duration.";
+            }
+        
+            noTimesMessage.classList.remove('hidden');
+            summaryEl?.classList.add('hidden');
+            return false;
         }
-    
-        noTimesMessage.classList.remove('hidden');
-        summaryEl?.classList.add('hidden');
-        return false;
-    }
         else {
-    noTimesMessage?.classList.add('hidden');
-    summaryEl?.classList.remove('hidden');
-    }
+            noTimesMessage?.classList.add('hidden');
+            summaryEl?.classList.remove('hidden');
+        }
 
-    const { selected_start_time } = window.bookingGlobals;
-    const selectedMinutes = selected_start_time
-    ? parseInt(selected_start_time.substring(0, 2)) * 60 + parseInt(selected_start_time.substring(2))
-    : null;
+        const { selected_start_time } = window.bookingGlobals;
+        const selectedMinutes = selected_start_time
+        ? parseInt(selected_start_time.substring(0, 2)) * 60 + parseInt(selected_start_time.substring(2))
+        : null;
 
-    let closestDiff = Infinity;
-    let closestValue = null;
+        let closestDiff = Infinity;
+        let closestValue = null;
 
-    startTimes.forEach((minutes) => {
-    const diff = Math.abs(minutes - selectedMinutes);
-    if (diff < closestDiff) {
-        closestDiff = diff;
-        closestValue = minutesToTimeValue(minutes);
-    }
+        startTimes.forEach((minutes) => {
+            const diff = Math.abs(minutes - selectedMinutes);
+
+            if (diff < closestDiff) {
+                closestDiff = diff;
+                closestValue = minutesToTimeValue(minutes);
+            }
+
+        });
+        
+        let selectedRadio = null;
+
+        if (validRadios.length > 0) {
+        selectedRadio =
+            validRadios.find((r) => r.value === selected_start_time) ||
+            validRadios.find((r) => r.value === closestValue) ||
+            validRadios[0];
+        }
+
+        if (selectedRadio) {
+            selectedRadio.checked = true;
+            window.bookingGlobals.selected_start_time = selectedRadio.value;
+
+            const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
+            const start = h * 60 + m;
+            window.bookingGlobals.booking_start = start;
+            window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
+
+            updateBookingSummary();
+            selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        attachRadioStyling();
+        return true;
     });
-    
-    let selectedRadio = null;
-
-    if (validRadios.length > 0) {
-    selectedRadio =
-        validRadios.find((r) => r.value === selected_start_time) ||
-        validRadios.find((r) => r.value === closestValue) ||
-        validRadios[0];
-    }
-
-
-    if (selectedRadio) {
-    selectedRadio.checked = true;
-    window.bookingGlobals.selected_start_time = selectedRadio.value;
-
-    const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
-    const start = h * 60 + m;
-    window.bookingGlobals.booking_start = start;
-    window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
-
-    updateBookingSummary();
-    selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    attachRadioStyling();
-    return true;
-});
 }
 
 async function generateStartTimeOptions({ allowFallback = false } = {}) {
-let selectedDate = window.bookingGlobals.booking_date;
-let schedule = getScheduleForDate(window.listingSchedule, selectedDate);
+    let selectedDate = window.bookingGlobals.booking_date;
+    let schedule = getScheduleForDate(window.listingSchedule, selectedDate);
 
-// If the day has no valid schedule at all (e.g. closed), try fallback immediately
-if (!schedule) {
-    console.log("⛔ No schedule found for selected date");
+    if (!schedule) {
+        console.log("⛔ No schedule found for selected date");
 
-    if (allowFallback) {
-    const fallbackDate = await findNextAvailableDate();
-    if (fallbackDate) {
-        console.log("🔁 Fallback triggered →", fallbackDate.toDateString());
-        window.bookingGlobals.booking_date = fallbackDate;
-        return await generateStartTimeOptions({ allowFallback: false });
+        if (allowFallback) {
+            const fallbackDate = await findNextAvailableDate();
+            if (fallbackDate) {
+                console.log("🔁 Fallback triggered →", fallbackDate.toDateString());
+                window.bookingGlobals.booking_date = fallbackDate;
+                return await generateStartTimeOptions({ allowFallback: false });
+            }
+        }
+
+        document.getElementById("no-timeslots-message")?.classList.remove("hidden");
+        return false;
     }
+
+    applyScheduleSettings(schedule);
+
+    if (window.flatpickrCalendar && window.bookingGlobals.booking_date) {
+        window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
+        highlightSelectedDate();
     }
 
-    document.getElementById("no-timeslots-message")?.classList.remove("hidden");
-    return false;
-}
+    updateBookingSummary();
 
-applyScheduleSettings(schedule);
+    const luxonDate = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
+    const selectedDateStr = luxonDate.toISODate();
 
-// Sync Flatpickr to selected booking date
-if (window.flatpickrCalendar && window.bookingGlobals.booking_date) {
-    window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
-    highlightSelectedDate();
-}
+    const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+    );
 
-updateBookingSummary();
+    const open = parseTimeToMinutes(schedule.open);
+    const close = parseTimeToMinutes(schedule.close);
+    const duration = window.bookingGlobals.booking_duration || 150;
 
-const luxonDate = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
-const selectedDateStr = luxonDate.toISODate();
+    let availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
 
-const eventsForDay = window.bookingEvents.filter(e =>
-    luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-);
-
-const open = parseTimeToMinutes(schedule.open);
-const close = parseTimeToMinutes(schedule.close);
-const duration = window.bookingGlobals.booking_duration || 150;
-
-let availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
-
-// ⛔ If no times are available, attempt fallback here
-if (!availableTimes.length && allowFallback) {
-    console.log(`⛔ No available times on ${selectedDateStr}. Triggering fallback...`);
-    const fallbackDate = await findNextAvailableDate();
-    if (fallbackDate) {
-    window.bookingGlobals.booking_date = fallbackDate;
-    return await generateStartTimeOptions({ allowFallback: false });
+    if (!availableTimes.length && allowFallback) {
+        console.log(`⛔ No available times on ${selectedDateStr}. Triggering fallback...`);
+        const fallbackDate = await findNextAvailableDate();
+        if (fallbackDate) {
+            window.bookingGlobals.booking_date = fallbackDate;
+            return await generateStartTimeOptions({ allowFallback: false });
+        }
     }
-}
 
-// Set default start time if none selected yet
-if (!window.bookingGlobals.selected_start_time && availableTimes.length) {
-    const firstStart = availableTimes[0];
-    window.bookingGlobals.selected_start_time = minutesToTimeValue(firstStart);
-}
+    if (!window.bookingGlobals.selected_start_time && availableTimes.length) {
+        const firstStart = availableTimes[0];
+        window.bookingGlobals.selected_start_time = minutesToTimeValue(firstStart);
+    }
 
-await renderStartTimeOptions(availableTimes);
-updateMaxAvailableButton();
-generateExtendedTimeOptions();
+    await renderStartTimeOptions(availableTimes);
+    updateMaxAvailableButton();
+    generateExtendedTimeOptions();
 
-// Small delay helps reduce Flatpickr repaint flash
-setTimeout(() => {
-    safeDisableUnavailableDates(window.flatpickrCalendar);
-}, 100);
+    setTimeout(() => {
+        safeDisableUnavailableDates(window.flatpickrCalendar);
+    }, 100);
 
-// Show/hide no-timeslots message
-if (!availableTimes.length) {
-    document.getElementById("no-timeslots-message")?.classList.remove("hidden");
-    return false;
-} else {
-    document.getElementById("no-timeslots-message")?.classList.add("hidden");
-}
+    if (!availableTimes.length) {
+        document.getElementById("no-timeslots-message")?.classList.remove("hidden");
+        return false;
+    } else {
+        document.getElementById("no-timeslots-message")?.classList.add("hidden");
+    }
 
-console.log("📅 generateStartTimeOptions → booking_date:", selectedDate);
-console.log("📅 Luxon:", luxonDate.toISO());
+    console.log("📅 generateStartTimeOptions → booking_date:", selectedDate);
+    console.log("📅 Luxon:", luxonDate.toISO());
 
-return true;
+    return true;
 }
 
 async function initBookingDate() {
-const today = new Date();
-const schedule = getScheduleForDate(window.listingSchedule, today);
+    const today = new Date();
+    const schedule = getScheduleForDate(window.listingSchedule, today);
 
-if (!window.bookingGlobals.booking_date) {
-  window.bookingGlobals.booking_date = new Date();
-}
+    if (!window.bookingGlobals.booking_date) {
+        window.bookingGlobals.booking_date = new Date();
+    }
 
-if (!schedule || !hasAvailableStartTimesFor(today)) {
-  console.log("🔍 No slots available today, searching for next available date...");
-  const nextAvailable = await findNextAvailableDate();
-  if (nextAvailable) {
-    console.log(`✅ Jumping to next available date: ${nextAvailable.toDateString()}`);
-    window.bookingGlobals.booking_date = nextAvailable;
+    if (!schedule || !hasAvailableStartTimesFor(today)) {
+        console.log("🔍 No slots available today, searching for next available date...");
+        const nextAvailable = await findNextAvailableDate();
+
+        if (nextAvailable) {
+            console.log(`✅ Jumping to next available date: ${nextAvailable.toDateString()}`);
+            window.bookingGlobals.booking_date = nextAvailable;
+
+            if (window.flatpickrCalendar) {
+                window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
+                highlightSelectedDate();
+            }
+            return;
+        }
+    }
+
+    window.bookingGlobals.booking_date = today;
 
     if (window.flatpickrCalendar) {
-      window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
-      highlightSelectedDate();
+        window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
+        highlightSelectedDate();
     }
-    return;
-  }
-}
-
-
-window.bookingGlobals.booking_date = today;
-if (window.flatpickrCalendar) {
-  window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
-  highlightSelectedDate();
-}
 } 
 
 // ** CALENDAR SYNC ** //
 function disableUnavailableDates(instance) {
-const min = new Date(window.bookingMinDate);
-min.setHours(0, 0, 0, 0);
-const max = new Date(window.bookingMaxDate);
-max.setHours(0, 0, 0, 0);
+    const min = new Date(window.bookingMinDate);
+    min.setHours(0, 0, 0, 0);
+    const max = new Date(window.bookingMaxDate);
+    max.setHours(0, 0, 0, 0);
 
-const currentMonth = instance.currentMonth;
-const currentYear = instance.currentYear;
+    const currentMonth = instance.currentMonth;
+    const currentYear = instance.currentYear;
 
-requestAnimationFrame(() => {
-  document.querySelectorAll('.flatpickr-day').forEach(day => {
-    const dateObj = day.dateObj;
-    if (!dateObj) return;
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.flatpickr-day').forEach(day => {
+            const dateObj = day.dateObj;
+            if (!dateObj) return;
 
-    const dayStart = new Date(dateObj);
-    dayStart.setHours(0, 0, 0, 0);
+            const dayStart = new Date(dateObj);
+            dayStart.setHours(0, 0, 0, 0);
 
-    if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) {
-      return;
-    }
+            if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) return;
 
-    const isPast = dayStart < min;
-    const isBeyondWindow = dayStart > max;
+            const isPast = dayStart < min;
+            const isBeyondWindow = dayStart > max;
 
-    const bookingDateLuxon = luxon.DateTime.fromJSDate(dayStart, { zone: window.TIMEZONE });
-    const selectedDateStr = bookingDateLuxon.toISODate();
+            const bookingDateLuxon = luxon.DateTime.fromJSDate(dayStart, { zone: window.TIMEZONE });
+            const selectedDateStr = bookingDateLuxon.toISODate();
 
-    const eventsForDay = window.bookingEvents.filter(e =>
-      luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-    );
+            const eventsForDay = window.bookingEvents.filter(e =>
+            luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+            );
 
-    const daySchedule = getScheduleForDate(window.listingSchedule, dayStart);
-    if (!daySchedule) return;
+            const daySchedule = getScheduleForDate(window.listingSchedule, dayStart);
+            if (!daySchedule) return;
 
-    const open = parseTimeToMinutes(daySchedule.open);
-    const close = parseTimeToMinutes(daySchedule.close);
+            const open = parseTimeToMinutes(daySchedule.open);
+            const close = parseTimeToMinutes(daySchedule.close);
 
-    const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
-    const isUnavailable = availableTimes.length === 0;
+            const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
+            const isUnavailable = availableTimes.length === 0;
 
-    const shouldDisable = isPast || isBeyondWindow || isUnavailable;
+            const shouldDisable = isPast || isBeyondWindow || isUnavailable;
 
-    if (shouldDisable) {
-      if (!day.classList.contains('flatpickr-disabled')) {
-        day.classList.add('flatpickr-disabled');
-        day.setAttribute('aria-disabled', 'true');
-        day.removeAttribute('aria-label');
-        day.removeAttribute('tabindex');
-      }
-    } else {
-      if (day.classList.contains('flatpickr-disabled')) {
-        day.classList.remove('flatpickr-disabled');
-        day.removeAttribute('aria-disabled');
-        day.setAttribute('aria-label', day.dateObj.toDateString());
-        day.setAttribute('tabindex', '-1');
-      }
-    }
-  });
-});
+            if (shouldDisable) {
+                if (!day.classList.contains('flatpickr-disabled')) {
+                    day.classList.add('flatpickr-disabled');
+                    day.setAttribute('aria-disabled', 'true');
+                    day.removeAttribute('aria-label');
+                    day.removeAttribute('tabindex');
+                }
+            } else {
+                if (day.classList.contains('flatpickr-disabled')) {
+                    day.classList.remove('flatpickr-disabled');
+                    day.removeAttribute('aria-disabled');
+                    day.setAttribute('aria-label', day.dateObj.toDateString());
+                    day.setAttribute('tabindex', '-1');
+                }
+            }
+        });
+    });
 }
 
 function initCalendar() {
-window.flatpickrCalendar = flatpickr("#date-picker", {
-  inline: true,
-  dateFormat: "m-d-Y",
-  minDate: window.bookingMinDate,
-  maxDate: window.bookingMaxDate,
-  locale: { firstDayOfWeek: 0 },
-  showMonths: 1,
+    window.flatpickrCalendar = flatpickr("#date-picker", {
+        inline: true,
+        dateFormat: "m-d-Y",
+        minDate: window.bookingMinDate,
+        maxDate: window.bookingMaxDate,
+        locale: { firstDayOfWeek: 0 },
+        showMonths: 1,
 
-  onReady(selectedDates, dateStr, instance) {
-    updateCustomHeader(instance);
-    disableUnavailableDates(instance);
-  },
+        onReady(selectedDates, dateStr, instance) {
+            updateCustomHeader(instance);
+            disableUnavailableDates(instance);
+        },
 
-  onMonthChange(selectedDates, dateStr, instance) {
-    console.log("📅 Month changed → disabling unavailable dates...");
-    updateCustomHeader(instance);
-    disableUnavailableDates(instance);
-    highlightSelectedDate();
-  },
+        onMonthChange(selectedDates, dateStr, instance) {
+            console.log("📅 Month changed → disabling unavailable dates...");
+            updateCustomHeader(instance);
+            disableUnavailableDates(instance);
+            highlightSelectedDate();
+        },
 
-  onYearChange(selectedDates, dateStr, instance) {
-    console.log("📅 Year changed → disabling unavailable dates...");
-    disableUnavailableDates(instance);
-    highlightSelectedDate();
-  },
+        onYearChange(selectedDates, dateStr, instance) {
+            console.log("📅 Year changed → disabling unavailable dates...");
+            disableUnavailableDates(instance);
+            highlightSelectedDate();
+        },
 
-  onChange(selectedDates, dateStr, instance) {
-    const selectedDate = selectedDates[0];
-    if (!selectedDate || !(selectedDate instanceof Date)) return;
+        onChange(selectedDates, dateStr, instance) {
+            const selectedDate = selectedDates[0];
+            if (!selectedDate || !(selectedDate instanceof Date)) return;
 
-    window.bookingGlobals.booking_date = new Date(selectedDate);
-    refreshAvailableTimesForDate();
-    generateExtendedTimeOptions();
-    updateMaxAvailableButton();
-    updateBookingSummary();
-    highlightSelectedDate();
-  }
-});
+            window.bookingGlobals.booking_date = new Date(selectedDate);
+            refreshAvailableTimesForDate();
+            generateExtendedTimeOptions();
+            updateMaxAvailableButton();
+            updateBookingSummary();
+            highlightSelectedDate();
+        }
+    });
 
-if (!document.getElementById('date-picker').value) {
-  const today = luxon.DateTime.now().setZone(window.TIMEZONE).toISODate();
-  document.getElementById('date-picker')._flatpickr.setDate(today, true);
-  window.bookingGlobals.booking_date = new Date(); // also update global
-}
+    if (!document.getElementById('date-picker').value) {
+        const today = luxon.DateTime.now().setZone(window.TIMEZONE).toISODate();
+        document.getElementById('date-picker')._flatpickr.setDate(today, true);
+        window.bookingGlobals.booking_date = new Date();
+    }
 
-safeDisableUnavailableDates();
-
+    safeDisableUnavailableDates();
 }
 
 // ** INITIALIZERS ** //  
 function updateCustomHeader(instance) {
-const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-];
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
 
-const monthDisplay = document.getElementById("current-month");
-const prevBtn = document.getElementById("prev-month");
-const nextBtn = document.getElementById("next-month");
+    const monthDisplay = document.getElementById("current-month");
+    const prevBtn = document.getElementById("prev-month");
+    const nextBtn = document.getElementById("next-month");
 
-if (!prevBtn || !nextBtn || !monthDisplay) {
-    console.error("❌ Missing custom header elements.");
-    return;
-}
-
-monthDisplay.textContent = monthNames[instance.currentMonth];;
-
-const min = new Date(instance.config.minDate);
-const max = new Date(instance.config.maxDate);
-const y = instance.currentYear;
-const m = instance.currentMonth;
-
-prevBtn.classList.toggle("disabled", y === min.getFullYear() && m <= min.getMonth());
-nextBtn.classList.toggle("disabled", y === max.getFullYear() && m >= max.getMonth());
-
-// 🛠️ Reattach safe click listeners:
-prevBtn.onclick = (e) => {
-    e.preventDefault();
-    if (!prevBtn.classList.contains("disabled")) {
-    instance.changeMonth(-1);
-    setTimeout(() => {
-        updateCustomHeader(instance);
-        disableUnavailableDates(instance); 
-    }, 50);
+    if (!prevBtn || !nextBtn || !monthDisplay) {
+        console.error("❌ Missing custom header elements.");
+        return;
     }
-};
 
-nextBtn.onclick = (e) => {
-    e.preventDefault();
-    if (!nextBtn.classList.contains("disabled")) {
-    instance.changeMonth(1);
-    setTimeout(() => {
-        updateCustomHeader(instance);
-        disableUnavailableDates(instance);
-    }, 50);
-    }
-};
+    monthDisplay.textContent = monthNames[instance.currentMonth];;
+
+    const min = new Date(instance.config.minDate);
+    const max = new Date(instance.config.maxDate);
+    const y = instance.currentYear;
+    const m = instance.currentMonth;
+
+    prevBtn.classList.toggle("disabled", y === min.getFullYear() && m <= min.getMonth());
+    nextBtn.classList.toggle("disabled", y === max.getFullYear() && m >= max.getMonth());
+
+    // 🛠️ Reattach safe click listeners:
+    prevBtn.onclick = (e) => {
+        e.preventDefault();
+        if (!prevBtn.classList.contains("disabled")) {
+            instance.changeMonth(-1);
+            setTimeout(() => {
+                updateCustomHeader(instance);
+                disableUnavailableDates(instance); 
+            }, 50);
+        }
+    };
+
+    nextBtn.onclick = (e) => {
+        e.preventDefault();
+        if (!nextBtn.classList.contains("disabled")) {
+            instance.changeMonth(1);
+            setTimeout(() => {
+                updateCustomHeader(instance);
+                disableUnavailableDates(instance);
+            }, 50);
+        }
+    };
 }
 
 function generateExtendedTimeOptions() {
-const container = document.querySelector('.extended-time .pill-button-flex-container');
-const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
+    const container = document.querySelector('.extended-time .pill-button-flex-container');
+    const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
 
-container.innerHTML = '';
+    container.innerHTML = '';
 
-EXTENDED_OPTIONS.forEach(opt => {
-    const value = opt;
-    const label = `${opt} Hours`;
-    const isSelected = value.toString() === previouslySelected;
+    EXTENDED_OPTIONS.forEach(opt => {
+        const value = opt;
+        const label = `${opt} Hours`;
+        const isSelected = value.toString() === previouslySelected;
 
-    container.innerHTML += `
-    <label class="radio-option-container${isSelected ? ' selected' : ''}">
-        <input type="radio" name="extended-time" class="radio-option-button" value="${value}" ${isSelected ? 'checked' : ''}>
-        <span class="radio-option-label">${label}</span>
-    </label>`;
-});
+        container.innerHTML += `
+        <label class="radio-option-container${isSelected ? ' selected' : ''}">
+            <input type="radio" name="extended-time" class="radio-option-button" value="${value}" ${isSelected ? 'checked' : ''}>
+            <span class="radio-option-label">${label}</span>
+        </label>`;
+    });
 
-attachRadioStyling();
+    attachRadioStyling();
 }
 
 async function initSliderSection() {
-document.querySelector('.extended-time').classList.add('shrunk');
-document.getElementById('no-timeslots-message')?.classList.add('hidden');
+    document.querySelector('.extended-time').classList.add('shrunk');
+    document.getElementById('no-timeslots-message')?.classList.add('hidden');
 
-const slider = document.getElementById('duration-slider');
-slider.min = MIN_DURATION;
-slider.max = MAX_DURATION;
-slider.step = INTERVAL;
-slider.value = DEFAULT_DURATION;
+    const slider = document.getElementById('duration-slider');
+    slider.min = MIN_DURATION;
+    slider.max = MAX_DURATION;
+    slider.step = INTERVAL;
+    slider.value = DEFAULT_DURATION;
 
-setSliderProgress(DEFAULT_DURATION);
+    setSliderProgress(DEFAULT_DURATION);
 
-const minPercent = (MIN_DURATION / MAX_DURATION) * 100;
-document.querySelector('.range-slider-min')?.style.setProperty('width', `${minPercent}%`);
+    const minPercent = (MIN_DURATION / MAX_DURATION) * 100;
+    document.querySelector('.range-slider-min')?.style.setProperty('width', `${minPercent}%`);
 
-generateExtendedTimeOptions();
-updateMaxAvailableButton()    
+    generateExtendedTimeOptions();
+    updateMaxAvailableButton()    
 
-const today = new Date();
-const dateStr = today.toLocaleDateString('en-CA');
-document.getElementById('date-picker')?.setAttribute('value', dateStr);
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-CA');
+    document.getElementById('date-picker')?.setAttribute('value', dateStr);
 }
 
 // ================================== //
@@ -1119,130 +1111,130 @@ document.getElementById('date-picker')?.setAttribute('value', dateStr);
 // ================================== //
 
 async function initBookingConfig(listingId, locationId) {
-  try {
-      // --- Pull Schedule & Rules ---
-      const { data: listingData, error: listingError } = await window.supabase
-      .from("listings")
-      .select("schedule, location_id")
-      .eq("uuid", listingId)
-      .single();
-  
-      if (listingError || !listingData) {
-      console.error("❌ Failed to fetch listing schedule:", listingError);
-      return;
-      }
-  
-      const schedule = listingData.schedule || {};
-      const rules = schedule['booking-rules'] || {};
-      window.listingSchedule = schedule;
-  
-      // --- General Rules ---
-      MIN_DURATION = rules.minumum ?? 1;
-      MAX_DURATION = rules.max ?? 4;
-      INTERVAL = rules.interval ?? 0.5;
-      EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
-      DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
-      BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
+    try {
+        // --- Pull Schedule & Rules ---
+        const { data: listingData, error: listingError } = await window.supabase
+            .from("listings")
+            .select("schedule, location_id")
+            .eq("uuid", listingId)
+            .single();
 
-      window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
-      window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
+        if (listingError || !listingData) {
+            console.error("❌ Failed to fetch listing schedule:", listingError);
+            return;
+        }
 
-  
-      // --- Open/Close Time for Today’s Day (will update per date later) ---
-      const today = new Date();
-      const weekday = today.getDay();
-      const todaySchedule = schedule[MEMBERSHIP]?.[weekday];
-  
-      if (todaySchedule) {
-      OPEN_TIME = parseTimeToMinutes(todaySchedule.open);
-      CLOSE_TIME = parseTimeToMinutes(todaySchedule.close);
-      FULL_RATE = todaySchedule.rate;
-      FINAL_RATE = FULL_RATE;
-      }
-  
-      // --- Booking Date Limits ---
-      const startStr = rules.start;
-      const endStr = rules.end;
-      const now = new Date();
-  
-      minDate = startStr ? new Date(startStr) : now;
-      if (minDate < now) minDate = now;
-  
-      maxDate = endStr ? new Date(endStr) : new Date(now.getTime() + BOOKING_WINDOW_DAYS * 86400000);
+        const schedule = listingData.schedule || {};
+        const rules = schedule['booking-rules'] || {};
+        window.listingSchedule = schedule;
 
-      window.bookingMinDate = minDate;
-      window.bookingMaxDate = maxDate;
+        // --- General Rules --- // 
+        MIN_DURATION = rules.minumum ?? 1;
+        MAX_DURATION = rules.max ?? 4;
+        INTERVAL = rules.interval ?? 0.5;
+        EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
+        DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
+        BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
 
-  
-      // --- Booking State Initialization ---
-      window.bookingGlobals.booking_date = null;
-      window.bookingGlobals.booking_start = OPEN_TIME;
-      window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
-      window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
-      window.bookingGlobals.booking_rate = FULL_RATE;
-      window.bookingGlobals.booking_total = (DEFAULT_DURATION * FULL_RATE);
-      window.bookingGlobals.booking_discount = null;
-  
-      console.log("🧩 Booking Config:", {
-      MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
-      BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
-      minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
-      });
-  
-      // --- Pull Events ---
-      const { data: eventsData, error: eventsError } = await window.supabase
-      .from("events")
-      .select("start, end")
-      .eq("location_id", locationId)
-      .gte("start", minDate.toISOString())
-      .lte("end", maxDate.toISOString());
-  
-      if (eventsError) {
-      console.error("❌ Failed to fetch booking events:", eventsError);
-      } else {
-      window.bookingEvents = eventsData || [];
-      console.log("📅 Booking Events:", window.bookingEvents);
-      }
-  
-      // --- Pull Special Rates ---
-      const { data: ratesData, error: ratesError } = await window.supabase
-      .from("special_rates")
-      .select("start, end, title, rate")
-      .eq("listing_id", listingId);
+        window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
+        window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
 
-      if (ratesError) {
-      console.error("❌ Failed to fetch special rates:", ratesError);
-      } else {
-      window.specialRates = {};
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
 
-      for (const entry of ratesData) {
-      const start = new Date(entry.start);
-      const end = new Date(entry.end);
-      const current = new Date(start);
+        // --- Open/Close Time for Today’s Day (will update per date later) --- //
+        const today = new Date();
+        const weekday = today.getDay();
+        const todaySchedule = schedule[MEMBERSHIP]?.[weekday];
 
-      while (current <= end) {
-          const dateStr = current.toISOString().split("T")[0];
-          const dayOfWeek = current.getDay();
-          const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
+        if (todaySchedule) {
+            OPEN_TIME = parseTimeToMinutes(todaySchedule.open);
+            CLOSE_TIME = parseTimeToMinutes(todaySchedule.close);
+            FULL_RATE = todaySchedule.rate;
+            FINAL_RATE = FULL_RATE;
+        }
 
-          if (membershipRate !== undefined) {
-          window.specialRates[dateStr] = {
-              title: entry.title,
-              amount: membershipRate
-          };
-          }
+        // --- Booking Date Limits ---
+        const startStr = rules.start;
+        const endStr = rules.end;
+        const now = new Date();
 
-          current.setDate(current.getDate() + 1);
-      }
-      }
+        minDate = startStr ? new Date(startStr) : now;
+        if (minDate < now) minDate = now;
 
-      console.log("💸 Loaded specialRates →", window.specialRates);
-      }
+        maxDate = endStr ? new Date(endStr) : new Date(now.getTime() + BOOKING_WINDOW_DAYS * 86400000);
 
-  
-  } catch (err) {
-      console.error("🚨 Unexpected error initializing booking config:", err);
-  }
+        window.bookingMinDate = minDate;
+        window.bookingMaxDate = maxDate;
+
+
+        // --- Booking State Initialization ---
+        window.bookingGlobals.booking_date = null;
+        window.bookingGlobals.booking_start = OPEN_TIME;
+        window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
+        window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
+        window.bookingGlobals.booking_rate = FULL_RATE;
+        window.bookingGlobals.booking_total = (DEFAULT_DURATION * FULL_RATE);
+        window.bookingGlobals.booking_discount = null;
+
+        console.log("🧩 Booking Config:", {
+            MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
+            BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
+            minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
+        });
+
+        // --- Pull Events ---
+        const { data: eventsData, error: eventsError } = await window.supabase
+            .from("events")
+            .select("start, end")
+            .eq("location_id", locationId)
+            .gte("start", minDate.toISOString())
+            .lte("end", maxDate.toISOString());
+
+        if (eventsError) {
+            console.error("❌ Failed to fetch booking events:", eventsError);
+        } else {
+            window.bookingEvents = eventsData || [];
+            console.log("📅 Booking Events:", window.bookingEvents);
+        }
+
+        // --- Pull Special Rates ---
+        const { data: ratesData, error: ratesError } = await window.supabase
+            .from("special_rates")
+            .select("start, end, title, rate")
+            .eq("listing_id", listingId);
+
+        if (ratesError) {
+            console.error("❌ Failed to fetch special rates:", ratesError);
+        } else {
+            window.specialRates = {};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (const entry of ratesData) {
+                const start = new Date(entry.start);
+                const end = new Date(entry.end);
+                const current = new Date(start);
+
+                while (current <= end) {
+                    const dateStr = current.toISOString().split("T")[0];
+                    const dayOfWeek = current.getDay();
+                    const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
+
+                    if (membershipRate !== undefined) {
+                    window.specialRates[dateStr] = {
+                        title: entry.title,
+                        amount: membershipRate
+                    };
+                    }
+
+                    current.setDate(current.getDate() + 1);
+                }
+            }
+
+            console.log("💸 Loaded specialRates →", window.specialRates);
+        }
+
+
+    } catch (err) {
+        console.error("🚨 Unexpected error initializing booking config:", err);
+    }
 }
