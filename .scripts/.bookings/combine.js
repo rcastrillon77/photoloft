@@ -1,12 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const files = [
-  "constants.js",
-  "functions.js",
-  "init.js"
-];
-
+const files = ["constants.js", "functions.js", "init.js"];
 const baseDir = __dirname;
 const outputFile = path.join(__dirname, "..", "..", "booking.js");
 
