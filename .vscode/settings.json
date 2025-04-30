@@ -3,7 +3,7 @@
       "commands": [
         {
           "match": "booking.js$",
-          "cmd": "gop"
+          "cmd": "osascript -e 'tell application \"Terminal\" to do script \"cd \\\"${fileDirname}\\\"; gop\"'"
         }
       ]
     }
