@@ -58,13 +58,16 @@ function formatTime(minutes) {
 
     return time.toFormat("h:mm a"); // returns "2:30 PM"
 }
+
 function minutesToTimeValue(minutes) {
 return (Math.floor(minutes / 60) * 100 + (minutes % 60)).toString().padStart(4, '0');
 }
+
 function parseTimeToMinutes(timeStr) {
 const [h, m] = timeStr.split(':').map(Number);
 return h * 60 + m;
 }
+
 function getEventMinutesRange(event) {
 const start = luxon.DateTime.fromISO(event.start, { zone: window.TIMEZONE });
 const end = luxon.DateTime.fromISO(event.end, { zone: window.TIMEZONE });
@@ -74,6 +77,7 @@ return {
     end: end.hour * 60 + end.minute
 };
 }
+
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
 
@@ -99,6 +103,7 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     console.log("✅ No conflict (buffer respected)");
     return true;
 }
+
 function hasAvailableStartTimesFor(date) {
 const schedule = getScheduleForDate(window.listingSchedule, date);
 if (!schedule) return false;
@@ -125,6 +130,7 @@ for (let t = open; t <= maxStart; t += INTERVAL * 60) {
 
 return false;
 } 
+
 function getMaxAvailableDurationForDate(date) {
   const schedule = getScheduleForDate(window.listingSchedule, date);
   if (!schedule) return 0;
@@ -157,6 +163,7 @@ function getMaxAvailableDurationForDate(date) {
 
   return maxBlock; // returns minutes
 }
+
 async function refreshAvailableTimesForDate() {
 const selectedDate = window.bookingGlobals.booking_date;
 const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
@@ -186,6 +193,7 @@ await renderStartTimeOptions(availableTimes);
 safeDisableUnavailableDates(); // 🔥 Move it here
 updateBookingSummary();
 }
+
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
   const zone = window.TIMEZONE;
   const selectedDate = luxon.DateTime.fromJSDate(date, { zone });
@@ -271,6 +279,7 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
       });
   });
 }
+
 async function refreshStartTimeOptions() {
 if (isRefreshingStartTimes) return;
 isRefreshingStartTimes = true;
@@ -303,6 +312,7 @@ try {
 
 deleteExpiredHolds();
 }
+
 async function deleteExpiredHolds() {
 const now = new Date().toISOString();
 const { error } = await window.supabase
@@ -316,6 +326,7 @@ if (error) {
   console.log("🧹 Expired holds cleaned up.");
 }
 }
+
 async function findNextAvailableDate() {
 const today = new Date();
 const startDate = new Date(today); // ✅ Start from today
@@ -370,6 +381,7 @@ for (let i = 0; i < bookingWindowDays; i++) {
 console.warn("❌ No available slots found in the next booking window");
 return null;
 }
+
 async function checkIfGuestHasActiveHold() {
 console.log("🔍 Checking for active hold...");
 
@@ -464,6 +476,7 @@ updateBookingSummary();
 
 return true;
 }
+
 function safeDisableUnavailableDates() {
 if (!window.flatpickrCalendar) return;
 
@@ -495,6 +508,7 @@ function attachRadioStyling() {
       }
   });
 }
+
 function updateDurationDisplay(duration) {
     const hours = Math.floor(duration / 60);
     const minutes = duration % 60;
@@ -505,10 +519,12 @@ function updateDurationDisplay(duration) {
     const unit = hours === 1 ? 'Hour' : 'Hours';
     document.getElementById('duration-unit').textContent = unit;
 }
+
 function setSliderProgress(value) {
   const percent = ((value - MIN_DURATION) / (MAX_DURATION - MIN_DURATION)) * 100;
   document.getElementById('duration-slider').style.setProperty('--progress', `${percent}%`);
 }
+
 function updateMaxAvailableButton() {
   const el = document.getElementById('max-available');
   if (!el) return;
@@ -553,6 +569,7 @@ function updateMaxAvailableButton() {
   el.dataset.minutes = (bestOption * 60).toString();
   el.classList.remove('disabled');
 }
+
 function highlightSelectedDate() {
   const calendar = window.flatpickrCalendar;
   if (!calendar) return;
@@ -683,6 +700,7 @@ function getScheduleForDate(schedule, date = bookingGlobals.booking_date) {
     const weekday = date.getDay();
     return schedule[MEMBERSHIP]?.[weekday] || null;
 }
+
 function applyScheduleSettings(daySchedule) {
 if (!daySchedule) return;
 
@@ -695,6 +713,7 @@ if (slider) {
     slider.max = MAX_DURATION;
 }
 }
+
 function getAvailableStartTimes(eventsForDay, durationMinutes = window.bookingGlobals.booking_duration, open, close) {
 const startTimes = [];
 const now = luxon.DateTime.now().setZone(window.TIMEZONE);
@@ -742,6 +761,7 @@ console.log("🛑 CLOSE:", close);
 
 return startTimes;
 }
+
 function renderStartTimeOptions(startTimes) {
 const container = document.getElementById('booking-start-time-options');
 const noTimesMessage = document.getElementById('no-timeslots-message');
@@ -834,6 +854,7 @@ return markHeldTimeSlotsForDay(bookingGlobals.booking_date).then(() => {
     return true;
 });
 }
+
 async function generateStartTimeOptions({ allowFallback = false } = {}) {
 let selectedDate = window.bookingGlobals.booking_date;
 let schedule = getScheduleForDate(window.listingSchedule, selectedDate);
@@ -916,6 +937,7 @@ console.log("📅 Luxon:", luxonDate.toISO());
 
 return true;
 }
+
 async function initBookingDate() {
 const today = new Date();
 const schedule = getScheduleForDate(window.listingSchedule, today);
@@ -1008,6 +1030,7 @@ requestAnimationFrame(() => {
   });
 });
 }
+
 function initCalendar() {
 window.flatpickrCalendar = flatpickr("#date-picker", {
   inline: true,
@@ -1107,6 +1130,7 @@ nextBtn.onclick = (e) => {
     }
 };
 }
+
 function generateExtendedTimeOptions() {
 const container = document.querySelector('.extended-time .pill-button-flex-container');
 const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
@@ -1127,6 +1151,7 @@ EXTENDED_OPTIONS.forEach(opt => {
 
 attachRadioStyling();
 }
+
 async function initSliderSection() {
 document.querySelector('.extended-time').classList.add('shrunk');
 document.getElementById('no-timeslots-message')?.classList.add('hidden');
