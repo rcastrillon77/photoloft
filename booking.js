@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("✅ booking.js loaded!");
+    console.log("✅ booking.js loaded");
   try {
     const testEl = document.querySelector('#date-picker');
     console.log("🧪 #date-picker exists:", !!testEl);
