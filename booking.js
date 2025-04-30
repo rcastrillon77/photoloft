@@ -1,4 +1,4 @@
-<script>
+document.addEventListener("DOMContentLoaded", async () => {
 
 // ================================== //
 // ===========  CONSTANTS  ========== //
@@ -1345,8 +1345,6 @@ async function initBookingConfig(listingId, locationId) {
 // ================================== //
 // ========  INITIALIZATION  ======== //
 // ================================== //
-
-document.addEventListener('DOMContentLoaded', async () => {
   await initBookingConfig(LISTING_UUID, LOCATION_UUID);
   await initCalendar();
 
@@ -1462,7 +1460,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateBookingSummary();
     await refreshAvailableTimesForDate();
   };
+
 });
-
-
-</script>
