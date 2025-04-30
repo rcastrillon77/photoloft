@@ -2,8 +2,8 @@
     "emeraldwalk.runonsave": {
       "commands": [
         {
-          "match": "booking.js$",
-          "cmd": "osascript -e 'tell application \"Terminal\" to do script \"cd \\\"${fileDirname}\\\"; gop\"'"
+          "match": "scripts/bookings/.*\\.js$",
+          "cmd": "node scripts/bookings/combine.js && gop"
         }
       ]
     }
