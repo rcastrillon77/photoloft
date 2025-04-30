@@ -2,10 +2,10 @@
     "emeraldwalk.runonsave": {
       "commands": [
         {
-          "match": "scripts/bookings/.*\\.js$",
+          "match": "\\.scripts/\\.bookings/.*\\.js$",
           "cmd": "node .scripts/.bookings/combine.js && gop"
         }
       ]
     }
-}
+  }
   
