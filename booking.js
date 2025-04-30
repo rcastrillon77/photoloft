@@ -60,30 +60,28 @@ function formatTime(minutes) {
 }
 
 function minutesToTimeValue(minutes) {
-return (Math.floor(minutes / 60) * 100 + (minutes % 60)).toString().padStart(4, '0');
+    return (Math.floor(minutes / 60) * 100 + (minutes % 60)).toString().padStart(4, '0');
 }
 
 function parseTimeToMinutes(timeStr) {
-const [h, m] = timeStr.split(':').map(Number);
-return h * 60 + m;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
 }
 
 function getEventMinutesRange(event) {
-const start = luxon.DateTime.fromISO(event.start, { zone: window.TIMEZONE });
-const end = luxon.DateTime.fromISO(event.end, { zone: window.TIMEZONE });
+    const start = luxon.DateTime.fromISO(event.start, { zone: window.TIMEZONE });
+    const end = luxon.DateTime.fromISO(event.end, { zone: window.TIMEZONE });
 
-return {
-    start: start.hour * 60 + start.minute,
-    end: end.hour * 60 + end.minute
-};
+    return {
+        start: start.hour * 60 + start.minute,
+        end: end.hour * 60 + end.minute
+    };
 }
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
-
     const bufferBefore = window.BUFFER_BEFORE ?? 0;
     const bufferAfter = window.BUFFER_AFTER ?? 0;
-
     const requestedStart = startTime - bufferBefore;
     const requestedEnd = endTime + bufferAfter;
 
@@ -99,36 +97,33 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
         return false;
         }
     }
-
     console.log("✅ No conflict (buffer respected)");
     return true;
 }
 
 function hasAvailableStartTimesFor(date) {
-const schedule = getScheduleForDate(window.listingSchedule, date);
-if (!schedule) return false;
+    const schedule = getScheduleForDate(window.listingSchedule, date);
+    if (!schedule) return false;
 
-const open = parseTimeToMinutes(schedule.open);
-const close = parseTimeToMinutes(schedule.close);
-const duration = window.bookingGlobals.booking_duration;
+    const open = parseTimeToMinutes(schedule.open);
+    const close = parseTimeToMinutes(schedule.close);
+    const duration = window.bookingGlobals.booking_duration;
+    const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const currentMinutes = now.hour * 60 + now.minute;
+    const testDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
+    const isToday = testDateLuxon.hasSame(now, 'day');
+    const selectedDateStr = testDateLuxon.toISODate();
+    const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+    );
 
-const now = luxon.DateTime.now().setZone(window.TIMEZONE);
-const currentMinutes = now.hour * 60 + now.minute;
-const testDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
-const isToday = testDateLuxon.hasSame(now, 'day');
+    const maxStart = close - duration;
+    for (let t = open; t <= maxStart; t += INTERVAL * 60) {
+        if (isToday && t < currentMinutes) continue;
+        if (isTimeSlotAvailable(t, duration, eventsForDay)) return true;
+    }
 
-const selectedDateStr = testDateLuxon.toISODate();
-const eventsForDay = window.bookingEvents.filter(e =>
-    luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-);
-
-const maxStart = close - duration;
-for (let t = open; t <= maxStart; t += INTERVAL * 60) {
-    if (isToday && t < currentMinutes) continue;
-    if (isTimeSlotAvailable(t, duration, eventsForDay)) return true;
-}
-
-return false;
+    return false;
 } 
 
 function getMaxAvailableDurationForDate(date) {
@@ -139,10 +134,8 @@ function getMaxAvailableDurationForDate(date) {
   const close = parseTimeToMinutes(schedule.close);
   const bookingDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
   const now = luxon.DateTime.now().setZone(window.TIMEZONE);
-
   const isToday = bookingDateLuxon.hasSame(now, 'day');
   const currentMinutes = now.hour * 60 + now.minute;
-
   const eventsForDay = window.bookingEvents.filter(e =>
     luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === bookingDateLuxon.toISODate()
   );
@@ -165,33 +158,32 @@ function getMaxAvailableDurationForDate(date) {
 }
 
 async function refreshAvailableTimesForDate() {
-const selectedDate = window.bookingGlobals.booking_date;
-const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
+    const selectedDate = window.bookingGlobals.booking_date;
+    const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
 
-applyScheduleSettings(schedule);
+    applyScheduleSettings(schedule);
 
-const bookingDateLuxon = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
-const selectedDateStr = bookingDateLuxon.toISODate();
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
+    const selectedDateStr = bookingDateLuxon.toISODate();
+    const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+    );
 
-const eventsForDay = window.bookingEvents.filter(e =>
-  luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-);
+    const open = parseTimeToMinutes(schedule.open);
+    const close = parseTimeToMinutes(schedule.close);
 
-const open = parseTimeToMinutes(schedule.open);
-const close = parseTimeToMinutes(schedule.close);
+    const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
 
-const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
+    if (availableTimes.length === 0) {
+        document.getElementById("no-timeslots-message")?.classList.remove("hidden");
+    } else {
+        document.getElementById("no-timeslots-message")?.classList.add("hidden");
+    }
 
-if (availableTimes.length === 0) {
-  document.getElementById("no-timeslots-message")?.classList.remove("hidden");
-} else {
-  document.getElementById("no-timeslots-message")?.classList.add("hidden");
-}
+    await renderStartTimeOptions(availableTimes);
 
-await renderStartTimeOptions(availableTimes);
-
-safeDisableUnavailableDates(); // 🔥 Move it here
-updateBookingSummary();
+    safeDisableUnavailableDates(); // 🔥 Move it here
+    updateBookingSummary();
 }
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
@@ -234,10 +226,9 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
       
       const expires = luxon.DateTime.fromISO(hold.expires_at, { zone });
       if (expires < luxon.DateTime.now().setZone(zone)) {
-      console.log(`⏱️ Ignoring expired hold → ${hold.start_time}`);
-      return;
+        console.log(`⏱️ Ignoring expired hold → ${hold.start_time}`);
+        return;
       }
-
 
       radios.forEach(input => {
       const value = input.value;
@@ -276,237 +267,238 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
           window.refreshTimeout = null;
           }, 250);
       }, remaining * 1000);
-      });
+    });
   });
 }
 
 async function refreshStartTimeOptions() {
-if (isRefreshingStartTimes) return;
-isRefreshingStartTimes = true;
+    if (isRefreshingStartTimes) return;
+    isRefreshingStartTimes = true;
 
-try {
-  const { data: events, error } = await window.supabase
-    .from("events")
-    .select("start, end")
-    .eq("location_id", LOCATION_UUID)
-    .gte("start", window.bookingMinDate.toISOString())
-    .lte("end", window.bookingMaxDate.toISOString());
+    try {
+        const { data: events, error } = await window.supabase
+            .from("events")
+            .select("start, end")
+            .eq("location_id", LOCATION_UUID)
+            .gte("start", window.bookingMinDate.toISOString())
+            .lte("end", window.bookingMaxDate.toISOString());
 
-  if (error) {
-    console.error("❌ Failed to refresh confirmed bookings:", error);
-    isRefreshingStartTimes = false;
-    return;
-  }
+        if (error) {
+            console.error("❌ Failed to refresh confirmed bookings:", error);
+            isRefreshingStartTimes = false;
+            return;
+        }
 
-  window.bookingEvents = events || [];
-  console.log("🔄 Refreshed bookingEvents:", window.bookingEvents);
+        window.bookingEvents = events || [];
+        console.log("🔄 Refreshed bookingEvents:", window.bookingEvents);
 
-  await generateStartTimeOptions();
-} catch (err) {
-  console.error("🚨 Unexpected error in refreshStartTimeOptions:", err);
-} finally {
-  setTimeout(() => {
-    isRefreshingStartTimes = false;
-  }, 1000); // Prevent too-frequent refreshes
-}
+        await generateStartTimeOptions();
 
-deleteExpiredHolds();
+    } catch (err) {
+        console.error("🚨 Unexpected error in refreshStartTimeOptions:", err);
+    } finally {
+        setTimeout(() => {
+            isRefreshingStartTimes = false;
+        }, 1000); // Prevent too-frequent refreshes
+    }
+
+    deleteExpiredHolds();
 }
 
 async function deleteExpiredHolds() {
-const now = new Date().toISOString();
-const { error } = await window.supabase
-  .from("temp_events")
-  .delete()
-  .lt("expires_at", now);
+    const now = new Date().toISOString();
+    const { error } = await window.supabase
+        .from("temp_events")
+        .delete()
+        .lt("expires_at", now);
 
-if (error) {
-  console.error("❌ Failed to delete expired temp holds:", error);
-} else {
-  console.log("🧹 Expired holds cleaned up.");
-}
+    if (error) {
+    console.error("❌ Failed to delete expired temp holds:", error);
+    } else {
+    console.log("🧹 Expired holds cleaned up.");
+    }
 }
 
 async function findNextAvailableDate() {
-const today = new Date();
-const startDate = new Date(today); // ✅ Start from today
+    const today = new Date();
+    const startDate = new Date(today); // ✅ Start from today
 
 
-const duration = window.bookingGlobals.booking_duration || 150;
-console.log(`🔍 Starting fallback search from ${startDate.toDateString()} with duration: ${duration} min`);
+    const duration = window.bookingGlobals.booking_duration || 150;
+    console.log(`🔍 Starting fallback search from ${startDate.toDateString()} with duration: ${duration} min`);
 
-const schedule = window.listingSchedule;
-const membership = window.MEMBERSHIP || 'non-member';
-const bookingWindowDays = schedule?.['booking-rules']?.['booking-window']?.[membership] || 60;
+    const schedule = window.listingSchedule;
+    const membership = window.MEMBERSHIP || 'non-member';
+    const bookingWindowDays = schedule?.['booking-rules']?.['booking-window']?.[membership] || 60;
 
-console.log(`📅 Membership: ${membership}, Booking window: ${bookingWindowDays} days`);
+    console.log(`📅 Membership: ${membership}, Booking window: ${bookingWindowDays} days`);
 
-for (let i = 0; i < bookingWindowDays; i++) {
-  const testDate = new Date(startDate);
-  testDate.setDate(startDate.getDate() + i);
+    for (let i = 0; i < bookingWindowDays; i++) {
+        const testDate = new Date(startDate);
+        testDate.setDate(startDate.getDate() + i);
 
-  const testDateStr = testDate.toDateString();
-  const scheduleForDay = getScheduleForDate(schedule, testDate);
-  const luxonTestDate = luxon.DateTime.fromJSDate(testDate, { zone: window.TIMEZONE });
+        const testDateStr = testDate.toDateString();
+        const scheduleForDay = getScheduleForDate(schedule, testDate);
+        const luxonTestDate = luxon.DateTime.fromJSDate(testDate, { zone: window.TIMEZONE });
 
-  if (!scheduleForDay) {
-    console.log(`📆 ${testDateStr} → ❌ No schedule`);
-    continue;
-  }
+        if (!scheduleForDay) {
+            console.log(`📆 ${testDateStr} → ❌ No schedule`);
+            continue;
+        }
 
-  const open = parseTimeToMinutes(scheduleForDay.open);
-  const close = parseTimeToMinutes(scheduleForDay.close);
-  const maxStart = close - duration + BUFFER_AFTER;
+        const open = parseTimeToMinutes(scheduleForDay.open);
+        const close = parseTimeToMinutes(scheduleForDay.close);
+        const maxStart = close - duration + BUFFER_AFTER;
 
-  console.log(`📆 ${testDateStr} → Open: ${scheduleForDay.open} (${open}), Close: ${scheduleForDay.close} (${close}), Max start: ${maxStart}`);
+        console.log(`📆 ${testDateStr} → Open: ${scheduleForDay.open} (${open}), Close: ${scheduleForDay.close} (${close}), Max start: ${maxStart}`);
 
-  const selectedDateStr = luxonTestDate.toISODate();
+        const selectedDateStr = luxonTestDate.toISODate();
 
-  const eventsForDay = window.bookingEvents.filter(e =>
-    luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-  );
+        const eventsForDay = window.bookingEvents.filter(e =>
+            luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+        );
 
-  console.log(`📆 ${testDateStr} → ${eventsForDay.length} events found`);
+        console.log(`📆 ${testDateStr} → ${eventsForDay.length} events found`);
 
-  const availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
+        const availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
 
-  if (availableTimes.length > 0) {
-    console.log(`✅ ${testDateStr} → Found ${availableTimes.length} available slots`);
-    return testDate;
-  } else {
-    console.log(`⛔ ${testDateStr} → No available slots for ${duration} min`);
-  }
-}
+        if (availableTimes.length > 0) {
+            console.log(`✅ ${testDateStr} → Found ${availableTimes.length} available slots`);
+            return testDate;
+        } else {
+            console.log(`⛔ ${testDateStr} → No available slots for ${duration} min`);
+        }
+    }
 
-console.warn("❌ No available slots found in the next booking window");
-return null;
+    console.warn("❌ No available slots found in the next booking window");
+    return null;
 }
 
 async function checkIfGuestHasActiveHold() {
-console.log("🔍 Checking for active hold...");
+    console.log("🔍 Checking for active hold...");
 
-const zone = window.TIMEZONE;
-const now = luxon.DateTime.now().setZone(zone).toISO();
+    const zone = window.TIMEZONE;
+    const now = luxon.DateTime.now().setZone(zone).toISO();
 
-const userId = window.supabaseUser?.id || null;
-const guestId = window.guestId || null;
+    const userId = window.supabaseUser?.id || null;
+    const guestId = window.guestId || null;
 
-if (!userId && !guestId) {
-  console.log("🚫 No user ID or guest ID found, skipping hold check.");
-  return false;
-}
+    if (!userId && !guestId) {
+        console.log("🚫 No user ID or guest ID found, skipping hold check.");
+        return false;
+    }
 
-let query = window.supabase
-  .from('temp_events')
-  .select('*')
-  .eq('listing_id', LISTING_UUID)
-  .eq('location_id', LOCATION_UUID)
-  .gt('expires_at', now)
-  .limit(1);
+    let query = window.supabase
+        .from('temp_events')
+        .select('*')
+        .eq('listing_id', LISTING_UUID)
+        .eq('location_id', LOCATION_UUID)
+        .gt('expires_at', now)
+        .limit(1);
 
-if (userId) {
-  console.log("🧑‍💻 Checking for holds by user ID:", userId);
-  query = query.eq('user_id', userId);
-} else {
-  console.log("👤 Checking for holds by guest ID:", guestId);
-  query = query.eq('guest_id', guestId);
-}
+    if (userId) {
+        console.log("🧑‍💻 Checking for holds by user ID:", userId);
+        query = query.eq('user_id', userId);
+    } else {
+        console.log("👤 Checking for holds by guest ID:", guestId);
+        query = query.eq('guest_id', guestId);
+    }
 
-const { data, error } = await query;
+    const { data, error } = await query;
 
-if (error) {
-  console.error("❌ Supabase error while checking for active hold:", error);
-  return false;
-}
+    if (error) {
+        console.error("❌ Supabase error while checking for active hold:", error);
+        return false;
+    }
 
-if (!data || data.length === 0) {
-  console.log("❎ No active holds found.");
-  return false;
-}
+    if (!data || data.length === 0) {
+        console.log("❎ No active holds found.");
+        return false;
+    }
 
-const hold = data[0];
-console.log("✅ Active hold found:", hold);
+    const hold = data[0];
+    console.log("✅ Active hold found:", hold);
 
-// Rehydrate bookingGlobals
-const start = luxon.DateTime.fromISO(hold.start_time, { zone });
-const end = luxon.DateTime.fromISO(hold.end_time, { zone });
+    // Rehydrate bookingGlobals
+    const start = luxon.DateTime.fromISO(hold.start_time, { zone });
+    const end = luxon.DateTime.fromISO(hold.end_time, { zone });
 
-const startMinutes = start.hour * 60 + start.minute;
-const endMinutes = end.hour * 60 + end.minute;
-const duration = endMinutes - startMinutes;
+    const startMinutes = start.hour * 60 + start.minute;
+    const endMinutes = end.hour * 60 + end.minute;
+    const duration = endMinutes - startMinutes;
 
-window.bookingGlobals.booking_start = startMinutes;
-window.bookingGlobals.booking_end = endMinutes;
-window.bookingGlobals.booking_duration = duration;
-window.bookingGlobals.booking_date = start.toJSDate();
-window.bookingGlobals.selected_start_time = minutesToTimeValue(startMinutes);
+    window.bookingGlobals.booking_start = startMinutes;
+    window.bookingGlobals.booking_end = endMinutes;
+    window.bookingGlobals.booking_duration = duration;
+    window.bookingGlobals.booking_date = start.toJSDate();
+    window.bookingGlobals.selected_start_time = minutesToTimeValue(startMinutes);
 
-console.log("⏩ Skipping to Step 2 with:", {
-  booking_start: startMinutes,
-  booking_end: endMinutes,
-  duration,
-  date: window.bookingGlobals.booking_date,
-  selected_start_time: window.bookingGlobals.selected_start_time
-});
+    console.log("⏩ Skipping to Step 2 with:", {
+        booking_start: startMinutes,
+        booking_end: endMinutes,
+        duration,
+        date: window.bookingGlobals.booking_date,
+        selected_start_time: window.bookingGlobals.selected_start_time
+    });
 
-// Step 2 transition
-const clicker = document.getElementById('summary-clicker');
-const continueBtn = document.getElementById('step-1-continue');
+    // Step 2 transition
+    const clicker = document.getElementById('summary-clicker');
+    const continueBtn = document.getElementById('step-1-continue');
 
-const summaryWrapper = document.getElementById('booking-summary-wrapper');
-const dateCal = document.getElementById('date-cal');
-const bookingBgCol = document.querySelector('.booking-bg-col');
-const durationAndTime = document.getElementById('duration-and-time');
-const attendeesAndType = document.getElementById('attendees-and-type');
-const summaryButtonContainer = document.querySelector('.booking-summary-button-container');
-const reserveTimer = document.getElementById('reserve-timer');
-const contactInfo = document.getElementById('contact-info');
+    const summaryWrapper = document.getElementById('booking-summary-wrapper');
+    const dateCal = document.getElementById('date-cal');
+    const bookingBgCol = document.querySelector('.booking-bg-col');
+    const durationAndTime = document.getElementById('duration-and-time');
+    const attendeesAndType = document.getElementById('attendees-and-type');
+    const summaryButtonContainer = document.querySelector('.booking-summary-button-container');
+    const reserveTimer = document.getElementById('reserve-timer');
+    const contactInfo = document.getElementById('contact-info');
 
-dateCal?.classList.add('hide');
-bookingBgCol?.classList.remove('right');
-durationAndTime?.classList.add('hide');
-attendeesAndType?.classList.remove('hide');
-summaryWrapper?.classList.add('dark');
-summaryButtonContainer?.classList.add('hide');
-reserveTimer?.classList.remove('hide');
-contactInfo?.classList.remove('hide');
-clicker?.classList.remove('hidden');
+    dateCal?.classList.add('hide');
+    bookingBgCol?.classList.remove('right');
+    durationAndTime?.classList.add('hide');
+    attendeesAndType?.classList.remove('hide');
+    summaryWrapper?.classList.add('dark');
+    summaryButtonContainer?.classList.add('hide');
+    reserveTimer?.classList.remove('hide');
+    contactInfo?.classList.remove('hide');
+    clicker?.classList.remove('hidden');
 
-updateBookingSummary();
+    updateBookingSummary();
 
-return true;
+    return true;
 }
 
 function safeDisableUnavailableDates() {
-if (!window.flatpickrCalendar) return;
+    if (!window.flatpickrCalendar) return;
 
-setTimeout(() => {
-  console.log("🛠 Running disableUnavailableDates after Flatpickr render");
-  disableUnavailableDates(window.flatpickrCalendar);
-}, 50);
+    setTimeout(() => {
+        console.log("🛠 Running disableUnavailableDates after Flatpickr render");
+        disableUnavailableDates(window.flatpickrCalendar);
+    }, 50);
 }
 
 // ** UI ENHANCERS ** //
 function attachRadioStyling() {
   const radios = document.querySelectorAll('.radio-option-button');
 
-  radios.forEach((radio) => {
+    radios.forEach((radio) => {
       const groupName = radio.name;
 
       radio.addEventListener('change', () => {
-      radios.forEach((btn) => {
-          if (btn.name === groupName) {
-          btn.closest('.radio-option-container')?.classList.remove('selected');
-          }
-      });
+        radios.forEach((btn) => {
+            if (btn.name === groupName) {
+                btn.closest('.radio-option-container')?.classList.remove('selected');
+            }
+        });
 
-      radio.closest('.radio-option-container')?.classList.add('selected');
+        radio.closest('.radio-option-container')?.classList.add('selected');
       });
 
       if (radio.checked) {
-      radio.closest('.radio-option-container')?.classList.add('selected');
+        radio.closest('.radio-option-container')?.classList.add('selected');
       }
-  });
+    });
 }
 
 function updateDurationDisplay(duration) {
@@ -531,21 +523,16 @@ function updateMaxAvailableButton() {
 
   const max = getMaxAvailableDurationForDate(bookingGlobals.booking_date); // in minutes
   const hoursDecimal = max / 60;
-
-  // Build a list of allowed options
   const validOptions = [];
 
-  // Add all values from slider range (including half steps)
   for (let h = MIN_DURATION; h <= MAX_DURATION; h += INTERVAL) {
     validOptions.push(parseFloat(h.toFixed(2)));
   }
 
-  // Add extended options
   EXTENDED_OPTIONS.forEach(opt => {
     if (!validOptions.includes(opt)) validOptions.push(opt);
   });
 
-  // Sort the options and filter for ones <= available
   const allowed = validOptions
     .filter(opt => opt * 60 <= max)
     .sort((a, b) => b - a); // highest first
@@ -574,12 +561,10 @@ function highlightSelectedDate() {
   const calendar = window.flatpickrCalendar;
   if (!calendar) return;
 
-  // Remove any existing custom highlight
   document.querySelectorAll('.flatpickr-day.selected-date').forEach(el => {
     el.classList.remove('selected-date');
   });
 
-  // Add highlight class to the correct day
   const selectedDate = calendar.selectedDates[0];
   if (selectedDate) {
     const dayElements = document.querySelectorAll('.flatpickr-day');
@@ -596,103 +581,103 @@ function highlightSelectedDate() {
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
-const bookingDateEl = document.getElementById('booking-total-date');
-const bookingTimeEl = document.getElementById('booking-total-time');
-const bookingPriceEl = document.getElementById('booking-total-price');
-const discountEl = document.getElementById('booking-total-discount');
-const discountedTotalEl = document.getElementById('booking-total-discounted-total');
-const totalHoursEl = document.getElementById('booking-total-hours');
-const totalRateEl = document.getElementById('booking-total-rate');
-const wrapperEl = document.getElementById('slots-timezone-wrapper');
-const slotsTzEl = document.getElementById('slots-timezone');
+    const bookingDateEl = document.getElementById('booking-total-date');
+    const bookingTimeEl = document.getElementById('booking-total-time');
+    const bookingPriceEl = document.getElementById('booking-total-price');
+    const discountEl = document.getElementById('booking-total-discount');
+    const discountedTotalEl = document.getElementById('booking-total-discounted-total');
+    const totalHoursEl = document.getElementById('booking-total-hours');
+    const totalRateEl = document.getElementById('booking-total-rate');
+    const wrapperEl = document.getElementById('slots-timezone-wrapper');
+    const slotsTzEl = document.getElementById('slots-timezone');
 
-const {
-  booking_date,
-  booking_start,
-  booking_end,
-  booking_duration
-} = window.bookingGlobals;
+    const {
+    booking_date,
+    booking_start,
+    booking_end,
+    booking_duration
+    } = window.bookingGlobals;
 
-const hoursDecimal = booking_duration / 60;
-const hoursDisplay = (hoursDecimal % 1 === 0)
-  ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hour' : 'Hours'}`
-  : `${hoursDecimal.toFixed(1)} Hours`;
-if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
+    const hoursDecimal = booking_duration / 60;
+    const hoursDisplay = (hoursDecimal % 1 === 0)
+    ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hour' : 'Hours'}`
+    : `${hoursDecimal.toFixed(1)} Hours`;
+    if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
 
-const isToday = booking_date.toDateString() === new Date().toDateString();
-const dateKey = booking_date.toISOString().split("T")[0];
-const special = window.specialRates?.[dateKey];
+    const isToday = booking_date.toDateString() === new Date().toDateString();
+    const dateKey = booking_date.toISOString().split("T")[0];
+    const special = window.specialRates?.[dateKey];
 
-let finalRate = FULL_RATE;
-let discountTitle = '';
-let discountAmount = 0;
+    let finalRate = FULL_RATE;
+    let discountTitle = '';
+    let discountAmount = 0;
 
-if (special) {
-  finalRate = special.amount;
-  discountTitle = special.title || "Special Rate";
-  discountEl.textContent = discountTitle;
-  discountEl.classList.remove("hidden");
-} else if (isToday && window.sameDayRate !== undefined) {
-  finalRate = window.sameDayRate;
-  discountTitle = "Same-day discount";
-  discountEl.textContent = discountTitle;
-  discountEl.classList.remove("hidden");
-} else {
-  discountEl.classList.add("hidden");
-}
+    if (special) {
+        finalRate = special.amount;
+        discountTitle = special.title || "Special Rate";
+        discountEl.textContent = discountTitle;
+        discountEl.classList.remove("hidden");
+    } else if (isToday && window.sameDayRate !== undefined) {
+        finalRate = window.sameDayRate;
+        discountTitle = "Same-day discount";
+        discountEl.textContent = discountTitle;
+        discountEl.classList.remove("hidden");
+    } else {
+        discountEl.classList.add("hidden");
+    }
 
-if (totalRateEl) totalRateEl.textContent = `$${finalRate}/hr`;
+    if (totalRateEl) totalRateEl.textContent = `$${finalRate}/hr`;
 
-const baseTotal = (booking_duration / 60) * FULL_RATE;
-const discountedTotal = (booking_duration / 60) * finalRate;
-discountAmount = baseTotal - discountedTotal;
+    const baseTotal = (booking_duration / 60) * FULL_RATE;
+    const discountedTotal = (booking_duration / 60) * finalRate;
+    discountAmount = baseTotal - discountedTotal;
 
-// Update bookingGlobals
-window.bookingGlobals.booking_rate = finalRate;
-window.bookingGlobals.booking_total = discountedTotal;
-window.bookingGlobals.booking_discount = discountAmount > 0 ? {
-  title: discountTitle,
-  rate: finalRate,
-  discount_amount: discountAmount.toFixed(2),
-  total_due: discountedTotal.toFixed(2),
-  original: baseTotal.toFixed(2)
-} : null;
+    // Update bookingGlobals
+    window.bookingGlobals.booking_rate = finalRate;
+    window.bookingGlobals.booking_total = discountedTotal;
+    window.bookingGlobals.booking_discount = discountAmount > 0 ? {
+        title: discountTitle,
+        rate: finalRate,
+        discount_amount: discountAmount.toFixed(2),
+        total_due: discountedTotal.toFixed(2),
+        original: baseTotal.toFixed(2)
+    } : null;
 
-const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
-const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
-const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
+    const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
+    const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
 
-// Update timezone display with correct offset from booking date
-const longName = startTime.offsetNameLong;
-const shortName = startTime.offsetNameShort;
+    const longName = startTime.offsetNameLong;
+    const shortName = startTime.offsetNameShort;
 
-if (slotsTzEl && wrapperEl) {
-  const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
-  const hasTimes = radios.length > 0;
+    if (slotsTzEl && wrapperEl) {
+        const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
+        const hasTimes = radios.length > 0;
 
-  if (hasTimes) {
-    slotsTzEl.textContent = `${longName} (${shortName}) ${window.TIMEZONE}`;
-    wrapperEl.classList.remove('hidden');
-  } else {
-    wrapperEl.classList.add('hidden');
-  }
-}
+        if (hasTimes) {
+            slotsTzEl.textContent = `${longName} (${shortName}) ${window.TIMEZONE}`;
+            wrapperEl.classList.remove('hidden');
+        } else {
+            wrapperEl.classList.add('hidden');
+        }
+    }
 
-bookingDateEl.textContent = booking_date.toLocaleDateString('en-US', {
-  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-});
+    bookingDateEl.textContent = booking_date.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
 
-bookingTimeEl.textContent = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
+    bookingTimeEl.textContent = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
+    bookingPriceEl.textContent = `$${discountedTotal.toFixed(2)}`;
 
-bookingPriceEl.textContent = `$${discountedTotal.toFixed(2)}`;
-if (discountAmount > 0) {
-  discountedTotalEl.textContent = `$${baseTotal.toFixed(2)}`;
-  discountedTotalEl.classList.remove('hidden');
-} else {
-  discountedTotalEl.classList.add('hidden');
-}
-console.log("📅 updateBookingSummary bookingGlobals.booking_date", window.bookingGlobals.booking_date);
-console.log("📅 updateBookingSummary Luxon date:", luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE }).toISO());  
+    if (discountAmount > 0) {
+        discountedTotalEl.textContent = `$${baseTotal.toFixed(2)}`;
+        discountedTotalEl.classList.remove('hidden');
+    } else {
+        discountedTotalEl.classList.add('hidden');
+    }
+
+    console.log("📅 updateBookingSummary bookingGlobals.booking_date", window.bookingGlobals.booking_date);
+    console.log("📅 updateBookingSummary Luxon date:", luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE }).toISO());  
 }
 
 // ** SCHEDULE LOGIC ** //
@@ -702,64 +687,65 @@ function getScheduleForDate(schedule, date = bookingGlobals.booking_date) {
 }
 
 function applyScheduleSettings(daySchedule) {
-if (!daySchedule) return;
+    if (!daySchedule) return;
 
-OPEN_TIME = parseTimeToMinutes(daySchedule.open);
-CLOSE_TIME = parseTimeToMinutes(daySchedule.close);
-RATE = daySchedule.rate || RATE;
+    OPEN_TIME = parseTimeToMinutes(daySchedule.open);
+    CLOSE_TIME = parseTimeToMinutes(daySchedule.close);
+    RATE = daySchedule.rate || RATE;
 
-const slider = document.getElementById('duration-slider');
-if (slider) {
-    slider.max = MAX_DURATION;
-}
-}
+    const slider = document.getElementById('duration-slider');
 
-function getAvailableStartTimes(eventsForDay, durationMinutes = window.bookingGlobals.booking_duration, open, close) {
-const startTimes = [];
-const now = luxon.DateTime.now().setZone(window.TIMEZONE);
-const currentMinutes = now.hour * 60 + now.minute;
-
-const bookingDateLuxon = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE });
-const isToday = bookingDateLuxon.hasSame(now, 'day');
-
-const adjustedOpenTime = open;
-const adjustedCloseTime = close;
-const maxStart = adjustedCloseTime - durationMinutes;
-
-for (let t = adjustedOpenTime; t <= maxStart; t += INTERVAL * 60) {
-    console.log(`🕑 t=${t}, currentMinutes=${currentMinutes}, BUFFER_AFTER=${BUFFER_AFTER}`);
-    const readable = formatTime(t);
-
-    const slotStart = t - BUFFER_BEFORE;
-    const slotEnd = t + durationMinutes + BUFFER_AFTER;
-    
-    if (isToday && (t + BUFFER_BEFORE) < currentMinutes) {
-    console.log(`⛔ Skipping ${readable} (would have started already)`);
-    continue;
-    }        
-
-    const hasConflict = eventsForDay.some(event => {
-    const { start, end } = getEventMinutesRange(event);
-    return start < slotEnd && end > slotStart;
-    });
-
-    if (!hasConflict) {
-    console.log(`✅ Available: ${readable}`);
-    startTimes.push(t);
-    } else {
-    console.log(`⛔ Skipping ${readable} (conflict with existing event including buffers)`);
+    if (slider) {
+        slider.max = MAX_DURATION;
     }
 }
 
-console.log("🔍 TIMEZONE:", window.TIMEZONE);
-console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
-console.log("📆 isToday:", isToday);
-console.log("🕓 Duration:", durationMinutes);
-console.log("🛑 OPEN:", open);
-console.log("🛑 CLOSE:", close);
+function getAvailableStartTimes(eventsForDay, durationMinutes = window.bookingGlobals.booking_duration, open, close) {
+    const startTimes = [];
+    const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const currentMinutes = now.hour * 60 + now.minute;
+
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE });
+    const isToday = bookingDateLuxon.hasSame(now, 'day');
+
+    const adjustedOpenTime = open;
+    const adjustedCloseTime = close;
+    const maxStart = adjustedCloseTime - durationMinutes;
+
+    for (let t = adjustedOpenTime; t <= maxStart; t += INTERVAL * 60) {
+        console.log(`🕑 t=${t}, currentMinutes=${currentMinutes}, BUFFER_AFTER=${BUFFER_AFTER}`);
+        const readable = formatTime(t);
+
+        const slotStart = t - BUFFER_BEFORE;
+        const slotEnd = t + durationMinutes + BUFFER_AFTER;
+        
+        if (isToday && (t + BUFFER_BEFORE) < currentMinutes) {
+            console.log(`⛔ Skipping ${readable} (would have started already)`);
+            continue;
+        }        
+
+        const hasConflict = eventsForDay.some(event => {
+            const { start, end } = getEventMinutesRange(event);
+            return start < slotEnd && end > slotStart;
+        });
+
+        if (!hasConflict) {
+            console.log(`✅ Available: ${readable}`);
+            startTimes.push(t);
+        } else {
+            console.log(`⛔ Skipping ${readable} (conflict with existing event including buffers)`);
+        }
+    }
+
+    console.log("🔍 TIMEZONE:", window.TIMEZONE);
+    console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
+    console.log("📆 isToday:", isToday);
+    console.log("🕓 Duration:", durationMinutes);
+    console.log("🛑 OPEN:", open);
+    console.log("🛑 CLOSE:", close);
 
 
-return startTimes;
+    return startTimes;
 }
 
 function renderStartTimeOptions(startTimes) {
