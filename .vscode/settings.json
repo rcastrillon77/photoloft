@@ -3,7 +3,7 @@
       "commands": [
         {
           "match": "\\.scripts/\\.bookings/.*\\.js$",
-          "cmd": "/Users/rcastrillon/.nvm/versions/node/v22.15.0/bin/node .scripts/.bookings/combine.js && gop"
+          "cmd": "/Users/rcastrillon/.nvm/versions/node/v22.15.0/bin/node .scripts/.bookings/combine.js && git add . && git commit -m 'save' && git push"
         }
       ],
       "output": "console"
