@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log("✅ booking.js loaded?");
+    console.log("✅ booking.js loaded!");
   try {
     const testEl = document.querySelector('#date-picker');
     console.log("🧪 #date-picker exists:", !!testEl);
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await refreshAvailableTimesForDate();
       console.log("✅ Available times refreshed");
-    }
+    }``
 
     safeDisableUnavailableDates();
     console.log("✅ Disabled unavailable dates");
