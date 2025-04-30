@@ -1,0 +1,11 @@
+{
+    "emeraldwalk.runonsave": {
+      "commands": [
+        {
+          "match": "booking.js$",
+          "cmd": "gop"
+        }
+      ]
+    }
+  }
+  
