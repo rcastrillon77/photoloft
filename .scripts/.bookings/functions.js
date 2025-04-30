@@ -1106,9 +1106,7 @@ async function initSliderSection() {
     document.getElementById('date-picker')?.setAttribute('value', dateStr);
 }
 
-// ================================== //
-// ========  SUPABASE PULLS  ======== //
-// ================================== //
+// ** SUPABASE PULLS ** //  
 
 async function initBookingConfig(listingId, locationId) {
     try {
