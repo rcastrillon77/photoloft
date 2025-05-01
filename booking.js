@@ -44,7 +44,6 @@ window.bookingEvents = [];
 window.specialRates = {};
 window.listingSchedule = {};
 
-
 // ================================== //
 // =======  UTLITY FUNCTIONS  ======= //
 // ================================== //
