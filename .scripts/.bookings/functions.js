@@ -1236,3 +1236,57 @@ async function initBookingConfig(listingId, locationId) {
         console.error("🚨 Unexpected error initializing booking config:", err);
     }
 }
+
+// ================================== //
+// ========  NEW FUNCTIONS  ========= //
+// ================================== //
+
+// Holds a temporary booking slot
+window.holdTemporaryBooking = async function (start, end) {
+    try {
+      const dt = luxon.DateTime;
+      const expires = dt.now().plus({ minutes: 10 }).toISO();
+  
+      const { data, error } = await window.supabase.from('temp_events').insert([{
+        start_time: start,
+        end_time: end,
+        expires_at: expires,
+        listing_id: LISTING_UUID,
+        location_id: LOCATION_UUID,
+        user_id: window.supabaseUser?.id || null,
+        guest_id: window.guestId || null
+      }]).select('uuid');
+  
+      if (error) {
+        console.error("❌ Failed to create temp event:", error);
+        return null;
+      }
+  
+      const tempEventId = data[0]?.uuid;
+      sessionStorage.setItem('temp_event_id', tempEventId);
+      console.log("✅ Temporary booking held:", tempEventId);
+      return tempEventId;
+  
+    } catch (err) {
+      console.error("❌ Unexpected error during temp event insert:", err);
+      return null;
+    }
+  };
+  
+  // Releases a temporary hold (globally exposed)
+  window.releaseTempHold = async function () {
+    const id = sessionStorage.getItem('temp_event_id');
+    if (!id) return;
+  
+    const { error } = await window.supabase
+      .from('temp_events')
+      .delete()
+      .eq('uuid', id);
+  
+    if (!error) {
+      console.log("🗑️ Released previous temporary hold:", id);
+      sessionStorage.removeItem('temp_event_id');
+    } else {
+      console.error("⚠️ Failed to release temporary hold:", error);
+    }
+  };
