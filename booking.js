@@ -1317,10 +1317,10 @@ window.holdTemporaryBooking = async function (start, end) {
       console.error("❌ Unexpected error during temp event insert:", err);
       return null;
     }
-  };
+};
   
   // Releases a temporary hold (globally exposed)
-  window.releaseTempHold = async function () {
+window.releaseTempHold = async function () {
     const id = sessionStorage.getItem('temp_event_id');
     if (!id) return;
   
@@ -1335,7 +1335,7 @@ window.holdTemporaryBooking = async function (start, end) {
     } else {
       console.error("⚠️ Failed to release temporary hold:", error);
     }
-  };
+};
 
 // ================================== //
 // =========  INITIALIZER  ========== //
