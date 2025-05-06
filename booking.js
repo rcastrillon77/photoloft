@@ -77,6 +77,10 @@ function getEventMinutesRange(event) {
     };
 }
 
+function getBookingRule(key) {
+    return window.listingSchedule?.schedule?.["booking-rules"]?.[key];
+}  
+
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
     const bufferBefore = window.BUFFER_BEFORE ?? 0;
