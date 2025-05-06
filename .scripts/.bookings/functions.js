@@ -912,56 +912,50 @@ function disableUnavailableDates(instance) {
     min.setHours(0, 0, 0, 0);
     const max = new Date(window.bookingMaxDate);
     max.setHours(0, 0, 0, 0);
-
+  
     const currentMonth = instance.currentMonth;
     const currentYear = instance.currentYear;
-
+  
     requestAnimationFrame(() => {
-        document.querySelectorAll('.flatpickr-day').forEach(day => {
-            const dateObj = day.dateObj;
-            if (!dateObj) return;
-
-            const dayStart = new Date(dateObj);
-            dayStart.setHours(0, 0, 0, 0);
-
-            if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) return;
-
-            const isPast = dayStart < min;
-            const isBeyondWindow = dayStart > max;
-
-            const bookingDateLuxon = luxon.DateTime.fromJSDate(dayStart, { zone: window.TIMEZONE });
-            const selectedDateStr = bookingDateLuxon.toISODate();
-
-            const eventsForDay = window.bookingEvents.filter(e =>
-            luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-            );
-
-            const daySchedule = getScheduleForDate(window.listingSchedule, dayStart);
-            if (!daySchedule) return;
-
-            const open = parseTimeToMinutes(daySchedule.open);
-            const close = parseTimeToMinutes(daySchedule.close);
-            const isUnavailable = !hasAvailableStartTimesFor(dayStart);
-            const shouldDisable = isPast || isBeyondWindow || isUnavailable;
-
-            if (shouldDisable) {
-                if (!day.classList.contains('flatpickr-disabled')) {
-                    day.classList.add('flatpickr-disabled');
-                    day.setAttribute('aria-disabled', 'true');
-                    day.removeAttribute('aria-label');
-                    day.removeAttribute('tabindex');
-                }
-            } else {
-                if (day.classList.contains('flatpickr-disabled')) {
-                    day.classList.remove('flatpickr-disabled');
-                    day.removeAttribute('aria-disabled');
-                    day.setAttribute('aria-label', day.dateObj.toDateString());
-                    day.setAttribute('tabindex', '-1');
-                }
-            }
-        });
+      document.querySelectorAll('.flatpickr-day').forEach(day => {
+        const dateObj = day.dateObj;
+        if (!dateObj) return;
+  
+        const dayStart = new Date(dateObj);
+        dayStart.setHours(0, 0, 0, 0);
+  
+        if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) return;
+  
+        const isPast = dayStart < min;
+        const isBeyondWindow = dayStart > max;
+  
+        const isUnavailable = !hasAvailableStartTimesFor(dayStart);
+  
+        const shouldDisable = isPast || isBeyondWindow || isUnavailable;
+  
+        const logLabel = `${dayStart.toDateString()} → duration=${window.bookingGlobals.booking_duration}`;
+  
+        if (shouldDisable) {
+          console.log(`⛔ DISABLING: ${logLabel} (past=${isPast}, beyondWindow=${isBeyondWindow}, unavailable=${isUnavailable})`);
+          if (!day.classList.contains('flatpickr-disabled')) {
+            day.classList.add('flatpickr-disabled');
+            day.setAttribute('aria-disabled', 'true');
+            day.removeAttribute('aria-label');
+            day.removeAttribute('tabindex');
+          }
+        } else {
+          console.log(`✅ KEEPING: ${logLabel}`);
+          if (day.classList.contains('flatpickr-disabled')) {
+            day.classList.remove('flatpickr-disabled');
+            day.removeAttribute('aria-disabled');
+            day.setAttribute('aria-label', day.dateObj.toDateString());
+            day.setAttribute('tabindex', '-1');
+          }
+        }
+      });
     });
-}
+  }
+  
 
 function initCalendar() {
     window.flatpickrCalendar = flatpickr("#date-picker", {
