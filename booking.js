@@ -987,16 +987,7 @@ function disableUnavailableDates(instance) {
 
             const open = parseTimeToMinutes(daySchedule.open);
             const close = parseTimeToMinutes(daySchedule.close);
-
-            const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
-
-            console.log(`📅 ${dayStart.toDateString()} → ${availableTimes.length} valid start times for ${window.bookingGlobals.booking_duration} min`);
-            if (availableTimes.length === 0) {
-            console.log(`⛔ DISABLING ${dayStart.toDateString()} (no valid slots for duration ${window.bookingGlobals.booking_duration})`);
-            }
-            
-            const isUnavailable = availableTimes.length === 0;
-
+            const isUnavailable = !hasAvailableStartTimesFor(dayStart);
             const shouldDisable = isPast || isBeyondWindow || isUnavailable;
 
             if (shouldDisable) {
