@@ -7,18 +7,34 @@ document.addEventListener("DOMContentLoaded", async () => {
 await initBookingConfig(LISTING_UUID, LOCATION_UUID);
   await initCalendar();
 
+  const defaultDuration = getBookingRule("default_duration") ?? 60;
+  window.bookingGlobals.booking_duration = defaultDuration;
+  
+  const slot = await findNextAvailableSlot(); // modified function returning date + time
+  
   const jumped = await checkIfGuestHasActiveHold();
+  
   if (!jumped) {
+    if (slot) {
+      // simulate date click (triggers Flatpickr + sets bookingGlobals.booking_date)
+      simulateFlatpickrClick(slot.date);
+  
+      // force booking start time
+      window.bookingGlobals.booking_start = slot.time;
+      window.bookingGlobals.booking_end = slot.time + defaultDuration;
+      window.bookingGlobals.selected_start_time = minutesToTimeValue(slot.time);
+    }
+  
     await initBookingDate();
     await generateStartTimeOptions({ allowFallback: true });
-
+  
     if (window.flatpickrCalendar && window.bookingGlobals.booking_date) {
       window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
     }
-    
+  
     await initSliderSection();
     await refreshAvailableTimesForDate();
-  }
+  }  
 
   safeDisableUnavailableDates()
 
