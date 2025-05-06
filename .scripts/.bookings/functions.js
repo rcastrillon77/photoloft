@@ -272,59 +272,58 @@ async function deleteExpiredHolds() {
     }
 }
 
-async function findNextAvailableDate() {
+async function findNextAvailableSlot() {
     const today = new Date();
-    const startDate = new Date(today); // ✅ Start from today
-
-
+    const startDate = new Date(today);
+  
     const duration = window.bookingGlobals.booking_duration || 150;
-    console.log(`🔍 Starting fallback search from ${startDate.toDateString()} with duration: ${duration} min`);
-
     const schedule = window.listingSchedule;
     const membership = window.MEMBERSHIP || 'non-member';
     const bookingWindowDays = schedule?.['booking-rules']?.['booking-window']?.[membership] || 60;
-
-    console.log(`📅 Membership: ${membership}, Booking window: ${bookingWindowDays} days`);
-
+  
     for (let i = 0; i < bookingWindowDays; i++) {
-        const testDate = new Date(startDate);
-        testDate.setDate(startDate.getDate() + i);
-
-        const testDateStr = testDate.toDateString();
-        const scheduleForDay = getScheduleForDate(schedule, testDate);
-        const luxonTestDate = luxon.DateTime.fromJSDate(testDate, { zone: window.TIMEZONE });
-
-        if (!scheduleForDay) {
-            console.log(`📆 ${testDateStr} → ❌ No schedule`);
-            continue;
-        }
-
-        const open = parseTimeToMinutes(scheduleForDay.open);
-        const close = parseTimeToMinutes(scheduleForDay.close);
-        const maxStart = close - duration + BUFFER_AFTER;
-
-        console.log(`📆 ${testDateStr} → Open: ${scheduleForDay.open} (${open}), Close: ${scheduleForDay.close} (${close}), Max start: ${maxStart}`);
-
-        const selectedDateStr = luxonTestDate.toISODate();
-
-        const eventsForDay = window.bookingEvents.filter(e =>
-            luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-        );
-
-        console.log(`📆 ${testDateStr} → ${eventsForDay.length} events found`);
-
-        const availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
-
-        if (availableTimes.length > 0) {
-            console.log(`✅ ${testDateStr} → Found ${availableTimes.length} available slots`);
-            return testDate;
-        } else {
-            console.log(`⛔ ${testDateStr} → No available slots for ${duration} min`);
-        }
+      const testDate = new Date(startDate);
+      testDate.setDate(startDate.getDate() + i);
+  
+      const scheduleForDay = getScheduleForDate(schedule, testDate);
+      const luxonTestDate = luxon.DateTime.fromJSDate(testDate, { zone: window.TIMEZONE });
+  
+      if (!scheduleForDay) continue;
+  
+      const open = parseTimeToMinutes(scheduleForDay.open);
+      const close = parseTimeToMinutes(scheduleForDay.close);
+      const maxStart = close - duration + BUFFER_AFTER;
+      const selectedDateStr = luxonTestDate.toISODate();
+  
+      const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+      );
+  
+      const availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
+  
+      if (availableTimes.length > 0) {
+        return {
+          date: testDate,
+          time: availableTimes[0], // Earliest time
+        };
+      }
     }
-
-    console.warn("❌ No available slots found in the next booking window");
+  
     return null;
+}
+
+function simulateFlatpickrClick(date) {
+    const instance = window.flatpickrCalendar;
+    if (!instance) return;
+  
+    const dayEls = document.querySelectorAll(".flatpickr-day");
+  
+    for (const el of dayEls) {
+      if (el.dateObj && DateTime.fromJSDate(el.dateObj).hasSame(DateTime.fromJSDate(date), 'day')) {
+        el.click(); // triggers Flatpickr’s internal handlers
+        break;
+      }
+    }
 }
 
 async function checkIfGuestHasActiveHold() {
