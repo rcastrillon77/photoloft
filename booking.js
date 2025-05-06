@@ -369,10 +369,10 @@ function simulateFlatpickrClick(date) {
     const dayEls = document.querySelectorAll(".flatpickr-day");
   
     for (const el of dayEls) {
-      if (el.dateObj && DateTime.fromJSDate(el.dateObj).hasSame(DateTime.fromJSDate(date), 'day')) {
-        el.click(); // triggers Flatpickr’s internal handlers
-        break;
-      }
+        if (el.dateObj && luxon.DateTime.fromJSDate(el.dateObj).hasSame(luxon.DateTime.fromJSDate(date), 'day')) {
+            el.click(); // triggers Flatpickr’s internal handlers
+            break;
+        }
     }
 }
 
