@@ -276,7 +276,7 @@ async function deleteExpiredHolds() {
     }
 }
 
-async function findNextAvailableSlot() {
+async function findNextAvailableDate() {
     const today = new Date();
     const startDate = new Date(today);
   
