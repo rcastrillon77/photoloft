@@ -29,14 +29,14 @@ const PREPAID_HOURS = window.supabaseUser?.prepaid || 0;
 
 // === Booking Session State (Updated dynamically during selection)
 window.bookingGlobals = {
-booking_date: new Date(),
-booking_start: OPEN_TIME,
-booking_end: OPEN_TIME + DEFAULT_DURATION * 60,
-booking_duration: DEFAULT_DURATION * 60,
-booking_rate: FULL_RATE,
-booking_total: DEFAULT_DURATION * FULL_RATE,
-booking_discount: null,
-selected_start_time: minutesToTimeValue(OPEN_TIME)
+    booking_date: new Date(),
+    booking_start: OPEN_TIME,
+    booking_end: OPEN_TIME + DEFAULT_DURATION * 60,
+    booking_duration: DEFAULT_DURATION * 60,
+    booking_rate: FULL_RATE,
+    booking_total: DEFAULT_DURATION * FULL_RATE,
+    booking_discount: null,
+    selected_start_time: minutesToTimeValue(OPEN_TIME)
 };
 
 // === Event & Rate Storage
