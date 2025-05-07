@@ -6,9 +6,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 await initBookingConfig(LISTING_UUID, LOCATION_UUID);
   await initCalendar();
-
-  const defaultDuration = getBookingRule("default_duration") ?? 60;
-  window.bookingGlobals.booking_duration = defaultDuration;
   
   const slot = await findNextAvailableSlot(); // modified function returning date + time
   
@@ -21,7 +18,7 @@ await initBookingConfig(LISTING_UUID, LOCATION_UUID);
   
       // force booking start time
       window.bookingGlobals.booking_start = slot.time;
-      window.bookingGlobals.booking_end = slot.time + defaultDuration;
+      window.bookingGlobals.booking_end = slot.time + window.bookingGlobals.booking_duration;
       window.bookingGlobals.selected_start_time = minutesToTimeValue(slot.time);
     }
   
