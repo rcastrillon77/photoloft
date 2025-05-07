@@ -1340,7 +1340,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await initBookingConfig(LISTING_UUID, LOCATION_UUID);
     await initCalendar();
   
-    const slot = await findNextAvailableSlot(); // modified function returning date + time
+    const slot = await findNextAvailableDate(); // modified function returning date + time
     
     const jumped = await checkIfGuestHasActiveHold();
     
