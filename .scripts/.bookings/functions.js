@@ -910,7 +910,7 @@ async function initBookingDate() {
 } 
 
 // ** CALENDAR SYNC ** //
-function disableUnavailableDates(instance) {
+function disableUnavailableDates() {
     console.log("🔵 disableUnavailableDates() started");
 
     const min = new Date(window.bookingMinDate);
@@ -918,17 +918,12 @@ function disableUnavailableDates(instance) {
     const max = new Date(window.bookingMaxDate);
     max.setHours(0, 0, 0, 0);
 
-    const currentMonth = instance.currentMonth;
-    const currentYear = instance.currentYear;
-
     document.querySelectorAll('.flatpickr-day').forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
 
         const dayStart = new Date(dateObj);
         dayStart.setHours(0, 0, 0, 0);
-
-        if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) return;
 
         const isPast = dayStart < min;
         const isBeyondWindow = dayStart > max;
@@ -957,6 +952,7 @@ function disableUnavailableDates(instance) {
 
     console.log("🔵 disableUnavailableDates() completed");
 }
+
 
 function initCalendar() {
     window.flatpickrCalendar = flatpickr("#date-picker", {
