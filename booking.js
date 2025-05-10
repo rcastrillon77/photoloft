@@ -78,17 +78,6 @@ function getEventMinutesRange(event) {
     };
 }
 
-function debounce(func, delay) {
-    let timeout;
-    return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), delay);
-    };
-}
-
-const debouncedDisableUnavailableDates = debounce(disableUnavailableDates, 100);
-
-
 function getBookingRule(key) {
     return window.listingSchedule?.schedule?.["booking-rules"]?.[key];
 }  
@@ -192,7 +181,7 @@ async function refreshAvailableTimesForDate() {
     const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
     console.log(`⏰ Available Times for ${selectedDate.toDateString()}: ${availableTimes.join(", ")}`);
 
-    debouncedDisableUnavailableDates();
+    safeDisableUnavailableDates();
     console.log("🔵 refreshAvailableTimesForDate() completed");
 }
 
@@ -918,6 +907,10 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
     updateMaxAvailableButton();
     generateExtendedTimeOptions();
 
+    setTimeout(() => {
+        safeDisableUnavailableDates(window.flatpickrCalendar);
+    }, 0);
+
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
         return false;
@@ -1077,7 +1070,7 @@ function initCalendar() {
         window.bookingGlobals.booking_date = new Date();
     }
 
-    debouncedDisableUnavailableDates();
+    safeDisableUnavailableDates();
 }
 
 // ** INITIALIZERS ** //  
