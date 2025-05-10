@@ -937,12 +937,14 @@ function disableUnavailableDates() {
 
         if (shouldDisable && !isCurrentlyDisabled) {
             day.classList.add('flatpickr-disabled');
+            console.log(`Disabled: ${dayStart.toDateString()}`);
             day.setAttribute('aria-disabled', 'true');
             day.removeAttribute('aria-label');
             day.removeAttribute('tabindex');
         } 
         else if (!shouldDisable && isCurrentlyDisabled) {
             day.classList.remove('flatpickr-disabled');
+            console.log(`Enabled: ${dayStart.toDateString()}`);
             day.removeAttribute('aria-disabled');
             day.setAttribute('aria-label', day.dateObj.toDateString());
             day.setAttribute('tabindex', '-1');
