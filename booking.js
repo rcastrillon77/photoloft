@@ -188,7 +188,7 @@ async function refreshAvailableTimesForDate() {
     }
 
     // First, disable dates based on availability
-    //safeDisableUnavailableDates();
+    safeDisableUnavailableDates();
 
     // Then render time slots
     await renderStartTimeOptions(availableTimes);
@@ -1079,7 +1079,7 @@ function initCalendar() {
         window.bookingGlobals.booking_date = new Date();
     }
 
-    safeDisableUnavailableDates();
+    //safeDisableUnavailableDates();
 }
 
 // ** INITIALIZERS ** //  
