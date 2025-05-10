@@ -115,42 +115,28 @@ function getMaxAvailableDurationForDate(date) {
 }
 
 async function refreshAvailableTimesForDate() {
+    console.log("🔵 refreshAvailableTimesForDate() called");
+
     const selectedDate = window.bookingGlobals.booking_date;
+    console.log(`📅 Refreshing for Date: ${selectedDate.toDateString()}`);
+
     const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
-
-    applyScheduleSettings(schedule);
-
-    const bookingDateLuxon = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
-    const selectedDateStr = bookingDateLuxon.toISODate();
-    const eventsForDay = window.bookingEvents.filter(e =>
-        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
-    );
 
     const open = parseTimeToMinutes(schedule.open);
     const close = parseTimeToMinutes(schedule.close);
 
+    const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE }).toISODate()
+    );
+
+    console.log(`📆 Found ${eventsForDay.length} events for ${selectedDate.toDateString()}`);
+
     const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
+    console.log(`⏰ Available Times for ${selectedDate.toDateString()}: ${availableTimes.join(", ")}`);
 
-    const hasAvailableTimes = availableTimes.length > 0;
-    const noTimeSlotsMessage = document.getElementById("no-timeslots-message");
-
-    if (hasAvailableTimes) {
-        noTimeSlotsMessage?.classList.add("hidden");
-    } else {
-        noTimeSlotsMessage?.classList.remove("hidden");
-    }
-
-    // First, disable dates based on availability
     safeDisableUnavailableDates();
-
-    // Then render time slots
-    await renderStartTimeOptions(availableTimes);
-
-    // Update summary after everything is complete
-    updateBookingSummary();
+    console.log("🔵 refreshAvailableTimesForDate() completed");
 }
-
-
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
   const zone = window.TIMEZONE;
@@ -437,11 +423,14 @@ async function checkIfGuestHasActiveHold() {
 function safeDisableUnavailableDates() {
     if (!window.flatpickrCalendar) return;
 
+    console.log("🔵 safeDisableUnavailableDates() called");
+
     setTimeout(() => {
-        console.log("🛠 Running disableUnavailableDates after Flatpickr render");
+        console.log("🛠 Executing disableUnavailableDates from safeDisableUnavailableDates");
         disableUnavailableDates(window.flatpickrCalendar);
-    }, 0);
+    }, 50);
 }
+
 
 // ** UI ENHANCERS ** //
 function attachRadioStyling() {
@@ -922,6 +911,8 @@ async function initBookingDate() {
 
 // ** CALENDAR SYNC ** //
 function disableUnavailableDates(instance) {
+    console.log("🔵 disableUnavailableDates() started");
+
     const min = new Date(window.bookingMinDate);
     min.setHours(0, 0, 0, 0);
     const max = new Date(window.bookingMaxDate);
@@ -930,10 +921,7 @@ function disableUnavailableDates(instance) {
     const currentMonth = instance.currentMonth;
     const currentYear = instance.currentYear;
 
-    const dayElements = document.querySelectorAll('.flatpickr-day');
-    const updates = [];
-
-    dayElements.forEach(day => {
+    document.querySelectorAll('.flatpickr-day').forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
 
@@ -949,30 +937,26 @@ function disableUnavailableDates(instance) {
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
         const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
 
-        if (shouldDisable !== isCurrentlyDisabled) {
-            updates.push({ day, shouldDisable });
+        console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
+
+        if (shouldDisable && !isCurrentlyDisabled) {
+            console.log(`⛔ DISABLING ${dayStart.toDateString()}`);
+            day.classList.add('flatpickr-disabled');
+            day.setAttribute('aria-disabled', 'true');
+            day.removeAttribute('aria-label');
+            day.removeAttribute('tabindex');
+        } 
+        else if (!shouldDisable && isCurrentlyDisabled) {
+            console.log(`✅ ENABLING ${dayStart.toDateString()}`);
+            day.classList.remove('flatpickr-disabled');
+            day.removeAttribute('aria-disabled');
+            day.setAttribute('aria-label', day.dateObj.toDateString());
+            day.setAttribute('tabindex', '-1');
         }
     });
 
-    // Apply updates in a single pass
-    requestAnimationFrame(() => {
-        updates.forEach(({ day, shouldDisable }) => {
-            if (shouldDisable) {
-                day.classList.add('flatpickr-disabled');
-                day.setAttribute('aria-disabled', 'true');
-                day.removeAttribute('aria-label');
-                day.removeAttribute('tabindex');
-            } else {
-                day.classList.remove('flatpickr-disabled');
-                day.removeAttribute('aria-disabled');
-                day.setAttribute('aria-label', day.dateObj.toDateString());
-                day.setAttribute('tabindex', '-1');
-            }
-        });
-    });
+    console.log("🔵 disableUnavailableDates() completed");
 }
-
-
 
 function initCalendar() {
     window.flatpickrCalendar = flatpickr("#date-picker", {
@@ -1002,20 +986,19 @@ function initCalendar() {
         },
 
         onChange(selectedDates, dateStr, instance) {
+            console.log("🔵 onChange() triggered");
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
+            console.log(`📅 Date selected: ${selectedDate.toDateString()}`);
+        
             window.bookingGlobals.booking_date = new Date(selectedDate);
         
-            requestAnimationFrame(() => {
-                refreshAvailableTimesForDate();
-                generateExtendedTimeOptions();
-                updateMaxAvailableButton();
-                updateBookingSummary();
-                highlightSelectedDate();
-                disableUnavailableDates(instance);
-            });
-        }        
+            refreshAvailableTimesForDate();
+            updateBookingSummary();
+            console.log("🔵 onChange() completed");
+        }
+           
         
     });
 
