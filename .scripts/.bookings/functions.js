@@ -131,20 +131,25 @@ async function refreshAvailableTimesForDate() {
 
     const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
 
-    if (availableTimes.length === 0) {
-        document.getElementById("no-timeslots-message")?.classList.remove("hidden");
+    const hasAvailableTimes = availableTimes.length > 0;
+    const noTimeSlotsMessage = document.getElementById("no-timeslots-message");
+
+    if (hasAvailableTimes) {
+        noTimeSlotsMessage?.classList.add("hidden");
     } else {
-        document.getElementById("no-timeslots-message")?.classList.add("hidden");
+        noTimeSlotsMessage?.classList.remove("hidden");
     }
 
+    // First, disable dates based on availability
+    safeDisableUnavailableDates();
+
+    // Then render time slots
     await renderStartTimeOptions(availableTimes);
 
-    // Consolidate class updates in a single pass
-    requestAnimationFrame(() => {
-        disableUnavailableDates(window.flatpickrCalendar);
-        updateBookingSummary();
-    });
+    // Update summary after everything is complete
+    updateBookingSummary();
 }
+
 
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
@@ -708,15 +713,27 @@ function getAvailableStartTimes(eventsForDay, durationMinutes = window.bookingGl
     return startTimes;
 }
 
-function renderStartTimeOptions(startTimes) {
+async function renderStartTimeOptions(startTimes) {
     const container = document.getElementById('booking-start-time-options');
     const noTimesMessage = document.getElementById('no-timeslots-message');
     const summaryEl = document.getElementById('booking-summary-wrapper');
 
-    container.innerHTML = '';
+    const currentRadios = container.querySelectorAll('.radio-option-container');
+    const currentValues = Array.from(currentRadios).map(radio => radio.querySelector('input').value);
 
-    const radiosHTML = startTimes.map((minutes) => {
-        const value = minutesToTimeValue(minutes);
+    const newTimes = startTimes.map(minutesToTimeValue);
+    const toAdd = newTimes.filter(time => !currentValues.includes(time));
+    const toRemove = currentValues.filter(time => !newTimes.includes(time));
+
+    // Remove outdated radios
+    toRemove.forEach(time => {
+        const radioEl = container.querySelector(`input[value="${time}"]`);
+        radioEl?.closest('.radio-option-container')?.remove();
+    });
+
+    // Add new radios
+    const newRadiosHTML = toAdd.map((value) => {
+        const minutes = parseInt(value.substring(0, 2)) * 60 + parseInt(value.substring(2));
         const label = formatTime(minutes);
         return `
         <label class="radio-option-container">
@@ -725,80 +742,73 @@ function renderStartTimeOptions(startTimes) {
         </label>`;
     }).join('');
 
-    container.innerHTML = radiosHTML;
+    container.insertAdjacentHTML('beforeend', newRadiosHTML);
 
     const radios = container.querySelectorAll('input[type=radio]');
-    const containers = container.querySelectorAll('.radio-option-container');
-
-    return markHeldTimeSlotsForDay(bookingGlobals.booking_date).then(() => {
-        const validRadios = Array.from(radios).filter(r =>
+    const validRadios = Array.from(radios).filter(r =>
         !r.closest('.radio-option-container')?.classList.contains('on-hold')
-        );
+    );
 
-        if (!validRadios.length) {
-            const totalRadios = radios.length;
-            const heldRadios = Array.from(radios).filter(r =>
-                r.closest('.radio-option-container')?.classList.contains('on-hold')
-            ).length;
-        
-            if (totalRadios > 0 && heldRadios === totalRadios) {
-                noTimesMessage.textContent = "No time slots available for this duration — all options are currently on hold.";
-            } else {
-                noTimesMessage.textContent = "No available time slots match your selected duration.";
-            }
-        
-            noTimesMessage.classList.remove('hidden');
-            summaryEl?.classList.add('hidden');
-            return false;
-        }
-        else {
-            noTimesMessage?.classList.add('hidden');
-            summaryEl?.classList.remove('hidden');
-        }
+    await markHeldTimeSlotsForDay(bookingGlobals.booking_date);
 
-        const { selected_start_time } = window.bookingGlobals;
-        const selectedMinutes = selected_start_time
+    if (!validRadios.length) {
+        const totalRadios = radios.length;
+        const heldRadios = Array.from(radios).filter(r =>
+            r.closest('.radio-option-container')?.classList.contains('on-hold')
+        ).length;
+
+        noTimesMessage.textContent = (totalRadios > 0 && heldRadios === totalRadios)
+            ? "No time slots available — all options are currently on hold."
+            : "No available time slots match your selected duration.";
+
+        noTimesMessage.classList.remove('hidden');
+        summaryEl?.classList.add('hidden');
+        return false;
+    } else {
+        noTimesMessage?.classList.add('hidden');
+        summaryEl?.classList.remove('hidden');
+    }
+
+    const { selected_start_time } = window.bookingGlobals;
+    const selectedMinutes = selected_start_time
         ? parseInt(selected_start_time.substring(0, 2)) * 60 + parseInt(selected_start_time.substring(2))
         : null;
 
-        let closestDiff = Infinity;
-        let closestValue = null;
+    let closestDiff = Infinity;
+    let closestValue = null;
 
-        startTimes.forEach((minutes) => {
-            const diff = Math.abs(minutes - selectedMinutes);
+    startTimes.forEach((minutes) => {
+        const diff = Math.abs(minutes - selectedMinutes);
+        if (diff < closestDiff) {
+            closestDiff = diff;
+            closestValue = minutesToTimeValue(minutes);
+        }
+    });
 
-            if (diff < closestDiff) {
-                closestDiff = diff;
-                closestValue = minutesToTimeValue(minutes);
-            }
+    let selectedRadio = null;
 
-        });
-        
-        let selectedRadio = null;
-
-        if (validRadios.length > 0) {
+    if (validRadios.length > 0) {
         selectedRadio =
             validRadios.find((r) => r.value === selected_start_time) ||
             validRadios.find((r) => r.value === closestValue) ||
             validRadios[0];
-        }
+    }
 
-        if (selectedRadio) {
-            selectedRadio.checked = true;
-            window.bookingGlobals.selected_start_time = selectedRadio.value;
+    if (selectedRadio) {
+        selectedRadio.checked = true;
+        window.bookingGlobals.selected_start_time = selectedRadio.value;
 
-            const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
-            const start = h * 60 + m;
-            window.bookingGlobals.booking_start = start;
-            window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
+        const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
+        const start = h * 60 + m;
+        window.bookingGlobals.booking_start = start;
+        window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
 
-            updateBookingSummary();
-            selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        updateBookingSummary();
+        selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+    }
 
-        attachRadioStyling();
-        return true;
-    });
+    attachRadioStyling();
+    return true;
 }
 
 async function generateStartTimeOptions({ allowFallback = false } = {}) {
