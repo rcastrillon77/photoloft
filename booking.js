@@ -972,54 +972,51 @@ function disableUnavailableDates(instance) {
     min.setHours(0, 0, 0, 0);
     const max = new Date(window.bookingMaxDate);
     max.setHours(0, 0, 0, 0);
-  
+
     const currentMonth = instance.currentMonth;
     const currentYear = instance.currentYear;
-  
-    requestAnimationFrame(() => {
-      const dayElements = document.querySelectorAll('.flatpickr-day');
-  
-      const updates = [];
-  
-      dayElements.forEach(day => {
+
+    const dayElements = document.querySelectorAll('.flatpickr-day');
+    const updates = [];
+
+    dayElements.forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
-  
+
         const dayStart = new Date(dateObj);
         dayStart.setHours(0, 0, 0, 0);
-  
+
         if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) return;
-  
+
         const isPast = dayStart < min;
         const isBeyondWindow = dayStart > max;
-  
         const isUnavailable = !hasAvailableStartTimesFor(dayStart);
-  
+
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
-  
-        updates.push({ day, shouldDisable });
-      });
-  
-      // Apply all changes in a single pass to reduce DOM thrashing
-      updates.forEach(({ day, shouldDisable }) => {
-        if (shouldDisable) {
-          if (!day.classList.contains('flatpickr-disabled')) {
-            day.classList.add('flatpickr-disabled');
-            day.setAttribute('aria-disabled', 'true');
-            day.removeAttribute('aria-label');
-            day.removeAttribute('tabindex');
-          }
-        } else {
-          if (day.classList.contains('flatpickr-disabled')) {
-            day.classList.remove('flatpickr-disabled');
-            day.removeAttribute('aria-disabled');
-            day.setAttribute('aria-label', day.dateObj.toDateString());
-            day.setAttribute('tabindex', '-1');
-          }
+        const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
+
+        if (shouldDisable !== isCurrentlyDisabled) {
+            updates.push(() => {
+                if (shouldDisable) {
+                    day.classList.add('flatpickr-disabled');
+                    day.setAttribute('aria-disabled', 'true');
+                    day.removeAttribute('aria-label');
+                    day.removeAttribute('tabindex');
+                } else {
+                    day.classList.remove('flatpickr-disabled');
+                    day.removeAttribute('aria-disabled');
+                    day.setAttribute('aria-label', day.dateObj.toDateString());
+                    day.setAttribute('tabindex', '-1');
+                }
+            });
         }
-      });
+    });
+
+    requestAnimationFrame(() => {
+        updates.forEach(update => update());
     });
 }
+
 
 function initCalendar() {
     window.flatpickrCalendar = flatpickr("#date-picker", {
@@ -1051,14 +1048,26 @@ function initCalendar() {
         onChange(selectedDates, dateStr, instance) {
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
-
+        
+            if (renderInProgress) return;
+            renderInProgress = true;
+        
             window.bookingGlobals.booking_date = new Date(selectedDate);
-            refreshAvailableTimesForDate();
-            generateExtendedTimeOptions();
-            updateMaxAvailableButton();
-            updateBookingSummary();
-            highlightSelectedDate();
+        
+            requestAnimationFrame(() => {
+                refreshAvailableTimesForDate();
+                generateExtendedTimeOptions();
+                updateMaxAvailableButton();
+                updateBookingSummary();
+                highlightSelectedDate();
+        
+                requestAnimationFrame(() => {
+                    disableUnavailableDates(instance);
+                    renderInProgress = false; // Reset flag after complete render
+                });
+            });
         }
+        
     });
 
     if (!document.getElementById('date-picker').value) {
