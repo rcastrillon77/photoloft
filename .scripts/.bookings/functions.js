@@ -911,35 +911,46 @@ async function initBookingDate() {
 
 // ** CALENDAR SYNC ** //
 function disableUnavailableDates() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-  
+    console.log("🔵 disableUnavailableDates() started");
+
+    const min = new Date(window.bookingMinDate);
+    min.setHours(0, 0, 0, 0);
+    const max = new Date(window.bookingMaxDate);
+    max.setHours(0, 0, 0, 0);
+
     document.querySelectorAll('.flatpickr-day').forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
-  
+
         const dayStart = new Date(dateObj);
         dayStart.setHours(0, 0, 0, 0);
-  
-        const min = new Date(window.bookingMinDate);
-        const max = new Date(window.bookingMaxDate);
-        min.setHours(0, 0, 0, 0);
-        max.setHours(0, 0, 0, 0);
-  
+
         const isPast = dayStart < min;
         const isBeyondWindow = dayStart > max;
-        const isUnavailable = !hasAvailableStartTimesFor(dateObj);
-  
+        const isUnavailable = !hasAvailableStartTimesFor(dayStart);
+
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
-  
-        if (shouldDisable) {
-        day.classList.add('flatpickr-disabled');
-        day.removeAttribute('aria-label');
-        day.removeAttribute('tabindex');
-        } else {
-        day.classList.remove('flatpickr-disabled');
+        const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
+
+        console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
+
+        if (shouldDisable && !isCurrentlyDisabled) {
+            console.log(`⛔ DISABLING ${dayStart.toDateString()}`);
+            day.classList.add('flatpickr-disabled');
+            day.setAttribute('aria-disabled', 'true');
+            day.removeAttribute('aria-label');
+            day.removeAttribute('tabindex');
+        } 
+        else if (!shouldDisable && isCurrentlyDisabled) {
+            console.log(`✅ ENABLING ${dayStart.toDateString()}`);
+            day.classList.remove('flatpickr-disabled');
+            day.removeAttribute('aria-disabled');
+            day.setAttribute('aria-label', day.dateObj.toDateString());
+            day.setAttribute('tabindex', '-1');
         }
     });
+
+    console.log("🔵 disableUnavailableDates() completed");
 }
 
 
@@ -954,15 +965,14 @@ function initCalendar() {
 
         onReady(selectedDates, dateStr, instance) {
             updateCustomHeader(instance);
-            disableUnavailableDates(instance);
+            disableUnavailableDates();
         },
 
         onMonthChange(selectedDates, dateStr, instance) {
-            console.log("📅 Month changed → disabling unavailable dates...");
             updateCustomHeader(instance);
-            disableUnavailableDates(instance);
+            disableUnavailableDates();
             highlightSelectedDate();
-        },
+        },        
 
         onYearChange(selectedDates, dateStr, instance) {
             console.log("📅 Year changed → disabling unavailable dates...");
@@ -971,18 +981,18 @@ function initCalendar() {
         },
 
         onChange(selectedDates, dateStr, instance) {
-            console.log("🔵 onChange() triggered");
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
-            console.log(`📅 Date selected: ${selectedDate.toDateString()}`);
-        
             window.bookingGlobals.booking_date = new Date(selectedDate);
-        
             refreshAvailableTimesForDate();
+            generateExtendedTimeOptions();
+            updateMaxAvailableButton();
             updateBookingSummary();
-            console.log("🔵 onChange() completed");
+            highlightSelectedDate();
+            setTimeout(disableUnavailableDates, 0);
         }
+        
            
         
     });
