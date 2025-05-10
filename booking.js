@@ -963,7 +963,11 @@ function disableUnavailableDates(instance) {
     const currentYear = instance.currentYear;
   
     requestAnimationFrame(() => {
-      document.querySelectorAll('.flatpickr-day').forEach(day => {
+      const dayElements = document.querySelectorAll('.flatpickr-day');
+  
+      const updates = [];
+  
+      dayElements.forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
   
@@ -979,10 +983,12 @@ function disableUnavailableDates(instance) {
   
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
   
-        const logLabel = `${dayStart.toDateString()} → duration=${window.bookingGlobals.booking_duration}`;
+        updates.push({ day, shouldDisable });
+      });
   
+      // Apply all changes in a single pass to reduce DOM thrashing
+      updates.forEach(({ day, shouldDisable }) => {
         if (shouldDisable) {
-          console.log(`⛔ DISABLING: ${logLabel} (past=${isPast}, beyondWindow=${isBeyondWindow}, unavailable=${isUnavailable})`);
           if (!day.classList.contains('flatpickr-disabled')) {
             day.classList.add('flatpickr-disabled');
             day.setAttribute('aria-disabled', 'true');
@@ -990,7 +996,6 @@ function disableUnavailableDates(instance) {
             day.removeAttribute('tabindex');
           }
         } else {
-          console.log(`✅ KEEPING: ${logLabel}`);
           if (day.classList.contains('flatpickr-disabled')) {
             day.classList.remove('flatpickr-disabled');
             day.removeAttribute('aria-disabled');
@@ -1000,8 +1005,7 @@ function disableUnavailableDates(instance) {
         }
       });
     });
-  }
-  
+}
 
 function initCalendar() {
     window.flatpickrCalendar = flatpickr("#date-picker", {
