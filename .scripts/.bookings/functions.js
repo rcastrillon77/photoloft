@@ -950,26 +950,28 @@ function disableUnavailableDates(instance) {
         const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
 
         if (shouldDisable !== isCurrentlyDisabled) {
-            updates.push(() => {
-                if (shouldDisable) {
-                    day.classList.add('flatpickr-disabled');
-                    day.setAttribute('aria-disabled', 'true');
-                    day.removeAttribute('aria-label');
-                    day.removeAttribute('tabindex');
-                } else {
-                    day.classList.remove('flatpickr-disabled');
-                    day.removeAttribute('aria-disabled');
-                    day.setAttribute('aria-label', day.dateObj.toDateString());
-                    day.setAttribute('tabindex', '-1');
-                }
-            });
+            updates.push({ day, shouldDisable });
         }
     });
 
+    // Apply updates in a single pass
     requestAnimationFrame(() => {
-        updates.forEach(update => update());
+        updates.forEach(({ day, shouldDisable }) => {
+            if (shouldDisable) {
+                day.classList.add('flatpickr-disabled');
+                day.setAttribute('aria-disabled', 'true');
+                day.removeAttribute('aria-label');
+                day.removeAttribute('tabindex');
+            } else {
+                day.classList.remove('flatpickr-disabled');
+                day.removeAttribute('aria-disabled');
+                day.setAttribute('aria-label', day.dateObj.toDateString());
+                day.setAttribute('tabindex', '-1');
+            }
+        });
     });
 }
+
 
 
 function initCalendar() {
