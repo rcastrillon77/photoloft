@@ -141,7 +141,7 @@ async function refreshAvailableTimesForDate() {
     }
 
     // First, disable dates based on availability
-    //safeDisableUnavailableDates();
+    safeDisableUnavailableDates();
 
     // Then render time slots
     await renderStartTimeOptions(availableTimes);
@@ -871,9 +871,9 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
     updateMaxAvailableButton();
     generateExtendedTimeOptions();
 
-    /*setTimeout(() => {
+    setTimeout(() => {
         safeDisableUnavailableDates(window.flatpickrCalendar);
-    }, 0); */
+    }, 0);
 
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
