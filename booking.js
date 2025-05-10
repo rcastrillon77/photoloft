@@ -188,7 +188,7 @@ async function refreshAvailableTimesForDate() {
     }
 
     // First, disable dates based on availability
-    safeDisableUnavailableDates();
+    //safeDisableUnavailableDates();
 
     // Then render time slots
     await renderStartTimeOptions(availableTimes);
@@ -918,9 +918,9 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
     updateMaxAvailableButton();
     generateExtendedTimeOptions();
 
-    setTimeout(() => {
+    /*setTimeout(() => {
         safeDisableUnavailableDates(window.flatpickrCalendar);
-    }, 0);
+    }, 0); */
 
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
@@ -1052,9 +1052,6 @@ function initCalendar() {
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
-            if (renderInProgress) return;
-            renderInProgress = true;
-        
             window.bookingGlobals.booking_date = new Date(selectedDate);
         
             requestAnimationFrame(() => {
@@ -1063,13 +1060,9 @@ function initCalendar() {
                 updateMaxAvailableButton();
                 updateBookingSummary();
                 highlightSelectedDate();
-        
-                requestAnimationFrame(() => {
-                    disableUnavailableDates(instance);
-                    renderInProgress = false; // Reset flag after complete render
-                });
+                disableUnavailableDates(instance);
             });
-        }
+        }        
         
     });
 
