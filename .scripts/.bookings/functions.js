@@ -635,10 +635,16 @@ function updateBookingSummary() {
 }
 
 // ** SCHEDULE LOGIC ** //
-function getScheduleForDate(schedule, date = bookingGlobals.booking_date) {
+function getScheduleForDate(schedule, date = window.bookingGlobals.booking_date) {
+    if (!(date instanceof Date)) {
+        console.warn("getScheduleForDate() received a non-Date object:", date);
+        return null;
+    }
+
     const weekday = date.getDay();
     return schedule[MEMBERSHIP]?.[weekday] || null;
 }
+
 
 function applyScheduleSettings(daySchedule) {
     if (!daySchedule) return;
@@ -934,7 +940,7 @@ function disableUnavailableDates() {
         const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
 
         console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
-        
+
         if (shouldDisable && !isCurrentlyDisabled) {
             console.log(`⛔ Disabling: ${dayStart.toDateString()} | Class Added`);
             day.classList.add('flatpickr-disabled');
