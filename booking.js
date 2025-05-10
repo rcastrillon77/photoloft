@@ -1037,14 +1037,18 @@ function initCalendar() {
         onChange(selectedDates, dateStr, instance) {
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
-
+          
             window.bookingGlobals.booking_date = new Date(selectedDate);
-            refreshAvailableTimesForDate();
-            generateExtendedTimeOptions();
-            updateMaxAvailableButton();
-            updateBookingSummary();
-            highlightSelectedDate();
+          
+            requestAnimationFrame(() => {
+              refreshAvailableTimesForDate();
+              generateExtendedTimeOptions();
+              updateMaxAvailableButton();
+              updateBookingSummary();
+              highlightSelectedDate();
+            });
         }
+          
     });
 
     if (!document.getElementById('date-picker').value) {
