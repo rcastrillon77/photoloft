@@ -982,14 +982,12 @@ function disableUnavailableDates() {
         console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
 
         if (shouldDisable && !isCurrentlyDisabled) {
-            console.log(`⛔ DISABLING ${dayStart.toDateString()}`);
             day.classList.add('flatpickr-disabled');
             day.setAttribute('aria-disabled', 'true');
             day.removeAttribute('aria-label');
             day.removeAttribute('tabindex');
         } 
         else if (!shouldDisable && isCurrentlyDisabled) {
-            console.log(`✅ ENABLING ${dayStart.toDateString()}`);
             day.classList.remove('flatpickr-disabled');
             day.removeAttribute('aria-disabled');
             day.setAttribute('aria-label', day.dateObj.toDateString());
@@ -999,6 +997,7 @@ function disableUnavailableDates() {
 
     console.log("🔵 disableUnavailableDates() completed");
 }
+
 
 
 function initCalendar() {
@@ -1011,15 +1010,30 @@ function initCalendar() {
         showMonths: 1,
 
         onReady(selectedDates, dateStr, instance) {
+            console.log("🔵 onReady() triggered");
+        
+            window.flatpickrCalendar = instance;
             updateCustomHeader(instance);
-            disableUnavailableDates();
+        
+            // Delay to ensure all days are rendered before applying disable logic
+            setTimeout(() => {
+                console.log("🛠 Running disableUnavailableDates after onReady");
+                disableUnavailableDates();
+            }, 0);
         },
 
         onMonthChange(selectedDates, dateStr, instance) {
+            console.log("🔵 onMonthChange() triggered");
+        
             updateCustomHeader(instance);
-            disableUnavailableDates();
             highlightSelectedDate();
-        },        
+        
+            // Delay to avoid interfering with Flatpickr’s internal month rendering
+            setTimeout(() => {
+                console.log("🛠 Running disableUnavailableDates after onMonthChange");
+                disableUnavailableDates();
+            }, 0);
+        },                
 
         onYearChange(selectedDates, dateStr, instance) {
             console.log("📅 Year changed → disabling unavailable dates...");
@@ -1028,19 +1042,25 @@ function initCalendar() {
         },
 
         onChange(selectedDates, dateStr, instance) {
+            console.log("🔵 onChange() triggered");
+        
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
             window.bookingGlobals.booking_date = new Date(selectedDate);
+        
             refreshAvailableTimesForDate();
             generateExtendedTimeOptions();
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
-            setTimeout(disableUnavailableDates, 0);
-        }
         
-           
+            // Delay to allow Flatpickr to complete its internal rendering cycle
+            setTimeout(() => {
+                console.log("🛠 Running disableUnavailableDates after onChange");
+                disableUnavailableDates();
+            }, 0);
+        }
         
     });
 
