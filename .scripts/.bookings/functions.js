@@ -141,7 +141,7 @@ async function refreshAvailableTimesForDate() {
     }
 
     // First, disable dates based on availability
-    safeDisableUnavailableDates();
+    //safeDisableUnavailableDates();
 
     // Then render time slots
     await renderStartTimeOptions(availableTimes);
