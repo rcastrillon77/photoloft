@@ -937,15 +937,16 @@ async function initBookingDate() {
         const nextAvailable = await findNextAvailableDate();
 
         if (nextAvailable) {
-            console.log(`✅ Jumping to next available date: ${nextAvailable.toDateString()}`);
-            window.bookingGlobals.booking_date = nextAvailable;
-
+            console.log(`✅ Jumping to next available date: ${nextAvailable.date.toDateString()}`);
+            window.bookingGlobals.booking_date = nextAvailable.date;
+        
             if (window.flatpickrCalendar) {
-                window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
+                window.flatpickrCalendar.setDate(nextAvailable.date, true);
                 highlightSelectedDate();
             }
             return;
         }
+        
     }
 
     window.bookingGlobals.booking_date = today;
