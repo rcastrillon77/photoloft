@@ -134,8 +134,8 @@ async function refreshAvailableTimesForDate() {
     const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
     console.log(`⏰ Available Times for ${selectedDate.toDateString()}: ${availableTimes.join(", ")}`);
 
-    safeDisableUnavailableDates();
-    console.log("🔵 refreshAvailableTimesForDate() completed");
+    //safeDisableUnavailableDates();
+    //console.log("🔵 refreshAvailableTimesForDate() completed");
 }
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
@@ -860,9 +860,9 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
     updateMaxAvailableButton();
     generateExtendedTimeOptions();
 
-    setTimeout(() => {
+    /* setTimeout(() => {
         safeDisableUnavailableDates(window.flatpickrCalendar);
-    }, 0);
+    }, 0); */
 
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
@@ -963,29 +963,15 @@ function initCalendar() {
         showMonths: 1,
 
         onReady(selectedDates, dateStr, instance) {
-            console.log("🔵 onReady() triggered");
-        
             window.flatpickrCalendar = instance;
             updateCustomHeader(instance);
-        
-            // Delay to ensure all days are rendered before applying disable logic
-            setTimeout(() => {
-                console.log("🛠 Running disableUnavailableDates after onReady");
-                disableUnavailableDates();
-            }, 0);
+            disableUnavailableDates();
         },
 
         onMonthChange(selectedDates, dateStr, instance) {
-            console.log("🔵 onMonthChange() triggered");
-        
             updateCustomHeader(instance);
             highlightSelectedDate();
-        
-            // Delay to avoid interfering with Flatpickr’s internal month rendering
-            setTimeout(() => {
-                console.log("🛠 Running disableUnavailableDates after onMonthChange");
-                disableUnavailableDates();
-            }, 0);
+            disableUnavailableDates();
         },                
 
         onYearChange(selectedDates, dateStr, instance) {
@@ -995,8 +981,6 @@ function initCalendar() {
         },
 
         onChange(selectedDates, dateStr, instance) {
-            console.log("🔵 onChange() triggered");
-        
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
@@ -1023,7 +1007,7 @@ function initCalendar() {
         window.bookingGlobals.booking_date = new Date();
     }
 
-    safeDisableUnavailableDates();
+    //safeDisableUnavailableDates();
 }
 
 // ** INITIALIZERS ** //  
@@ -1059,7 +1043,7 @@ function updateCustomHeader(instance) {
             instance.changeMonth(-1);
             setTimeout(() => {
                 updateCustomHeader(instance);
-                disableUnavailableDates(instance); 
+                disableUnavailableDates(); 
             }, 0);
         }
     };
@@ -1070,7 +1054,7 @@ function updateCustomHeader(instance) {
             instance.changeMonth(1);
             setTimeout(() => {
                 updateCustomHeader(instance);
-                disableUnavailableDates(instance);
+                disableUnavailableDates();
             }, 0);
         }
     };
