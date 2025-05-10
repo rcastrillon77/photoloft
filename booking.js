@@ -958,46 +958,35 @@ async function initBookingDate() {
 
 // ** CALENDAR SYNC ** //
 function disableUnavailableDates() {
-    console.log("🔵 disableUnavailableDates() started");
-
-    const min = new Date(window.bookingMinDate);
-    min.setHours(0, 0, 0, 0);
-    const max = new Date(window.bookingMaxDate);
-    max.setHours(0, 0, 0, 0);
-
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+  
     document.querySelectorAll('.flatpickr-day').forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
-
+  
         const dayStart = new Date(dateObj);
         dayStart.setHours(0, 0, 0, 0);
-
+  
+        const min = new Date(window.bookingMinDate);
+        const max = new Date(window.bookingMaxDate);
+        min.setHours(0, 0, 0, 0);
+        max.setHours(0, 0, 0, 0);
+  
         const isPast = dayStart < min;
         const isBeyondWindow = dayStart > max;
-        const isUnavailable = !hasAvailableStartTimesFor(dayStart);
-
+        const isUnavailable = !hasAvailableStartTimesFor(dateObj);
+  
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
-        const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
-
-        console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
-
-        if (shouldDisable && !isCurrentlyDisabled) {
-            console.log(`⛔ DISABLING ${dayStart.toDateString()}`);
-            day.classList.add('flatpickr-disabled');
-            day.setAttribute('aria-disabled', 'true');
-            day.removeAttribute('aria-label');
-            day.removeAttribute('tabindex');
-        } 
-        else if (!shouldDisable && isCurrentlyDisabled) {
-            console.log(`✅ ENABLING ${dayStart.toDateString()}`);
-            day.classList.remove('flatpickr-disabled');
-            day.removeAttribute('aria-disabled');
-            day.setAttribute('aria-label', day.dateObj.toDateString());
-            day.setAttribute('tabindex', '-1');
+  
+        if (shouldDisable) {
+        day.classList.add('flatpickr-disabled');
+        day.removeAttribute('aria-label');
+        day.removeAttribute('tabindex');
+        } else {
+        day.classList.remove('flatpickr-disabled');
         }
     });
-
-    console.log("🔵 disableUnavailableDates() completed");
 }
 
 
