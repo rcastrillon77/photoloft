@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await refreshAvailableTimesForDate();
     }  
 
-    safeDisableUnavailableDates()
+    //safeDisableUnavailableDates()
 
     // Everything after this point is UI event listeners:
     document.getElementById('duration-slider')?.addEventListener('input', async (e) => {
