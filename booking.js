@@ -1079,7 +1079,7 @@ function initCalendar() {
         window.bookingGlobals.booking_date = new Date();
     }
 
-    //safeDisableUnavailableDates();
+    safeDisableUnavailableDates();
 }
 
 // ** INITIALIZERS ** //  
