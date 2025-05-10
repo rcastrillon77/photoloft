@@ -868,7 +868,7 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
         console.log("⛔ No schedule found for selected date");
 
         if (allowFallback) {
-            const fallbackDate = await findNextAvailableDate(ture);
+            const fallbackDate = await findNextAvailableDate();
             if (fallbackDate) {
                 console.log("🔁 Fallback triggered →", fallbackDate.toDateString());
                 window.bookingGlobals.booking_date = fallbackDate;
