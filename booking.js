@@ -918,10 +918,6 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
     updateMaxAvailableButton();
     generateExtendedTimeOptions();
 
-    setTimeout(() => {
-        debouncedDisableUnavailableDates(window.flatpickrCalendar);
-    }, 0);
-
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
         return false;
