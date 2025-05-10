@@ -185,9 +185,13 @@ async function refreshAvailableTimesForDate() {
 
     await renderStartTimeOptions(availableTimes);
 
-    safeDisableUnavailableDates(); // 🔥 Move it here
-    updateBookingSummary();
+    // Consolidate class updates in a single pass
+    requestAnimationFrame(() => {
+        disableUnavailableDates(window.flatpickrCalendar);
+        updateBookingSummary();
+    });
 }
+
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
   const zone = window.TIMEZONE;
@@ -1037,18 +1041,14 @@ function initCalendar() {
         onChange(selectedDates, dateStr, instance) {
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
-          
+
             window.bookingGlobals.booking_date = new Date(selectedDate);
-          
-            requestAnimationFrame(() => {
-              refreshAvailableTimesForDate();
-              generateExtendedTimeOptions();
-              updateMaxAvailableButton();
-              updateBookingSummary();
-              highlightSelectedDate();
-            });
+            refreshAvailableTimesForDate();
+            generateExtendedTimeOptions();
+            updateMaxAvailableButton();
+            updateBookingSummary();
+            highlightSelectedDate();
         }
-          
     });
 
     if (!document.getElementById('date-picker').value) {
