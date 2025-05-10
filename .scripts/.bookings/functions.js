@@ -265,7 +265,7 @@ async function refreshStartTimeOptions() {
     } finally {
         setTimeout(() => {
             isRefreshingStartTimes = false;
-        }, 1000); // Prevent too-frequent refreshes
+        }, 0); // Prevent too-frequent refreshes
     }
 
     deleteExpiredHolds();
@@ -440,7 +440,7 @@ function safeDisableUnavailableDates() {
     setTimeout(() => {
         console.log("🛠 Running disableUnavailableDates after Flatpickr render");
         disableUnavailableDates(window.flatpickrCalendar);
-    }, 50);
+    }, 0);
 }
 
 // ** UI ENHANCERS ** //
@@ -873,7 +873,7 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
 
     setTimeout(() => {
         safeDisableUnavailableDates(window.flatpickrCalendar);
-    }, 100);
+    }, 0);
 
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
@@ -1069,7 +1069,7 @@ function updateCustomHeader(instance) {
             setTimeout(() => {
                 updateCustomHeader(instance);
                 disableUnavailableDates(instance); 
-            }, 50);
+            }, 0);
         }
     };
 
@@ -1080,7 +1080,7 @@ function updateCustomHeader(instance) {
             setTimeout(() => {
                 updateCustomHeader(instance);
                 disableUnavailableDates(instance);
-            }, 50);
+            }, 0);
         }
     };
 }
