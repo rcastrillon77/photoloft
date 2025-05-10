@@ -981,21 +981,21 @@ function disableUnavailableDates() {
         const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
 
         console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
-
+        
         if (shouldDisable && !isCurrentlyDisabled) {
+            console.log(`⛔ Disabling: ${dayStart.toDateString()} | Class Added`);
             day.classList.add('flatpickr-disabled');
-            console.log(`Disabled: ${dayStart.toDateString()}`);
             day.setAttribute('aria-disabled', 'true');
-            day.removeAttribute('aria-label');
+            day.setAttribute('aria-label', `${dayStart.toDateString()} - Unavailable`);
             day.removeAttribute('tabindex');
         } 
         else if (!shouldDisable && isCurrentlyDisabled) {
+            console.log(`✅ Enabling: ${dayStart.toDateString()} | Class Removed`);
             day.classList.remove('flatpickr-disabled');
-            console.log(`Enabled: ${dayStart.toDateString()}`);
             day.removeAttribute('aria-disabled');
             day.setAttribute('aria-label', day.dateObj.toDateString());
-            day.setAttribute('tabindex', '-1');
-        }
+            day.setAttribute('tabindex', '0');
+        }        
     });
 
     console.log("🔵 disableUnavailableDates() completed");
