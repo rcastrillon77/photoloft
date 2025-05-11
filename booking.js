@@ -868,13 +868,15 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
         console.log("⛔ No schedule found for selected date");
 
         if (allowFallback) {
-            const fallbackDate = await findNextAvailableDate();
-            if (fallbackDate) {
-                console.log("🔁 Fallback triggered →", fallbackDate.toDateString());
-                window.bookingGlobals.booking_date = fallbackDate;
-                return await generateStartTimeOptions({ allowFallback: false });
+            const fallback = await findNextAvailableDate();
+            const nextDate = fallback?.date ?? fallback;
+
+            if (nextDate instanceof Date) {
+              console.log("🔁 Fallback triggered →", nextDate.toDateString());
+              window.bookingGlobals.booking_date = nextDate;
+              return await generateStartTimeOptions({ allowFallback: false });
             }
-        }
+          }
 
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
         return false;
@@ -904,9 +906,12 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
 
     if (!availableTimes.length && allowFallback) {
         console.log(`⛔ No available times on ${selectedDateStr}. Triggering fallback...`);
-        const fallbackDate = await findNextAvailableDate();
-        if (fallbackDate) {
-            window.bookingGlobals.booking_date = fallbackDate;
+        const fallback = await findNextAvailableDate();
+        const nextDate = fallback?.date ?? fallback;
+        
+        if (nextDate instanceof Date) {
+            console.log("🔁 Fallback triggered →", nextDate.toDateString());
+            window.bookingGlobals.booking_date = nextDate;
             return await generateStartTimeOptions({ allowFallback: false });
         }
     }
