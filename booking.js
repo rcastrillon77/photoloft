@@ -1371,7 +1371,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await refreshAvailableTimesForDate();
     }  
 
-    safeDisableUnavailableDates()
+    disableUnavailableDates()
 
     // Everything after this point is UI event listeners:
     document.getElementById('duration-slider')?.addEventListener('input', async (e) => {
@@ -1400,6 +1400,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         await refreshAvailableTimesForDate();
+        await disableUnavailableDates();
     });
 
     document.querySelector('.extended-time .pill-button-flex-container')?.addEventListener('change', async (e) => {
@@ -1463,6 +1464,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         await refreshAvailableTimesForDate();
+        await disableUnavailableDates();
     });
 
     window.setBookingDate = async function (newDate) {
