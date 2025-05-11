@@ -115,24 +115,45 @@ function getMaxAvailableDurationForDate(date) {
 }
 
 async function refreshAvailableTimesForDate() {
-    console.log("🔵 refreshAvailableTimesForDate() called");
-
     const selectedDate = window.bookingGlobals.booking_date;
-    console.log(`📅 Refreshing for Date: ${selectedDate.toDateString()}`);
-
     const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
+
+    if (!schedule) {
+        console.warn("⛔ No schedule found for the selected date. Defaulting to OPEN_TIME.");
+        window.bookingGlobals.booking_start = OPEN_TIME;
+        window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
+        updateBookingSummary();
+        return;
+    }
 
     const open = parseTimeToMinutes(schedule.open);
     const close = parseTimeToMinutes(schedule.close);
+
+    if (isNaN(open) || isNaN(close)) {
+        console.error("⛔ Invalid open/close time:", schedule.open, schedule.close);
+        window.bookingGlobals.booking_start = OPEN_TIME;
+        window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
+        updateBookingSummary();
+        return;
+    }
 
     const eventsForDay = window.bookingEvents.filter(e =>
         luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE }).toISODate()
     );
 
-    console.log(`📆 Found ${eventsForDay.length} events for ${selectedDate.toDateString()}`);
-
     const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
-    console.log(`⏰ Available Times for ${selectedDate.toDateString()}: ${availableTimes.join(", ")}`);
+
+    if (availableTimes.length > 0) {
+        window.bookingGlobals.booking_start = availableTimes[0];
+        window.bookingGlobals.booking_end = availableTimes[0] + window.bookingGlobals.booking_duration;
+        window.bookingGlobals.selected_start_time = minutesToTimeValue(availableTimes[0]);
+    } else {
+        console.warn("No available start times for selected duration.");
+        window.bookingGlobals.booking_start = OPEN_TIME;
+        window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
+    }
+
+    updateBookingSummary();
 }
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
@@ -603,6 +624,7 @@ function updateBookingSummary() {
     } : null;
 
     const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
+    console.log("🔍 booking_start:", booking_start);
     const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
     const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
 
@@ -889,39 +911,27 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
 }
 
 async function initBookingDate() {
-    const today = new Date();
-    const schedule = getScheduleForDate(window.listingSchedule, today);
+    console.log("🔵 initBookingDate() started");
 
-    if (!window.bookingGlobals.booking_date) {
-        window.bookingGlobals.booking_date = new Date();
-    }
+    const nextAvailable = await findNextAvailableSlot();
 
-    if (!schedule || !hasAvailableStartTimesFor(today)) {
-        console.log("🔍 No slots available today, searching for next available date...");
-        const nextAvailable = await findNextAvailableSlot();
+    if (nextAvailable) {
+        window.bookingGlobals.booking_date = nextAvailable.date;
+        window.bookingGlobals.booking_start = nextAvailable.time;
+        window.bookingGlobals.booking_end = nextAvailable.time + window.bookingGlobals.booking_duration;
 
-        if (nextAvailable) {
-            window.bookingGlobals.booking_date = nextAvailable.date;
-            window.bookingGlobals.booking_start = nextAvailable.time;
-            window.bookingGlobals.booking_end = nextAvailable.time + window.bookingGlobals.booking_duration;
-    
-            if (window.flatpickrCalendar) {
-                window.flatpickrCalendar.setDate(nextAvailable.date, true);
-            }
-        } else {
-            console.warn("No available slot found.");
-            window.bookingGlobals.booking_date = new Date();
+        if (window.flatpickrCalendar) {
+            window.flatpickrCalendar.setDate(nextAvailable.date, true);
         }
-        
+    } else {
+        console.warn("No available slot found. Defaulting to OPEN_TIME.");
+        window.bookingGlobals.booking_date = new Date();
+        window.bookingGlobals.booking_start = OPEN_TIME;
+        window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
     }
 
-    window.bookingGlobals.booking_date = today;
-
-    if (window.flatpickrCalendar) {
-        window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
-        highlightSelectedDate();
-    }
-} 
+    updateBookingSummary();
+}
 
 // ** CALENDAR SYNC ** //
 function disableUnavailableDates() {
@@ -980,7 +990,7 @@ function initCalendar() {
             highlightSelectedDate();
         },
 
-        onChange(selectedDates, dateStr, instance) {
+        onChange(selectedDates) {
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
@@ -989,15 +999,20 @@ function initCalendar() {
             refreshAvailableTimesForDate();
             generateExtendedTimeOptions();
             updateMaxAvailableButton();
+        
+            if (isNaN(window.bookingGlobals.booking_start)) {
+                console.warn("⛔ booking_start is NaN. Defaulting to OPEN_TIME.");
+                window.bookingGlobals.booking_start = OPEN_TIME;
+                window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
+            }
+        
             updateBookingSummary();
             highlightSelectedDate();
         
-            // Delay to allow Flatpickr to complete its internal rendering cycle
             setTimeout(() => {
-                console.log("🛠 Running disableUnavailableDates after onChange");
                 disableUnavailableDates();
             }, 0);
-        }
+        }       
         
     });
 
