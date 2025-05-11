@@ -60,27 +60,37 @@ function formatTime(minutes) {
 }
 
 function minutesToTimeValue(minutes) {
-    return (Math.floor(minutes / 60) * 100 + (minutes % 60)).toString().padStart(4, '0');
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
+  
 
 function parseTimeToMinutes(timeStr) {
-    if (typeof timeStr !== 'string') return NaN;
-  
     let h, m;
+  
+    if (typeof timeStr !== 'string') {
+      console.warn('parseTimeToMinutes expected a string but got', timeStr);
+      return NaN;
+    }
+  
     if (timeStr.includes(':')) {
-      // e.g. "08:30"
+      // "HH:MM"
       [h, m] = timeStr.split(':').map(Number);
     } else {
-      // e.g. "0830" or "830"
+      // "HHMM" or "HMM"
       const parts = timeStr.match(/^(\d{1,2})(\d{2})$/);
-      if (!parts) return NaN;
+      if (!parts) {
+        console.warn('parseTimeToMinutes couldn’t parse', timeStr);
+        return NaN;
+      }
       h = Number(parts[1]);
       m = Number(parts[2]);
     }
   
     return h * 60 + m;
 }
-  
+
 function getEventMinutesRange(event) {
     const start = luxon.DateTime.fromISO(event.start, { zone: window.TIMEZONE });
     const end = luxon.DateTime.fromISO(event.end, { zone: window.TIMEZONE });
