@@ -13,11 +13,8 @@ function formatTime(minutes) {
 }
 
 function minutesToTimeValue(minutes) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    return (Math.floor(minutes / 60) * 100 + (minutes % 60)).toString().padStart(4, '0');
 }
-  
 
 function parseTimeToMinutes(timeStr) {
     let h, m;
