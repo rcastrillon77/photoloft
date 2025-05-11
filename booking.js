@@ -346,7 +346,7 @@ async function findNextAvailableDate() {
     }
   
     return null;
-  }
+}
 
 async function findNextAvailableSlot() {
     // 1) get the next date
@@ -952,7 +952,7 @@ async function initBookingDate() {
 
     if (!schedule || !hasAvailableStartTimesFor(today)) {
         console.log("🔍 No slots available today, searching for next available date...");
-        const nextAvailable = await findNextAvailableDate(true);
+        const nextAvailable = await findNextAvailableDate();
 
         if (nextAvailable) {
             console.log(`✅ Jumping to next available date: ${nextAvailable.date.toDateString()}`);
