@@ -960,21 +960,23 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
 async function initBookingDate() {
     console.log("🔵 initBookingDate() started");
 
-    const nextAvailable = await findNextAvailableSlot();
+    if (!window.bookingGlobals.booking_date) {
+        const nextAvailable = await findNextAvailableSlot();
 
-    if (nextAvailable) {
-        window.bookingGlobals.booking_date = nextAvailable.date;
-        window.bookingGlobals.booking_start = nextAvailable.time;
-        window.bookingGlobals.booking_end = nextAvailable.time + window.bookingGlobals.booking_duration;
+        if (nextAvailable) {
+            window.bookingGlobals.booking_date = nextAvailable.date;
+            window.bookingGlobals.booking_start = nextAvailable.time;
+            window.bookingGlobals.booking_end = nextAvailable.time + window.bookingGlobals.booking_duration;
 
-        if (window.flatpickrCalendar) {
-            window.flatpickrCalendar.setDate(nextAvailable.date, true);
+            if (window.flatpickrCalendar) {
+                window.flatpickrCalendar.setDate(nextAvailable.date, true);
+            }
+        } else {
+            console.warn("No available slot found. Defaulting to OPEN_TIME.");
+            window.bookingGlobals.booking_date = new Date();
+            window.bookingGlobals.booking_start = OPEN_TIME;
+            window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
         }
-    } else {
-        console.warn("No available slot found. Defaulting to OPEN_TIME.");
-        window.bookingGlobals.booking_date = new Date();
-        window.bookingGlobals.booking_start = OPEN_TIME;
-        window.bookingGlobals.booking_end = OPEN_TIME + window.bookingGlobals.booking_duration;
     }
 
     updateBookingSummary();
@@ -1122,26 +1124,52 @@ function updateCustomHeader(instance) {
     };
 }
 
-function generateExtendedTimeOptions() {
-    const container = document.querySelector('.extended-time .pill-button-flex-container');
-    const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
+async function generateStartTimeOptions({ allowFallback = false } = {}) {
+    const selectedDate = window.bookingGlobals.booking_date;
+    const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
 
-    container.innerHTML = '';
+    if (!schedule) {
+        console.warn("⛔ No schedule found for selected date.");
 
-    EXTENDED_OPTIONS.forEach(opt => {
-        const value = opt;
-        const label = `${opt} Hours`;
-        const isSelected = value.toString() === previouslySelected;
+        if (allowFallback) {
+            const nextAvailable = await findNextAvailableSlot();
+            if (nextAvailable) {
+                window.bookingGlobals.booking_date = nextAvailable.date;
+                window.bookingGlobals.booking_start = nextAvailable.time;
+                window.bookingGlobals.booking_end = nextAvailable.time + window.bookingGlobals.booking_duration;
+                return generateStartTimeOptions({ allowFallback: false });
+            }
+        }
 
-        container.innerHTML += `
-        <label class="radio-option-container${isSelected ? ' selected' : ''}">
-            <input type="radio" name="extended-time" class="radio-option-button" value="${value}" ${isSelected ? 'checked' : ''}>
-            <span class="radio-option-label">${label}</span>
-        </label>`;
-    });
+        document.getElementById("no-timeslots-message")?.classList.remove("hidden");
+        return false;
+    }
 
-    attachRadioStyling();
+    const open = parseTimeToMinutes(schedule.open);
+    const close = parseTimeToMinutes(schedule.close);
+    const duration = window.bookingGlobals.booking_duration;
+
+    const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === 
+        luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE }).toISODate()
+    );
+
+    const availableTimes = getAvailableStartTimes(eventsForDay, duration, open, close);
+
+    if (!availableTimes.length && allowFallback) {
+        const fallbackDate = await findNextAvailableDate();
+        if (fallbackDate) {
+            window.bookingGlobals.booking_date = fallbackDate;
+            return await generateStartTimeOptions({ allowFallback: false });
+        }
+    }
+
+    await renderStartTimeOptions(availableTimes);
+    updateMaxAvailableButton();
+
+    return true;
 }
+
 
 async function initSliderSection() {
     document.querySelector('.extended-time').classList.add('shrunk');
