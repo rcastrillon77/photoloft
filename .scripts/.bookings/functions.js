@@ -553,46 +553,50 @@ function highlightSelectedDate() {
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
+    const bookingDateEl        = document.getElementById('booking-total-date');
+    const bookingTimeEl        = document.getElementById('booking-total-time');
+    const bookingPriceEl       = document.getElementById('booking-total-price');
+    const discountEl           = document.getElementById('booking-total-discount');
+    const discountedTotalEl    = document.getElementById('booking-total-discounted-total');
+    const totalHoursEl         = document.getElementById('booking-total-hours');
+    const totalRateEl          = document.getElementById('booking-total-rate');
+    const wrapperEl            = document.getElementById('slots-timezone-wrapper');
+    const slotsTzEl            = document.getElementById('slots-timezone');
 
-    const bookingDateEl = document.getElementById('booking-total-date');
-    const bookingTimeEl = document.getElementById('booking-total-time');
-    const bookingPriceEl = document.getElementById('booking-total-price');
-    const discountEl = document.getElementById('booking-total-discount');
-    const discountedTotalEl = document.getElementById('booking-total-discounted-total');
-    const totalHoursEl = document.getElementById('booking-total-hours');
-    const totalRateEl = document.getElementById('booking-total-rate');
-    const wrapperEl = document.getElementById('slots-timezone-wrapper');
-    const slotsTzEl = document.getElementById('slots-timezone');
+    // Pull only the guaranteed globals
+    const { booking_date, booking_duration, selected_start_time } = window.bookingGlobals;
+    if (!booking_date || !booking_duration || !selected_start_time) {
+        return;
+    }
 
-    const {
-    booking_date,
-    booking_start,
-    booking_end,
-    booking_duration
-    } = window.bookingGlobals;
+    // Derive start/end minutes so we never feed NaN into Luxon
+    const booking_start = parseTimeToMinutes(selected_start_time);
+    const booking_end   = booking_start + booking_duration;
 
+    // Hour display
     const hoursDecimal = booking_duration / 60;
     const hoursDisplay = (hoursDecimal % 1 === 0)
-    ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hour' : 'Hours'}`
-    : `${hoursDecimal.toFixed(1)} Hours`;
+        ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hour' : 'Hours'}`
+        : `${hoursDecimal.toFixed(1)} Hours`;
     if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
 
+    // Determine rate/discount
     const isToday = booking_date.toDateString() === new Date().toDateString();
     const dateKey = booking_date.toISOString().split("T")[0];
     const special = window.specialRates?.[dateKey];
 
-    let finalRate = FULL_RATE;
-    let discountTitle = '';
+    let finalRate      = FULL_RATE;
+    let discountTitle  = '';
     let discountAmount = 0;
 
     if (special) {
-        finalRate = special.amount;
-        discountTitle = special.title || "Special Rate";
+        finalRate      = special.amount;
+        discountTitle  = special.title || "Special Rate";
         discountEl.textContent = discountTitle;
         discountEl.classList.remove("hidden");
     } else if (isToday && window.sameDayRate !== undefined) {
-        finalRate = window.sameDayRate;
-        discountTitle = "Same-day discount";
+        finalRate      = window.sameDayRate;
+        discountTitle  = "Same-day discount";
         discountEl.textContent = discountTitle;
         discountEl.classList.remove("hidden");
     } else {
@@ -601,30 +605,32 @@ function updateBookingSummary() {
 
     if (totalRateEl) totalRateEl.textContent = `$${finalRate}/hr`;
 
-    const baseTotal = (booking_duration / 60) * FULL_RATE;
-    const discountedTotal = (booking_duration / 60) * finalRate;
-    discountAmount = baseTotal - discountedTotal;
+    const baseTotal      = (booking_duration / 60) * FULL_RATE;
+    const discountedTotal= (booking_duration / 60) * finalRate;
+    discountAmount       = baseTotal - discountedTotal;
 
-    // Update bookingGlobals
-    window.bookingGlobals.booking_rate = finalRate;
-    window.bookingGlobals.booking_total = discountedTotal;
-    window.bookingGlobals.booking_discount = discountAmount > 0 ? {
-        title: discountTitle,
-        rate: finalRate,
-        discount_amount: discountAmount.toFixed(2),
-        total_due: discountedTotal.toFixed(2),
-        original: baseTotal.toFixed(2)
-    } : null;
+    window.bookingGlobals.booking_rate     = finalRate;
+    window.bookingGlobals.booking_total    = discountedTotal;
+    window.bookingGlobals.booking_discount = discountAmount > 0
+        ? {
+            title:         discountTitle,
+            rate:          finalRate,
+            discount_amount: discountAmount.toFixed(2),
+            total_due:       discountedTotal.toFixed(2),
+            original:        baseTotal.toFixed(2)
+        }
+        : null;
 
+    // Build Luxon DateTimes
     const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
-    const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
-    const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
+    const startTime        = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
+    const endTime          = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
 
-    const longName = startTime.offsetNameLong;
+    const longName  = startTime.offsetNameLong;
     const shortName = startTime.offsetNameShort;
 
     if (slotsTzEl && wrapperEl) {
-        const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
+        const radios  = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
         const hasTimes = radios.length > 0;
 
         if (hasTimes) {
@@ -635,11 +641,11 @@ function updateBookingSummary() {
         }
     }
 
+    // Render date, time, and price
     bookingDateEl.textContent = booking_date.toLocaleDateString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
-
-    bookingTimeEl.textContent = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
+    bookingTimeEl.textContent  = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
     bookingPriceEl.textContent = `$${discountedTotal.toFixed(2)}`;
 
     if (discountAmount > 0) {
@@ -649,8 +655,8 @@ function updateBookingSummary() {
         discountedTotalEl.classList.add('hidden');
     }
 
-    console.log("📅 updateBookingSummary bookingGlobals.booking_date", window.bookingGlobals.booking_date);
-    console.log("📅 updateBookingSummary Luxon date:", luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE }).toISO());  
+    console.log("📅 updateBookingSummary bookingGlobals.booking_date", booking_date);
+    console.log("📅 updateBookingSummary Luxon date:", bookingDateLuxon.toISO());
 }
 
 // ** SCHEDULE LOGIC ** //
