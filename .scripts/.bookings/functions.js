@@ -967,8 +967,6 @@ function disableUnavailableDates() {
     console.log("🔵 disableUnavailableDates() completed");
 }
 
-
-
 function initCalendar() {
     window.flatpickrCalendar = flatpickr("#date-picker", {
         inline: true,
@@ -1141,7 +1139,7 @@ async function initBookingConfig(listingId, locationId) {
         window.listingSchedule = schedule;
 
         // --- General Rules --- // 
-        MIN_DURATION = rules.minumum ?? 1;
+        MIN_DURATION = rules.minimum ?? 1;
         MAX_DURATION = rules.max ?? 4;
         INTERVAL = rules.interval ?? 0.5;
         EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
