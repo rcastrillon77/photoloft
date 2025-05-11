@@ -162,28 +162,42 @@ function getMaxAvailableDurationForDate(date) {
 }
 
 async function refreshAvailableTimesForDate() {
-    console.log("🔵 refreshAvailableTimesForDate() called");
-
     const selectedDate = window.bookingGlobals.booking_date;
-    console.log(`📅 Refreshing for Date: ${selectedDate.toDateString()}`);
-
     const schedule = getScheduleForDate(window.listingSchedule, selectedDate);
+
+    applyScheduleSettings(schedule);
+
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
+    const selectedDateStr = bookingDateLuxon.toISODate();
+    const eventsForDay = window.bookingEvents.filter(e =>
+        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+    );
 
     const open = parseTimeToMinutes(schedule.open);
     const close = parseTimeToMinutes(schedule.close);
 
-    const eventsForDay = window.bookingEvents.filter(e =>
-        luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE }).toISODate()
-    );
-
-    console.log(`📆 Found ${eventsForDay.length} events for ${selectedDate.toDateString()}`);
-
     const availableTimes = getAvailableStartTimes(eventsForDay, window.bookingGlobals.booking_duration, open, close);
-    console.log(`⏰ Available Times for ${selectedDate.toDateString()}: ${availableTimes.join(", ")}`);
 
-    //safeDisableUnavailableDates();
-    //console.log("🔵 refreshAvailableTimesForDate() completed");
+    const hasAvailableTimes = availableTimes.length > 0;
+    const noTimeSlotsMessage = document.getElementById("no-timeslots-message");
+
+    if (hasAvailableTimes) {
+        noTimeSlotsMessage?.classList.add("hidden");
+    } else {
+        noTimeSlotsMessage?.classList.remove("hidden");
+    }
+
+    // First, disable dates based on availability
+    safeDisableUnavailableDates();
+
+    // Then render time slots
+    await renderStartTimeOptions(availableTimes);
+
+    // Update summary after everything is complete
+    updateBookingSummary();
 }
+
+
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
   const zone = window.TIMEZONE;
@@ -470,14 +484,11 @@ async function checkIfGuestHasActiveHold() {
 function safeDisableUnavailableDates() {
     if (!window.flatpickrCalendar) return;
 
-    console.log("🔵 safeDisableUnavailableDates() called");
-
     setTimeout(() => {
-        console.log("🛠 Executing disableUnavailableDates from safeDisableUnavailableDates");
+        console.log("🛠 Running disableUnavailableDates after Flatpickr render");
         disableUnavailableDates(window.flatpickrCalendar);
-    }, 50);
+    }, 0);
 }
-
 
 // ** UI ENHANCERS ** //
 function attachRadioStyling() {
@@ -907,9 +918,9 @@ async function generateStartTimeOptions({ allowFallback = false } = {}) {
     updateMaxAvailableButton();
     generateExtendedTimeOptions();
 
-    /* setTimeout(() => {
+    setTimeout(() => {
         safeDisableUnavailableDates(window.flatpickrCalendar);
-    }, 0); */
+    }, 0);
 
     if (!availableTimes.length) {
         document.getElementById("no-timeslots-message")?.classList.remove("hidden");
@@ -937,16 +948,15 @@ async function initBookingDate() {
         const nextAvailable = await findNextAvailableDate();
 
         if (nextAvailable) {
-            console.log(`✅ Jumping to next available date: ${nextAvailable.date.toDateString()}`);
-            window.bookingGlobals.booking_date = nextAvailable.date;
-        
+            console.log(`✅ Jumping to next available date: ${nextAvailable.toDateString()}`);
+            window.bookingGlobals.booking_date = nextAvailable;
+
             if (window.flatpickrCalendar) {
-                window.flatpickrCalendar.setDate(nextAvailable.date, true);
+                window.flatpickrCalendar.setDate(window.bookingGlobals.booking_date, true);
                 highlightSelectedDate();
             }
             return;
         }
-        
     }
 
     window.bookingGlobals.booking_date = today;
@@ -958,20 +968,26 @@ async function initBookingDate() {
 } 
 
 // ** CALENDAR SYNC ** //
-function disableUnavailableDates() {
-    console.log("🔵 disableUnavailableDates() started");
-
+function disableUnavailableDates(instance) {
     const min = new Date(window.bookingMinDate);
     min.setHours(0, 0, 0, 0);
     const max = new Date(window.bookingMaxDate);
     max.setHours(0, 0, 0, 0);
 
-    document.querySelectorAll('.flatpickr-day').forEach(day => {
+    const currentMonth = instance.currentMonth;
+    const currentYear = instance.currentYear;
+
+    const dayElements = document.querySelectorAll('.flatpickr-day');
+    const updates = [];
+
+    dayElements.forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
 
         const dayStart = new Date(dateObj);
         dayStart.setHours(0, 0, 0, 0);
+
+        if (dayStart.getMonth() !== currentMonth || dayStart.getFullYear() !== currentYear) return;
 
         const isPast = dayStart < min;
         const isBeyondWindow = dayStart > max;
@@ -980,25 +996,27 @@ function disableUnavailableDates() {
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
         const isCurrentlyDisabled = day.classList.contains('flatpickr-disabled');
 
-        console.log(`Date: ${dayStart.toDateString()} | Should Disable: ${shouldDisable} | Is Currently Disabled: ${isCurrentlyDisabled}`);
-
-        if (shouldDisable && !isCurrentlyDisabled) {
-            day.classList.add('flatpickr-disabled');
-            console.log(`Disabled: ${dayStart.toDateString()}`);
-            day.setAttribute('aria-disabled', 'true');
-            day.removeAttribute('aria-label');
-            day.removeAttribute('tabindex');
-        } 
-        else if (!shouldDisable && isCurrentlyDisabled) {
-            day.classList.remove('flatpickr-disabled');
-            console.log(`Enabled: ${dayStart.toDateString()}`);
-            day.removeAttribute('aria-disabled');
-            day.setAttribute('aria-label', day.dateObj.toDateString());
-            day.setAttribute('tabindex', '-1');
+        if (shouldDisable !== isCurrentlyDisabled) {
+            updates.push({ day, shouldDisable });
         }
     });
 
-    console.log("🔵 disableUnavailableDates() completed");
+    // Apply updates in a single pass
+    requestAnimationFrame(() => {
+        updates.forEach(({ day, shouldDisable }) => {
+            if (shouldDisable) {
+                day.classList.add('flatpickr-disabled');
+                day.setAttribute('aria-disabled', 'true');
+                day.removeAttribute('aria-label');
+                day.removeAttribute('tabindex');
+            } else {
+                day.classList.remove('flatpickr-disabled');
+                day.removeAttribute('aria-disabled');
+                day.setAttribute('aria-label', day.dateObj.toDateString());
+                day.setAttribute('tabindex', '-1');
+            }
+        });
+    });
 }
 
 
@@ -1013,16 +1031,16 @@ function initCalendar() {
         showMonths: 1,
 
         onReady(selectedDates, dateStr, instance) {
-            window.flatpickrCalendar = instance;
             updateCustomHeader(instance);
-            disableUnavailableDates();
+            disableUnavailableDates(instance);
         },
 
         onMonthChange(selectedDates, dateStr, instance) {
+            console.log("📅 Month changed → disabling unavailable dates...");
             updateCustomHeader(instance);
+            disableUnavailableDates(instance);
             highlightSelectedDate();
-            disableUnavailableDates();
-        },                
+        },
 
         onYearChange(selectedDates, dateStr, instance) {
             console.log("📅 Year changed → disabling unavailable dates...");
@@ -1034,19 +1052,23 @@ function initCalendar() {
             const selectedDate = selectedDates[0];
             if (!selectedDate || !(selectedDate instanceof Date)) return;
         
+            if (renderInProgress) return;
+            renderInProgress = true;
+        
             window.bookingGlobals.booking_date = new Date(selectedDate);
         
-            refreshAvailableTimesForDate();
-            generateExtendedTimeOptions();
-            updateMaxAvailableButton();
-            updateBookingSummary();
-            highlightSelectedDate();
+            requestAnimationFrame(() => {
+                refreshAvailableTimesForDate();
+                generateExtendedTimeOptions();
+                updateMaxAvailableButton();
+                updateBookingSummary();
+                highlightSelectedDate();
         
-            // Delay to allow Flatpickr to complete its internal rendering cycle
-            setTimeout(() => {
-                console.log("🛠 Running disableUnavailableDates after onChange");
-                disableUnavailableDates();
-            }, 0);
+                requestAnimationFrame(() => {
+                    disableUnavailableDates(instance);
+                    renderInProgress = false; // Reset flag after complete render
+                });
+            });
         }
         
     });
@@ -1057,7 +1079,7 @@ function initCalendar() {
         window.bookingGlobals.booking_date = new Date();
     }
 
-    //safeDisableUnavailableDates();
+    safeDisableUnavailableDates();
 }
 
 // ** INITIALIZERS ** //  
@@ -1093,7 +1115,7 @@ function updateCustomHeader(instance) {
             instance.changeMonth(-1);
             setTimeout(() => {
                 updateCustomHeader(instance);
-                disableUnavailableDates(); 
+                disableUnavailableDates(instance); 
             }, 0);
         }
     };
@@ -1104,7 +1126,7 @@ function updateCustomHeader(instance) {
             instance.changeMonth(1);
             setTimeout(() => {
                 updateCustomHeader(instance);
-                disableUnavailableDates();
+                disableUnavailableDates(instance);
             }, 0);
         }
     };
@@ -1338,6 +1360,7 @@ window.releaseTempHold = async function () {
       console.error("⚠️ Failed to release temporary hold:", error);
     }
 };
+
 
 // ================================== //
 // =========  INITIALIZER  ========== //
