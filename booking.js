@@ -629,7 +629,6 @@ function getAvailableStartTimes(eventsForDay) {
     }
 
     console.log(`✅ Available start times: ${startTimes.map(t => minutesToTimeValue(t)).join(', ')}`);
-
     return startTimes;
 }
 
