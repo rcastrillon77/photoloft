@@ -797,11 +797,18 @@ async function findNextAvailableDate(maxDays = 30) {
 
             window.bookingGlobals.booking_date = testDate;
 
+            // Ensure flatpickrCalendar is initialized
+            if (!window.flatpickrCalendar) {
+                console.warn(`⚠️ flatpickrCalendar is not initialized yet. Retrying in 200ms...`);
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
             if (window.flatpickrCalendar) {
                 console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
                 window.flatpickrCalendar.setDate(testDate, true);
             } else {
-                console.warn(`⚠️ flatpickrCalendar is not initialized yet.`);
+                console.warn(`🚫 flatpickrCalendar still not initialized. Skipping date click.`);
+                return testDate;
             }
 
             // Adjust the date format for the query selector
@@ -834,6 +841,7 @@ async function findNextAvailableDate(maxDays = 30) {
     console.warn("❌ No available slots found in the next 30 days");
     return null;
 }
+
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
