@@ -727,26 +727,60 @@ async function generateStartTimeOptions() {
     let selectedDate = window.bookingGlobals.booking_date;
     let schedule = getScheduleForDate(window.listingSchedule, selectedDate);
 
-    if (!schedule || !hasAvailableStartTimesFor(window.bookingGlobals.booking_date)) {
+    console.log("📅 Initial selectedDate:", selectedDate);
+
+    if (!schedule || !hasAvailableStartTimesFor(selectedDate)) {
         const fallbackDate = await findNextAvailableDate();
         if (fallbackDate) {
             window.bookingGlobals.booking_date = fallbackDate;
+            selectedDate = fallbackDate;  // Update selectedDate to reflect the fallback
+
+            console.log(`📅 Updated selectedDate after fallback: ${selectedDate}`);
 
             if (window.flatpickrCalendar) {
-                const dateElement = document.querySelector(`[aria-label="${fallbackDate.toDateString()}"]`);
-                if (dateElement) {
-                    dateElement.click();
+                // Remove any existing .selected class
+                document.querySelectorAll('.flatpickr-day.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+
+                const formattedDate = fallbackDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                }).replace(/\s+/g, ' ').trim();
+
+                console.log(`🔍 Attempting to click date with aria-label: "${formattedDate}"`);
+
+                let dateElement = null;
+                let retryCount = 0;
+
+                while (!dateElement && retryCount < 5) {
+                    console.warn(`🚫 No clickable date element found for: "${formattedDate}". Retrying in 300ms...`);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+                    retryCount++;
                 }
+
+                if (dateElement) {
+                    console.log(`✅ Clicking on date: ${formattedDate}`);
+                    dateElement.click();
+                } else {
+                    console.warn(`🚫 Failed to find clickable date element for: "${formattedDate}" after retries.`);
+                    console.log(`🛠️ Dumping all aria-label elements:`);
+                    document.querySelectorAll('[aria-label]').forEach(el => {
+                        console.log(`- aria-label: "${el.getAttribute('aria-label')}" | HTML: ${el.outerHTML}`);
+                    });
+                }
+
                 setTimeout(() => highlightSelectedDate(), 0);
             }
 
-        schedule = getScheduleForDate(window.listingSchedule, fallbackDate);
+            schedule = getScheduleForDate(window.listingSchedule, fallbackDate);
         } else {
             document.getElementById("no-timeslots-message")?.classList.remove("hidden");
             return false;
         }
     }
-
 
     applyScheduleSettings(schedule);
     disableUnavailableDates();
