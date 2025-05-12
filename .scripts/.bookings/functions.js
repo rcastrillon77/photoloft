@@ -590,6 +590,7 @@ function getAvailableStartTimes(eventsForDay) {
 
     return startTimes;
 }
+
 function renderStartTimeOptions(startTimes) {
     const container = document.getElementById('booking-start-time-options');
     const noTimesMessage = document.getElementById('no-timeslots-message');
@@ -840,35 +841,75 @@ document.querySelectorAll('.flatpickr-day').forEach(day => {
 }
 
 function disableUnavailableDates() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const openTime = window.bookingGlobals.openTime;
+    const closeTime = window.bookingGlobals.closeTime;
+    const duration = window.bookingGlobals.booking_duration;
+    const bufferBefore = window.BUFFER_BEFORE || 0;
+    const bufferAfter = window.BUFFER_AFTER || 0;
+    const calendarDays = document.querySelectorAll(".flatpickr-day");
 
-    document.querySelectorAll('.flatpickr-day').forEach(day => {
-        const dateObj = day.dateObj;
-        if (!dateObj) return;
+    const currentDate = window.bookingGlobals.booking_date;
+    const selectedWeekday = currentDate.getDay();
+    const schedule = window.listingSchedule[MEMBERSHIP]?.[selectedWeekday];
 
-        const dayStart = new Date(dateObj);
-        dayStart.setHours(0, 0, 0, 0);
+    console.log(`⏰ Checking disabled dates for open: ${openTime}, close: ${closeTime}, duration: ${duration}`);
 
-        const min = new Date(window.bookingMinDate);
-        const max = new Date(window.bookingMaxDate);
-        min.setHours(0, 0, 0, 0);
-        max.setHours(0, 0, 0, 0);
+    calendarDays.forEach(day => {
+        const dateStr = day.getAttribute("aria-label");
+        const date = new Date(dateStr);
 
-        const isPast = dayStart < min;
-        const isBeyondWindow = dayStart > max;
-        const isUnavailable = !hasAvailableStartTimesFor(dateObj);
+        if (isNaN(date.getTime())) {
+            return; // Skip invalid dates
+        }
 
-        const shouldDisable = isPast || isBeyondWindow || isUnavailable;
+        const weekday = date.getDay();
+        const daySchedule = window.listingSchedule[MEMBERSHIP]?.[weekday];
 
-        if (shouldDisable) {
-            day.classList.add('flatpickr-disabled');
-            day.removeAttribute('aria-label');
-            day.removeAttribute('tabindex');
+        let shouldBeDisabled = false;
+
+        if (daySchedule) {
+            const dayOpenTime = parseTimeToMinutes(daySchedule.open);
+            const dayCloseTime = parseTimeToMinutes(daySchedule.close);
+
+            // If the day has no valid schedule, disable it
+            if (dayCloseTime - dayOpenTime < duration) {
+                shouldBeDisabled = true;
+            }
         } else {
-            day.classList.remove('flatpickr-disabled');
+            // No schedule data for the day, disable it
+            shouldBeDisabled = true;
+        }
+
+        // Check for conflicts with existing events
+        const eventsForDay = window.bookingEvents.filter(event => {
+            const eventDate = new Date(event.start).toDateString();
+            return eventDate === date.toDateString();
+        });
+
+        const hasConflict = eventsForDay.some(event => {
+            const eventStart = minutesSinceMidnight(event.start);
+            const eventEnd = minutesSinceMidnight(event.end);
+
+            return !(
+                (openTime + duration + bufferAfter <= eventStart) ||
+                (closeTime - duration - bufferBefore >= eventEnd)
+            );
+        });
+
+        if (hasConflict) {
+            shouldBeDisabled = true;
+        }
+
+        // Apply or remove the `.disabled` class only if the state has changed
+        const isCurrentlyDisabled = day.classList.contains("disabled");
+        if (shouldBeDisabled && !isCurrentlyDisabled) {
+            day.classList.add("disabled");
+        } else if (!shouldBeDisabled && isCurrentlyDisabled) {
+            day.classList.remove("disabled");
         }
     });
+
+    console.log("✅ disableUnavailableDates completed.");
 }
 
 // ** INITIALIZERS ** //
