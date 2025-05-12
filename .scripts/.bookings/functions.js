@@ -546,43 +546,48 @@ function applyScheduleSettings(daySchedule) {
 
 function getAvailableStartTimes(eventsForDay) {
     const startTimes = [];
-    const openTime = window.bookingGlobals.schedule.open;
-    const closeTime = window.bookingGlobals.schedule.close;
-    const interval = INTERVAL;
-    const bufferAfter = window.bookingGlobals.schedule.bufferAfter || 0;
+    const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const currentMinutes = now.hour * 60 + now.minute;
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(bookingGlobals.booking_date, { zone: window.TIMEZONE });
+    const isToday = bookingDateLuxon.hasSame(now, 'day');
+    const duration = bookingGlobals.booking_duration;
+    const totalRequiredTime = duration + BUFFER_BEFORE + BUFFER_AFTER;
+    const maxStart = CLOSE_TIME - totalRequiredTime;
 
-    console.log(`🕒 Open Time: ${openTime}, Close Time: ${closeTime}, Buffer After: ${bufferAfter}`);
+    for (let t = OPEN_TIME; t <= maxStart; t += INTERVAL * 60) {
+        const readable = formatTime(t);
 
-    // Iterate through each time slot
-    for (let time = openTime; time < closeTime; time += interval) {
-        const endTime = time + window.bookingGlobals.selected_duration;
-
-        console.log(`⏱️ Checking time slot: Start ${time}, End ${endTime}`);
-
-        // Ensure the end time does not exceed closing time
-        const adjustedEndTime = Math.min(endTime, closeTime);
-
-        if (adjustedEndTime > closeTime) {
-            console.log(`🚫 End time ${adjustedEndTime} exceeds closing time.`);
-            break;
+        if (isToday && t < currentMinutes) {
+            console.log(`⛔ Skipping ${readable} (in the past)`);
+            continue;
         }
 
-        const isAvailable = !eventsForDay.some(event => {
-            const eventStart = event.start;
-            const eventEnd = event.end;
+        // Adjusted range for checking conflicts (including buffers)
+        const slotStart = t - BUFFER_BEFORE;
+        const slotEnd = t + duration + BUFFER_AFTER;
 
-            // Check if the time slot conflicts with any existing events
-            return (time < eventEnd && adjustedEndTime > eventStart);
+        const hasConflict = eventsForDay.some(event => {
+            const { start, end } = getEventMinutesRange(event);
+            return start < slotEnd && end > slotStart;
         });
 
-        console.log(`⏱️ Time slot ${time} to ${adjustedEndTime} is ${isAvailable ? "✅ Available" : "🚫 Not Available"}`);
-
-        if (isAvailable) {
-            startTimes.push(time);
+        if (hasConflict) {
+            console.log(`⛔ Skipping ${readable} (conflict including buffers)`);
+            continue;
         }
+
+        console.log(`✅ Available: ${readable}`);
+        startTimes.push(t);
     }
 
-    console.log(`✅ Available start times: ${startTimes.map(t => minutesToTimeValue(t)).join(', ')}`);
+    console.log("🔍 TIMEZONE:", window.TIMEZONE);
+    console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
+    console.log("📆 isToday:", isToday);
+    console.log("⏱️ Current Minutes:", currentMinutes);
+    console.log("🕓 Duration:", duration, "⏲️ With Buffers:", totalRequiredTime);
+    console.log("🕒 OPEN:", OPEN_TIME, "CLOSE:", CLOSE_TIME);
+    console.log("🛑 BUFFERS:", BUFFER_BEFORE, BUFFER_AFTER);
+
     return startTimes;
 }
 
