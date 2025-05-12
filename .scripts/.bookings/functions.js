@@ -734,20 +734,39 @@ async function findNextAvailableDate(maxDays = 30) {
     const startDate = new Date(today);
     startDate.setDate(today.getDate());
 
+    console.log(`📅 Starting date search from: ${startDate.toDateString()}`);
+
     for (let i = 0; i < maxDays; i++) {
         const testDate = new Date(startDate);
         testDate.setDate(startDate.getDate() + i);
+
+        console.log(`🔄 Checking date: ${testDate.toDateString()}`);
+
         const isAvailable = hasAvailableStartTimesFor(testDate);
+
+        console.log(`📅 Availability for ${testDate.toDateString()}: ${isAvailable ? "✅ Available" : "❌ Not Available"}`);
 
         if (isAvailable) {
             console.log(`✅ Found available date: ${testDate.toDateString()}`);
+            console.log(`📅 Setting bookingGlobals.booking_date to: ${testDate.toDateString()}`);
+
+            window.bookingGlobals.booking_date = testDate;
 
             if (window.flatpickrCalendar) {
-                const dateElement = document.querySelector(`[aria-label="${testDate.toDateString()}"]`);
-                if (dateElement) {
-                    dateElement.click();
-                }
-            }            
+                console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
+                window.flatpickrCalendar.setDate(testDate, true);
+            }
+
+            // Simulate click on the calendar element
+            const dateElement = document.querySelector(`[aria-label="${testDate.toDateString()}"]`);
+            console.log(`🔍 Looking for date element with label: ${testDate.toDateString()}`);
+
+            if (dateElement) {
+                console.log(`✅ Clicking on date: ${testDate.toDateString()}`);
+                dateElement.click();
+            } else {
+                console.warn(`🚫 No clickable date element found for: ${testDate.toDateString()}`);
+            }
 
             return testDate;
         }
