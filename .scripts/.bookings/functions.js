@@ -768,14 +768,14 @@ async function findNextAvailableDate(maxDays = 30) {
             console.log(`🔍 Looking for date element with aria-label: "${formattedDate}"`);
 
             const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
-            console.log(`🔍 Query for [aria-label="${formattedDate}"] returned:`, dateElement);
+            console.log(`🔍 Query result for [aria-label="${formattedDate}"]:`, dateElement);
 
             if (dateElement) {
                 console.log(`✅ Clicking on date: ${formattedDate}`);
                 dateElement.click();
             } else {
                 console.warn(`🚫 No clickable date element found for: "${formattedDate}"`);
-                console.log(`🛠️ Available aria-label elements:`);
+                console.log(`🛠️ Listing all aria-label elements:`);
                 document.querySelectorAll('[aria-label]').forEach(el => {
                     console.log(`- ${el.getAttribute('aria-label')}`);
                 });
