@@ -591,7 +591,11 @@ function applyScheduleSettings(daySchedule) {
 }
 
 function getAvailableStartTimes(eventsForDay) {
-    const startTimes = [];
+    if (!window.bookingGlobals.schedule) {
+        console.warn("⚠️ Schedule not found in bookingGlobals. Exiting getAvailableStartTimes.");
+        return [];
+    }
+
     const openTime = window.bookingGlobals.schedule.open;
     const closeTime = window.bookingGlobals.schedule.close;
     const interval = INTERVAL;
@@ -599,25 +603,26 @@ function getAvailableStartTimes(eventsForDay) {
 
     console.log(`🕒 Open Time: ${openTime}, Close Time: ${closeTime}, Buffer After: ${bufferAfter}`);
 
-    // Iterate through each time slot
+    const startTimes = [];
+
     for (let time = openTime; time < closeTime; time += interval) {
         const endTime = time + window.bookingGlobals.selected_duration;
 
         console.log(`⏱️ Checking time slot: Start ${time}, End ${endTime}`);
 
-        // Ensure the end time does not exceed closing time
+        // Adjust end time to closeTime
         const adjustedEndTime = Math.min(endTime, closeTime);
 
-        if (adjustedEndTime > closeTime) {
-            console.log(`🚫 End time ${adjustedEndTime} exceeds closing time.`);
+        if (endTime > closeTime) {
+            console.log(`🚫 End time ${endTime} exceeds closing time.`);
             break;
         }
 
+        // Check for conflicts with existing events
         const isAvailable = !eventsForDay.some(event => {
             const eventStart = event.start;
             const eventEnd = event.end;
 
-            // Check if the time slot conflicts with any existing events
             return (time < eventEnd && adjustedEndTime > eventStart);
         });
 
