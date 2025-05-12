@@ -743,7 +743,6 @@ async function findNextAvailableDate(maxDays = 30) {
         console.log(`🔄 Checking date: ${testDate.toDateString()}`);
 
         const isAvailable = hasAvailableStartTimesFor(testDate);
-
         console.log(`📅 Availability for ${testDate.toDateString()}: ${isAvailable ? "✅ Available" : "❌ Not Available"}`);
 
         if (isAvailable) {
@@ -753,24 +752,34 @@ async function findNextAvailableDate(maxDays = 30) {
             window.bookingGlobals.booking_date = testDate;
 
             if (window.flatpickrCalendar) {
-                const formattedDate = testDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
-            
-                console.log(`🔍 Looking for date element with aria-label: ${formattedDate}`);
-            
-                const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
-            
-                if (dateElement) {
-                    console.log(`✅ Clicking on date: ${formattedDate}`);
-                    dateElement.click();
-                } else {
-                    console.warn(`🚫 No clickable date element found for: ${formattedDate}`);
-                }
+                console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
+                window.flatpickrCalendar.setDate(testDate, true);
+            } else {
+                console.warn(`⚠️ flatpickrCalendar is not initialized yet.`);
             }
-            
+
+            // Adjust the date format for the query selector
+            const formattedDate = testDate.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            }).replace(/\s+/g, ' ').trim();
+
+            console.log(`🔍 Looking for date element with aria-label: "${formattedDate}"`);
+
+            const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+            console.log(`🔍 Query for [aria-label="${formattedDate}"] returned:`, dateElement);
+
+            if (dateElement) {
+                console.log(`✅ Clicking on date: ${formattedDate}`);
+                dateElement.click();
+            } else {
+                console.warn(`🚫 No clickable date element found for: "${formattedDate}"`);
+                console.log(`🛠️ Available aria-label elements:`);
+                document.querySelectorAll('[aria-label]').forEach(el => {
+                    console.log(`- ${el.getAttribute('aria-label')}`);
+                });
+            }
 
             return testDate;
         }
