@@ -743,8 +743,11 @@ async function findNextAvailableDate(maxDays = 30) {
             console.log(`✅ Found available date: ${testDate.toDateString()}`);
 
             if (window.flatpickrCalendar) {
-                window.flatpickrCalendar.setDate(testDate, true);
-            }
+                const dateElement = document.querySelector(`[aria-label="${testDate.toDateString()}"]`);
+                if (dateElement) {
+                    dateElement.click();
+                }
+            }            
 
             return testDate;
         }
