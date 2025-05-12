@@ -22,7 +22,6 @@ let minDate = new Date();
 let maxDate = new Date();
 let refreshTimeout = null;
 let isRefreshingStartTimes = false;
-let renderInProgress = false;
 
 // === User & Membership Info
 const MEMBERSHIP = (window.supabaseUser?.membership || 'non-member').toLowerCase();
