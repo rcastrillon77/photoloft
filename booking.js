@@ -898,6 +898,7 @@ function initCalendar() {
     console.log("✅ Custom header found");
 
     const calendar = flatpickr("#date-picker", {
+        defaultDate: window.bookingGlobals.booking_date || "today",
         inline: true,
         dateFormat: "m-d-Y",
         minDate: window.bookingMinDate,
