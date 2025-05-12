@@ -782,7 +782,6 @@ async function findNextAvailableDate(maxDays = 30) {
     return null;
 }
 
-
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
 const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
