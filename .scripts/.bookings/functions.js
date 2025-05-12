@@ -759,20 +759,24 @@ async function findNextAvailableDate(maxDays = 30) {
 
             console.log(`🔍 Looking for date element with aria-label: "${formattedDate}"`);
 
-            const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+            let dateElement = null;
+            let retryCount = 0;
+
+            while (!dateElement && retryCount < 5) {
+                console.warn(`🚫 No clickable date element found for: "${formattedDate}". Retrying in 300ms...`);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+                retryCount++;
+            }
 
             if (dateElement) {
                 console.log(`✅ Clicking on date: ${formattedDate}`);
                 dateElement.click();
             } else {
-                console.warn(`🚫 No clickable date element found for: "${formattedDate}"`);
-
-                console.log(`🛠️ Logging all aria-label elements (limited to 50):`);
-                const ariaElements = document.querySelectorAll('[aria-label]');
-                ariaElements.forEach((el, index) => {
-                    if (index < 50) {
-                        console.log(`- ${el.getAttribute('aria-label')}`);
-                    }
+                console.warn(`🚫 Failed to find clickable date element for: "${formattedDate}" after retries.`);
+                console.log(`🛠️ Dumping all aria-label elements:`);
+                document.querySelectorAll('[aria-label]').forEach(el => {
+                    console.log(`- aria-label: "${el.getAttribute('aria-label')}" | HTML: ${el.outerHTML}`);
                 });
             }
 
@@ -783,7 +787,6 @@ async function findNextAvailableDate(maxDays = 30) {
     console.warn("❌ No available slots found in the next 30 days");
     return null;
 }
-
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
