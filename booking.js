@@ -797,34 +797,40 @@ async function findNextAvailableDate(maxDays = 30) {
 
             window.bookingGlobals.booking_date = testDate;
 
+            if (window.flatpickrCalendar) {
+                console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
+                window.flatpickrCalendar.setDate(testDate, true);
+            } else {
+                console.warn(`⚠️ flatpickrCalendar is not initialized yet.`);
+            }
+
+            // Adjust the date format for the query selector
             const formattedDate = testDate.toLocaleDateString('en-US', {
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric'
             }).replace(/\s+/g, ' ').trim();
 
-            console.log(`🔍 Looking for date element with aria-label: "${formattedDate}"`);
+            console.log(`🔍 Waiting for the DOM to update...`);
 
-            let dateElement = null;
-            let retryCount = 0;
+            // Wait for DOM to update before clicking
+            setTimeout(() => {
+                console.log(`🔍 Looking for date element with aria-label: "${formattedDate}" after delay`);
 
-            while (!dateElement && retryCount < 5) {
-                console.warn(`🚫 No clickable date element found for: "${formattedDate}". Retrying in 300ms...`);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
-                retryCount++;
-            }
+                const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+                console.log(`🔍 Query result for [aria-label="${formattedDate}"]:`, dateElement);
 
-            if (dateElement) {
-                console.log(`✅ Clicking on date: ${formattedDate}`);
-                dateElement.click();
-            } else {
-                console.warn(`🚫 Failed to find clickable date element for: "${formattedDate}" after retries.`);
-                console.log(`🛠️ Dumping all aria-label elements:`);
-                document.querySelectorAll('[aria-label]').forEach(el => {
-                    console.log(`- aria-label: "${el.getAttribute('aria-label')}" | HTML: ${el.outerHTML}`);
-                });
-            }
+                if (dateElement) {
+                    console.log(`✅ Clicking on date: ${formattedDate}`);
+                    dateElement.click();
+                } else {
+                    console.warn(`🚫 No clickable date element found for: "${formattedDate}" after delay.`);
+                    console.log(`🛠️ Dumping all aria-label elements:`);
+                    document.querySelectorAll('[aria-label]').forEach(el => {
+                        console.log(`- ${el.getAttribute('aria-label')}`);
+                    });
+                }
+            }, 300);  // Adding a 300ms delay to ensure DOM updates
 
             return testDate;
         }
