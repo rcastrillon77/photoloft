@@ -591,45 +591,41 @@ function applyScheduleSettings(daySchedule) {
 }
 
 function getAvailableStartTimes(eventsForDay) {
-    const startTimes = [];
-    const openTime = window.bookingGlobals.schedule.open;
-    const closeTime = window.bookingGlobals.schedule.close;
-    const interval = INTERVAL;
-    const bufferAfter = window.bookingGlobals.schedule.bufferAfter || 0;
+    const openTime = window.bookingGlobals.open;
+    const closeTime = window.bookingGlobals.close;
+    const bufferBefore = window.bookingGlobals.bufferBefore || 15;
+    const bufferAfter = window.bookingGlobals.bufferAfter || 15;
+    const interval = window.bookingGlobals.timeInterval || 30;
 
-    console.log(`🕒 Open Time: ${openTime}, Close Time: ${closeTime}, Buffer After: ${bufferAfter}`);
+    const availableTimes = [];
 
-    // Iterate through each time slot
-    for (let time = openTime; time < closeTime; time += interval) {
-        const endTime = time + window.bookingGlobals.selected_duration;
+    for (let startTime = openTime; startTime < closeTime; startTime += interval) {
+        const endTime = startTime + window.bookingGlobals.bookingDuration;
 
-        console.log(`⏱️ Checking time slot: Start ${time}, End ${endTime}`);
-
-        // Ensure the end time does not exceed closing time
+        // Adjust to allow end time to be exactly at closing
         const adjustedEndTime = Math.min(endTime, closeTime);
 
         if (adjustedEndTime > closeTime) {
-            console.log(`🚫 End time ${adjustedEndTime} exceeds closing time.`);
-            break;
+            console.log(`⏰ Skipping start time ${startTime} as it exceeds closing time`);
+            continue;
         }
 
-        const isAvailable = !eventsForDay.some(event => {
-            const eventStart = event.start;
-            const eventEnd = event.end;
+        const isConflict = eventsForDay.some(event => {
+            const eventStart = minutesSinceMidnight(event.start);
+            const eventEnd = minutesSinceMidnight(event.end);
 
-            // Check if the time slot conflicts with any existing events
-            return (time < eventEnd && adjustedEndTime > eventStart);
+            // Check if the time slot overlaps with an existing event, considering buffers
+            return !(endTime + bufferAfter <= eventStart || startTime - bufferBefore >= eventEnd);
         });
 
-        console.log(`⏱️ Time slot ${time} to ${adjustedEndTime} is ${isAvailable ? "✅ Available" : "🚫 Not Available"}`);
-
-        if (isAvailable) {
-            startTimes.push(time);
+        if (!isConflict) {
+            availableTimes.push(startTime);
+            console.log(`✅ Available start time: ${minutesToTimeValue(startTime)}`);
         }
     }
 
-    console.log(`✅ Available start times: ${startTimes.map(t => minutesToTimeValue(t)).join(', ')}`);
-    return startTimes;
+    console.log(`🕒 Final available times: ${availableTimes.map(minutesToTimeValue).join(", ")}`);
+    return availableTimes;
 }
 
 
