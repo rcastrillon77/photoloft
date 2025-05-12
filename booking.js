@@ -797,19 +797,21 @@ async function findNextAvailableDate(maxDays = 30) {
 
             window.bookingGlobals.booking_date = testDate;
 
-            // Ensure flatpickrCalendar is initialized
-            if (!window.flatpickrCalendar) {
-                console.warn(`⚠️ flatpickrCalendar is not initialized yet. Retrying in 200ms...`);
+            // Wait for calendar to be initialized
+            let retryCount = 0;
+            while (!window.flatpickrCalendar && retryCount < 5) {
+                console.warn(`⚠️ flatpickrCalendar not ready. Retrying in 200ms...`);
                 await new Promise(resolve => setTimeout(resolve, 200));
+                retryCount++;
             }
 
-            if (window.flatpickrCalendar) {
-                console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
-                window.flatpickrCalendar.setDate(testDate, true);
-            } else {
-                console.warn(`🚫 flatpickrCalendar still not initialized. Skipping date click.`);
+            if (!window.flatpickrCalendar) {
+                console.warn(`🚫 flatpickrCalendar still not initialized after retries. Aborting date click.`);
                 return testDate;
             }
+
+            console.log(`🗓️ Calendar ready. Updating input to: ${testDate.toDateString()}`);
+            window.flatpickrCalendar.setDate(testDate, true);
 
             // Adjust the date format for the query selector
             const formattedDate = testDate.toLocaleDateString('en-US', {
@@ -820,14 +822,21 @@ async function findNextAvailableDate(maxDays = 30) {
 
             console.log(`🔍 Looking for date element with aria-label: "${formattedDate}"`);
 
-            const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
-            console.log(`🔍 Query result for [aria-label="${formattedDate}"]:`, dateElement);
+            let dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+            let clickAttempts = 0;
+
+            while (!dateElement && clickAttempts < 5) {
+                console.warn(`🚫 Date element not found. Retrying in 200ms...`);
+                await new Promise(resolve => setTimeout(resolve, 200));
+                dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+                clickAttempts++;
+            }
 
             if (dateElement) {
                 console.log(`✅ Clicking on date: ${formattedDate}`);
                 dateElement.click();
             } else {
-                console.warn(`🚫 No clickable date element found for: "${formattedDate}"`);
+                console.warn(`🚫 No clickable date element found for: "${formattedDate}" after retries.`);
                 console.log(`🛠️ Listing all aria-label elements:`);
                 document.querySelectorAll('[aria-label]').forEach(el => {
                     console.log(`- ${el.getAttribute('aria-label')}`);
@@ -841,7 +850,6 @@ async function findNextAvailableDate(maxDays = 30) {
     console.warn("❌ No available slots found in the next 30 days");
     return null;
 }
-
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
