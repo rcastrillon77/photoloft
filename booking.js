@@ -898,35 +898,35 @@ function disableUnavailableDates() {
     const selectedWeekday = currentDate.getDay();
     const schedule = window.listingSchedule[MEMBERSHIP]?.[selectedWeekday];
 
-    console.log(`⏰ Checking disabled dates for open: ${openTime}, close: ${closeTime}, duration: ${duration}`);
+    const validTimes = [];
+    for (let startTime = openTime; startTime <= closeTime - duration; startTime += INTERVAL * 60) {
+        const endTime = startTime + duration;
+        if (endTime <= closeTime) validTimes.push(startTime);
+    }
 
     calendarDays.forEach(day => {
         const dateStr = day.getAttribute("aria-label");
         const date = new Date(dateStr);
 
-        if (isNaN(date.getTime())) {
-            return; // Skip invalid dates
-        }
+        if (isNaN(date.getTime())) return;
 
         const weekday = date.getDay();
         const daySchedule = window.listingSchedule[MEMBERSHIP]?.[weekday];
 
         let shouldBeDisabled = false;
 
-        if (daySchedule) {
+        // No schedule for the day, disable it
+        if (!daySchedule) {
+            shouldBeDisabled = true;
+        } else {
             const dayOpenTime = parseTimeToMinutes(daySchedule.open);
             const dayCloseTime = parseTimeToMinutes(daySchedule.close);
 
-            // If the day has no valid schedule, disable it
             if (dayCloseTime - dayOpenTime < duration) {
                 shouldBeDisabled = true;
             }
-        } else {
-            // No schedule data for the day, disable it
-            shouldBeDisabled = true;
         }
 
-        // Check for conflicts with existing events
         const eventsForDay = window.bookingEvents.filter(event => {
             const eventDate = new Date(event.start).toDateString();
             return eventDate === date.toDateString();
@@ -942,11 +942,9 @@ function disableUnavailableDates() {
             );
         });
 
-        if (hasConflict) {
-            shouldBeDisabled = true;
-        }
+        if (hasConflict) shouldBeDisabled = true;
 
-        // Apply or remove the `.disabled` class only if the state has changed
+        // Only update `.disabled` class if necessary to prevent flicker
         const isCurrentlyDisabled = day.classList.contains("disabled");
         if (shouldBeDisabled && !isCurrentlyDisabled) {
             day.classList.add("disabled");
@@ -955,7 +953,7 @@ function disableUnavailableDates() {
         }
     });
 
-    console.log("✅ disableUnavailableDates completed.");
+    console.log("✅ disableUnavailableDates executed without flicker.");
 }
 
 // ** INITIALIZERS ** //
