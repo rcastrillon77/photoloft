@@ -81,8 +81,8 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
     const bufferBefore = window.BUFFER_BEFORE ?? 0;
     const bufferAfter = window.BUFFER_AFTER ?? 0;
-    const requestedStart = Math.max(startTime - bufferBefore, OPEN_TIME);
-    const requestedEnd = Math.min(endTime + bufferAfter, CLOSE_TIME);
+    const requestedStart = startTime - bufferBefore;
+    const requestedEnd = endTime + bufferAfter;
 
     console.log(`\n⏱️ Checking availability with buffer for start: ${requestedStart} → end: ${requestedEnd}`);
 
@@ -727,60 +727,23 @@ async function generateStartTimeOptions() {
     let selectedDate = window.bookingGlobals.booking_date;
     let schedule = getScheduleForDate(window.listingSchedule, selectedDate);
 
-    console.log("📅 Initial selectedDate:", selectedDate);
-
-    if (!schedule || !hasAvailableStartTimesFor(selectedDate)) {
+    if (!schedule || !hasAvailableStartTimesFor(window.bookingGlobals.booking_date)) {
         const fallbackDate = await findNextAvailableDate();
         if (fallbackDate) {
             window.bookingGlobals.booking_date = fallbackDate;
-            selectedDate = fallbackDate;  // Update selectedDate to reflect the fallback
-
-            console.log(`📅 Updated selectedDate after fallback: ${selectedDate}`);
 
             if (window.flatpickrCalendar) {
-                // Remove any existing .selected class
-                document.querySelectorAll('.flatpickr-day.selected').forEach(el => {
-                    el.classList.remove('selected');
-                });
-
-                const formattedDate = fallbackDate.toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric'
-                }).replace(/\s+/g, ' ').trim();
-
-                console.log(`🔍 Attempting to click date with aria-label: "${formattedDate}"`);
-
-                let dateElement = null;
-                let retryCount = 0;
-
-                while (!dateElement && retryCount < 5) {
-                    console.warn(`🚫 No clickable date element found for: "${formattedDate}". Retrying in 300ms...`);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
-                    retryCount++;
-                }
-
-                if (dateElement) {
-                    console.log(`✅ Clicking on date: ${formattedDate}`);
-                    dateElement.click();
-                } else {
-                    console.warn(`🚫 Failed to find clickable date element for: "${formattedDate}" after retries.`);
-                    console.log(`🛠️ Dumping all aria-label elements:`);
-                    document.querySelectorAll('[aria-label]').forEach(el => {
-                        console.log(`- aria-label: "${el.getAttribute('aria-label')}" | HTML: ${el.outerHTML}`);
-                    });
-                }
-
+                window.flatpickrCalendar.setDate(fallbackDate, true);
                 setTimeout(() => highlightSelectedDate(), 0);
             }
 
-            schedule = getScheduleForDate(window.listingSchedule, fallbackDate);
+        schedule = getScheduleForDate(window.listingSchedule, fallbackDate);
         } else {
             document.getElementById("no-timeslots-message")?.classList.remove("hidden");
             return false;
         }
     }
+
 
     applyScheduleSettings(schedule);
     disableUnavailableDates();
@@ -812,59 +775,19 @@ async function generateStartTimeOptions() {
 async function findNextAvailableDate(maxDays = 30) {
     const today = new Date();
     const startDate = new Date(today);
-    startDate.setDate(today.getDate());
-
-    console.log(`📅 Starting date search from: ${startDate.toDateString()}`);
+    startDate.setDate(today.getDate() + 1); // ➡️ Start at tomorrow
 
     for (let i = 0; i < maxDays; i++) {
         const testDate = new Date(startDate);
         testDate.setDate(startDate.getDate() + i);
-
-        console.log(`🔄 Checking date: ${testDate.toDateString()}`);
-
         const isAvailable = hasAvailableStartTimesFor(testDate);
-        console.log(`📅 Availability for ${testDate.toDateString()}: ${isAvailable ? "✅ Available" : "❌ Not Available"}`);
 
         if (isAvailable) {
             console.log(`✅ Found available date: ${testDate.toDateString()}`);
-            console.log(`📅 Setting bookingGlobals.booking_date to: ${testDate.toDateString()}`);
-
-            window.bookingGlobals.booking_date = testDate;
 
             if (window.flatpickrCalendar) {
-                console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
                 window.flatpickrCalendar.setDate(testDate, true);
-            } else {
-                console.warn(`⚠️ flatpickrCalendar is not initialized yet.`);
             }
-
-            // Adjust the date format for the query selector
-            const formattedDate = testDate.toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
-            }).replace(/\s+/g, ' ').trim();
-
-            console.log(`🔍 Waiting for the DOM to update...`);
-
-            // Wait for DOM to update before clicking
-            setTimeout(() => {
-                console.log(`🔍 Looking for date element with aria-label: "${formattedDate}" after delay`);
-
-                const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
-                console.log(`🔍 Query result for [aria-label="${formattedDate}"]:`, dateElement);
-
-                if (dateElement) {
-                    console.log(`✅ Clicking on date: ${formattedDate}`);
-                    dateElement.click();
-                } else {
-                    console.warn(`🚫 No clickable date element found for: "${formattedDate}" after delay.`);
-                    console.log(`🛠️ Dumping all aria-label elements:`);
-                    document.querySelectorAll('[aria-label]').forEach(el => {
-                        console.log(`- ${el.getAttribute('aria-label')}`);
-                    });
-                }
-            }, 300);  // Adding a 300ms delay to ensure DOM updates
 
             return testDate;
         }
@@ -887,36 +810,36 @@ document.querySelectorAll('.flatpickr-day').forEach(day => {
 }
 
 function disableUnavailableDates() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    document.querySelectorAll('.flatpickr-day').forEach(day => {
-        const dateObj = day.dateObj;
-        if (!dateObj) return;
-    
-        const dayStart = new Date(dateObj);
-        dayStart.setHours(0, 0, 0, 0);
-    
-        const min = new Date(window.bookingMinDate);
-        const max = new Date(window.bookingMaxDate);
-        min.setHours(0, 0, 0, 0);
-        max.setHours(0, 0, 0, 0);
-    
-        const isPast = dayStart < min;
-        const isBeyondWindow = dayStart > max;
-        const isUnavailable = !hasAvailableStartTimesFor(dateObj);
-    
-        const shouldDisable = isPast || isBeyondWindow || isUnavailable;
-    
-        if (shouldDisable) {
-        day.classList.add('flatpickr-disabled');
-        day.removeAttribute('aria-label');
-        day.removeAttribute('tabindex');
-        } else {
-        day.classList.remove('flatpickr-disabled');
-        }
-    });
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+document.querySelectorAll('.flatpickr-day').forEach(day => {
+    const dateObj = day.dateObj;
+    if (!dateObj) return;
+
+    const dayStart = new Date(dateObj);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const min = new Date(window.bookingMinDate);
+    const max = new Date(window.bookingMaxDate);
+    min.setHours(0, 0, 0, 0);
+    max.setHours(0, 0, 0, 0);
+
+    const isPast = dayStart < min;
+    const isBeyondWindow = dayStart > max;
+    const isUnavailable = !hasAvailableStartTimesFor(dateObj);
+
+    const shouldDisable = isPast || isBeyondWindow || isUnavailable;
+
+    if (shouldDisable) {
+    day.classList.add('flatpickr-disabled');
+    day.removeAttribute('aria-label');
+    day.removeAttribute('tabindex');
+    } else {
+    day.classList.remove('flatpickr-disabled');
     }
+});
+}
 
 // ** INITIALIZERS ** //
 function initCalendar() {
@@ -962,14 +885,14 @@ function initCalendar() {
             
             window.bookingGlobals.booking_date = new Date(selectedDate);
             
-            generateStartTimeOptions();
+            const found = generateStartTimeOptions();
             generateExtendedTimeOptions();
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
             setTimeout(disableUnavailableDates, 0);
+            if (!found) findNextAvailableDate();
         }
-        
         
     });
 
@@ -1036,8 +959,11 @@ async function initSliderSection() {
     const minPercent = (MIN_DURATION / MAX_DURATION) * 100;
     document.querySelector('.range-slider-min')?.style.setProperty('width', `${minPercent}%`);
 
-    await generateStartTimeOptions();
     generateExtendedTimeOptions();
+
+    const found = generateStartTimeOptions();
+
+    if (!found) await findNextAvailableDate();
     highlightSelectedDate();
     disableUnavailableDates();
     updateMaxAvailableButton()    
