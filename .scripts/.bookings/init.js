@@ -117,4 +117,85 @@ document.addEventListener('DOMContentLoaded', async () => {
         highlightSelectedDate();
         disableUnavailableDates();
     };
+
+    // ================================== //
+    // ==========  NEW ACTIONS  ========= //
+    // ================================== //
+
+    window.addEventListener('beforeunload', window.releaseTempHold);
+
+    // Step 1 "Continue" → place temporary hold
+    document.getElementById('step-1-continue')?.addEventListener('click', async () => {
+    clearInterval(countdownInterval);
+    await releaseTempHold();
+
+    const dt = luxon.DateTime;
+    const start = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
+        .startOf('day')
+        .plus({ minutes: bookingGlobals.booking_start })
+        .toISO();
+
+    const end = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
+        .startOf('day')
+        .plus({ minutes: bookingGlobals.booking_end })
+        .toISO();
+
+    const tempId = await holdTemporaryBooking(start, end);
+    if (!tempId) return alert("Couldn't hold time slot. Please try again.");
+
+    // UI Transition to Step 2
+    document.getElementById("date-cal")?.classList.add("hide");
+    document.querySelector(".booking-bg-col")?.classList.remove("right");
+    document.getElementById("duration-and-time")?.classList.add("hide");
+    document.getElementById("attendees-and-type")?.classList.remove("hide");
+    document.getElementById("booking-summary-wrapper")?.classList.add("dark");
+    document.querySelector(".booking-summary-button-container")?.classList.add("hide");
+    document.getElementById("reserve-timer")?.classList.remove("hide");
+    document.getElementById("contact-info")?.classList.remove("hide");
+    document.getElementById("summary-clicker")?.classList.remove("hidden");
+
+    startCountdownTimer();
+    });
+
+    // Step 2 "Back" → release hold
+    document.getElementById('summary-clicker')?.addEventListener('click', async () => {
+    if (!document.getElementById("booking-summary-wrapper")?.classList.contains("dark")) return;
+
+    clearInterval(countdownInterval);
+    await releaseTempHold();
+
+    document.getElementById("date-cal")?.classList.remove("hide");
+    document.querySelector(".booking-bg-col")?.classList.add("right");
+    document.getElementById("duration-and-time")?.classList.remove("hide");
+    document.getElementById("attendees-and-type")?.classList.add("hide");
+    document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
+    document.querySelector(".booking-summary-button-container")?.classList.remove("hide");
+    document.getElementById("reserve-timer")?.classList.add("hide");
+    document.getElementById("contact-info")?.classList.add("hide");
+    document.getElementById("summary-clicker")?.classList.add("hidden");
+    });
+
+    // Countdown logic
+    let countdownInterval = null;
+
+    function startCountdownTimer(durationSeconds = 600) {
+    const display = document.getElementById('booking-total-countdown');
+    const reserveWrapper = document.querySelector('.booking-reserve-container');
+    clearInterval(countdownInterval);
+
+    let remaining = durationSeconds;
+
+    countdownInterval = setInterval(() => {
+        const minutes = Math.floor(remaining / 60).toString().padStart(2, '0');
+        const seconds = (remaining % 60).toString().padStart(2, '0');
+        display.textContent = `${minutes}:${seconds}`;
+
+        if (--remaining < 0) {
+        clearInterval(countdownInterval);
+        reserveWrapper?.classList.add('hide');
+        releaseTempHold();
+        console.log("⏰ Countdown expired. Slot released.");
+        }
+    }, 1000);
+    }
 });
