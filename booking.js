@@ -81,8 +81,8 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
     const bufferBefore = window.BUFFER_BEFORE ?? 0;
     const bufferAfter = window.BUFFER_AFTER ?? 0;
-    const requestedStart = startTime - bufferBefore;
-    const requestedEnd = endTime + bufferAfter;
+    const requestedStart = Math.max(startTime - bufferBefore, OPEN_TIME);
+    const requestedEnd = Math.min(endTime + bufferAfter, CLOSE_TIME);
 
     console.log(`\n⏱️ Checking availability with buffer for start: ${requestedStart} → end: ${requestedEnd}`);
 
@@ -733,7 +733,10 @@ async function generateStartTimeOptions() {
             window.bookingGlobals.booking_date = fallbackDate;
 
             if (window.flatpickrCalendar) {
-                window.flatpickrCalendar.setDate(fallbackDate, true);
+                const dateElement = document.querySelector(`[aria-label="${fallbackDate.toDateString()}"]`);
+                if (dateElement) {
+                    dateElement.click();
+                }
                 setTimeout(() => highlightSelectedDate(), 0);
             }
 
@@ -775,7 +778,7 @@ async function generateStartTimeOptions() {
 async function findNextAvailableDate(maxDays = 30) {
     const today = new Date();
     const startDate = new Date(today);
-    startDate.setDate(today.getDate() + 1); // ➡️ Start at tomorrow
+    startDate.setDate(today.getDate());
 
     for (let i = 0; i < maxDays; i++) {
         const testDate = new Date(startDate);
