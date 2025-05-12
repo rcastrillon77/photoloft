@@ -843,31 +843,31 @@ document.querySelectorAll('.flatpickr-day').forEach(day => {
 function disableUnavailableDates() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    
     document.querySelectorAll('.flatpickr-day').forEach(day => {
         const dateObj = day.dateObj;
         if (!dateObj) return;
-
+    
         const dayStart = new Date(dateObj);
         dayStart.setHours(0, 0, 0, 0);
-
+    
         const min = new Date(window.bookingMinDate);
         const max = new Date(window.bookingMaxDate);
         min.setHours(0, 0, 0, 0);
         max.setHours(0, 0, 0, 0);
-
+    
         const isPast = dayStart < min;
         const isBeyondWindow = dayStart > max;
         const isUnavailable = !hasAvailableStartTimesFor(dateObj);
-
+    
         const shouldDisable = isPast || isBeyondWindow || isUnavailable;
-
+    
         if (shouldDisable) {
-            day.classList.add('flatpickr-disabled');
-            day.removeAttribute('aria-label');
-            day.removeAttribute('tabindex');
+        day.classList.add('flatpickr-disabled');
+        day.removeAttribute('aria-label');
+        day.removeAttribute('tabindex');
         } else {
-            day.classList.remove('flatpickr-disabled');
+        day.classList.remove('flatpickr-disabled');
         }
     });
 }
