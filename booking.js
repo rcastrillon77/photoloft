@@ -599,20 +599,20 @@ function getAvailableStartTimes(eventsForDay) {
 
     console.log(`🕒 Open Time: ${openTime}, Close Time: ${closeTime}, Buffer After: ${bufferAfter}`);
 
-    // Iterate through each time slot
     for (let time = openTime; time < closeTime; time += interval) {
         const endTime = time + window.bookingGlobals.selected_duration;
 
         console.log(`⏱️ Checking time slot: Start ${time}, End ${endTime}`);
 
-        // Ensure the end time does not exceed closing time
+        // If the end time exceeds the closing time, adjust it to exactly the closing time
         const adjustedEndTime = Math.min(endTime, closeTime);
 
-        if (adjustedEndTime > closeTime) {
-            console.log(`🚫 End time ${adjustedEndTime} exceeds closing time.`);
+        if (endTime > closeTime) {
+            console.log(`🚫 End time ${endTime} exceeds closing time.`);
             break;
         }
 
+        // Check for conflicts with existing events
         const isAvailable = !eventsForDay.some(event => {
             const eventStart = event.start;
             const eventEnd = event.end;
@@ -629,9 +629,9 @@ function getAvailableStartTimes(eventsForDay) {
     }
 
     console.log(`✅ Available start times: ${startTimes.map(t => minutesToTimeValue(t)).join(', ')}`);
-
     return startTimes;
 }
+
 
 function renderStartTimeOptions(startTimes) {
     const container = document.getElementById('booking-start-time-options');
