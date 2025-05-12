@@ -842,13 +842,12 @@ function initCalendar() {
             
             window.bookingGlobals.booking_date = new Date(selectedDate);
             
-            const found = generateStartTimeOptions();
+            generateStartTimeOptions();
             generateExtendedTimeOptions();
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
             setTimeout(disableUnavailableDates, 0);
-            if (!found) findNextAvailableDate();
         }
         
     });
@@ -916,11 +915,8 @@ async function initSliderSection() {
     const minPercent = (MIN_DURATION / MAX_DURATION) * 100;
     document.querySelector('.range-slider-min')?.style.setProperty('width', `${minPercent}%`);
 
+    await generateStartTimeOptions();
     generateExtendedTimeOptions();
-
-    const found = generateStartTimeOptions();
-
-    if (!found) await findNextAvailableDate();
     highlightSelectedDate();
     disableUnavailableDates();
     updateMaxAvailableButton()    
