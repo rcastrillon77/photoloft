@@ -545,56 +545,47 @@ function applyScheduleSettings(daySchedule) {
 }
 
 function getAvailableStartTimes(eventsForDay) {
-    const bookingDate = window.bookingGlobals.booking_date;
-    const weekday = bookingDate.getDay();
-    const schedule = window.listingSchedule[MEMBERSHIP]?.[weekday];
-
-    // If the schedule exists, use it; otherwise, default to existing values
-    const openTime = schedule ? parseTimeToMinutes(schedule.open) : window.bookingGlobals.openTime;
-    const closeTime = schedule ? parseTimeToMinutes(schedule.close) : window.bookingGlobals.closeTime;
-
+    const openTime = window.bookingGlobals.openTime;
+    const closeTime = window.bookingGlobals.closeTime;
+    const interval = INTERVAL * 60;  // Convert to minutes
+    const duration = window.bookingGlobals.booking_duration;
     const bufferBefore = window.BUFFER_BEFORE || 0;
     const bufferAfter = window.BUFFER_AFTER || 0;
-    const interval = INTERVAL * 60; // Convert to minutes
-    const duration = window.bookingGlobals.booking_duration;
 
     const availableTimes = [];
 
-    console.log(`⏰ Checking start times between ${minutesToTimeValue(openTime)} and ${minutesToTimeValue(closeTime)}`);
+    console.log(`⏰ Checking times from ${minutesToTimeValue(openTime)} to ${minutesToTimeValue(closeTime)}`);
 
     for (let startTime = openTime; startTime <= closeTime - duration; startTime += interval) {
         const endTime = startTime + duration;
 
-        // Adjust to ensure the last booking can end exactly at the closing time
-        const adjustedEndTime = Math.min(endTime, closeTime);
-
-        if (adjustedEndTime > closeTime) {
-            console.log(`⏰ Skipping start time ${startTime} as it would end past closing time`);
+        // Allow the last slot to end exactly at the closing time
+        if (endTime > closeTime) {
+            console.log(`⏰ Skipping start time ${startTime} as it ends past closing time`);
             continue;
         }
 
+        // Check for conflicts
         const isConflict = eventsForDay.some(event => {
             const eventStart = minutesSinceMidnight(event.start);
             const eventEnd = minutesSinceMidnight(event.end);
 
-            // Check for overlap, accounting for buffers
+            // Ensure buffer times are respected
             return !(
-                adjustedEndTime + bufferAfter <= eventStart ||
-                startTime - bufferBefore >= eventEnd
+                (endTime + bufferAfter <= eventStart) ||
+                (startTime - bufferBefore >= eventEnd)
             );
         });
 
         if (!isConflict) {
             availableTimes.push(startTime);
-            console.log(`✅ Available start time: ${minutesToTimeValue(startTime)} - ${minutesToTimeValue(adjustedEndTime)}`);
+            console.log(`✅ Available start time: ${minutesToTimeValue(startTime)} - ${minutesToTimeValue(endTime)}`);
         }
     }
 
     console.log(`🕒 Final available times: ${availableTimes.map(minutesToTimeValue).join(", ")}`);
     return availableTimes;
 }
-
-
 
 function renderStartTimeOptions(startTimes) {
     const container = document.getElementById('booking-start-time-options');
