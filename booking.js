@@ -799,20 +799,24 @@ async function findNextAvailableDate(maxDays = 30) {
             window.bookingGlobals.booking_date = testDate;
 
             if (window.flatpickrCalendar) {
-                console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
-                window.flatpickrCalendar.setDate(testDate, true);
+                const formattedDate = testDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            
+                console.log(`🔍 Looking for date element with aria-label: ${formattedDate}`);
+            
+                const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+            
+                if (dateElement) {
+                    console.log(`✅ Clicking on date: ${formattedDate}`);
+                    dateElement.click();
+                } else {
+                    console.warn(`🚫 No clickable date element found for: ${formattedDate}`);
+                }
             }
-
-            // Simulate click on the calendar element
-            const dateElement = document.querySelector(`[aria-label="${testDate.toDateString()}"]`);
-            console.log(`🔍 Looking for date element with label: ${testDate.toDateString()}`);
-
-            if (dateElement) {
-                console.log(`✅ Clicking on date: ${testDate.toDateString()}`);
-                dateElement.click();
-            } else {
-                console.warn(`🚫 No clickable date element found for: ${testDate.toDateString()}`);
-            }
+            
 
             return testDate;
         }
