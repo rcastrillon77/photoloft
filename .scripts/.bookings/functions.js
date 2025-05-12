@@ -766,11 +766,11 @@ async function findNextAvailableDate(maxDays = 30) {
                 dateElement.click();
             } else {
                 console.warn(`🚫 No clickable date element found for: "${formattedDate}"`);
-                
-                // Log all aria-label elements in the DOM
-                console.log(`🛠️ Listing all aria-label elements:`);
+
+                // Dump all aria-label elements and their HTML structure
+                console.log(`🛠️ Dumping all aria-label elements:`);
                 document.querySelectorAll('[aria-label]').forEach(el => {
-                    console.log(`- ${el.getAttribute('aria-label')}`);
+                    console.log(`- aria-label: "${el.getAttribute('aria-label')}" | HTML: ${el.outerHTML}`);
                 });
             }
 
@@ -781,6 +781,7 @@ async function findNextAvailableDate(maxDays = 30) {
     console.warn("❌ No available slots found in the next 30 days");
     return null;
 }
+
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
