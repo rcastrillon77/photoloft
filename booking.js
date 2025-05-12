@@ -591,22 +591,31 @@ function applyScheduleSettings(daySchedule) {
 }
 
 function getAvailableStartTimes(eventsForDay) {
-    const openTime = window.bookingGlobals.open;
-    const closeTime = window.bookingGlobals.close;
-    const bufferBefore = window.bookingGlobals.bufferBefore || 15;
-    const bufferAfter = window.bookingGlobals.bufferAfter || 15;
-    const interval = window.bookingGlobals.timeInterval || 30;
+    const bookingDate = window.bookingGlobals.booking_date;
+    const weekday = bookingDate.getDay();
+    const schedule = window.listingSchedule[MEMBERSHIP]?.[weekday];
+
+    // If the schedule exists, use it; otherwise, default to existing values
+    const openTime = schedule ? parseTimeToMinutes(schedule.open) : window.bookingGlobals.openTime;
+    const closeTime = schedule ? parseTimeToMinutes(schedule.close) : window.bookingGlobals.closeTime;
+
+    const bufferBefore = window.BUFFER_BEFORE || 0;
+    const bufferAfter = window.BUFFER_AFTER || 0;
+    const interval = INTERVAL * 60; // Convert to minutes
+    const duration = window.bookingGlobals.booking_duration;
 
     const availableTimes = [];
 
-    for (let startTime = openTime; startTime < closeTime; startTime += interval) {
-        const endTime = startTime + window.bookingGlobals.bookingDuration;
+    console.log(`⏰ Checking start times between ${minutesToTimeValue(openTime)} and ${minutesToTimeValue(closeTime)}`);
 
-        // Adjust to allow end time to be exactly at closing
+    for (let startTime = openTime; startTime <= closeTime - duration; startTime += interval) {
+        const endTime = startTime + duration;
+
+        // Adjust to ensure the last booking can end exactly at the closing time
         const adjustedEndTime = Math.min(endTime, closeTime);
 
         if (adjustedEndTime > closeTime) {
-            console.log(`⏰ Skipping start time ${startTime} as it exceeds closing time`);
+            console.log(`⏰ Skipping start time ${startTime} as it would end past closing time`);
             continue;
         }
 
@@ -614,19 +623,23 @@ function getAvailableStartTimes(eventsForDay) {
             const eventStart = minutesSinceMidnight(event.start);
             const eventEnd = minutesSinceMidnight(event.end);
 
-            // Check if the time slot overlaps with an existing event, considering buffers
-            return !(endTime + bufferAfter <= eventStart || startTime - bufferBefore >= eventEnd);
+            // Check for overlap, accounting for buffers
+            return !(
+                adjustedEndTime + bufferAfter <= eventStart ||
+                startTime - bufferBefore >= eventEnd
+            );
         });
 
         if (!isConflict) {
             availableTimes.push(startTime);
-            console.log(`✅ Available start time: ${minutesToTimeValue(startTime)}`);
+            console.log(`✅ Available start time: ${minutesToTimeValue(startTime)} - ${minutesToTimeValue(adjustedEndTime)}`);
         }
     }
 
     console.log(`🕒 Final available times: ${availableTimes.map(minutesToTimeValue).join(", ")}`);
     return availableTimes;
 }
+
 
 
 function renderStartTimeOptions(startTimes) {
