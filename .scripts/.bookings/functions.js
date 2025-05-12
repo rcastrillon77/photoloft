@@ -767,10 +767,12 @@ async function findNextAvailableDate(maxDays = 30) {
             } else {
                 console.warn(`🚫 No clickable date element found for: "${formattedDate}"`);
 
-                // Dump all aria-label elements and their HTML structure
-                console.log(`🛠️ Dumping all aria-label elements:`);
-                document.querySelectorAll('[aria-label]').forEach(el => {
-                    console.log(`- aria-label: "${el.getAttribute('aria-label')}" | HTML: ${el.outerHTML}`);
+                console.log(`🛠️ Logging all aria-label elements (limited to 50):`);
+                const ariaElements = document.querySelectorAll('[aria-label]');
+                ariaElements.forEach((el, index) => {
+                    if (index < 50) {
+                        console.log(`- ${el.getAttribute('aria-label')}`);
+                    }
                 });
             }
 
