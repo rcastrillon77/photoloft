@@ -829,14 +829,14 @@ async function findNextAvailableDate(maxDays = 30) {
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
-const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
+    const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
 
-document.querySelectorAll('.flatpickr-day').forEach(day => {
-    const dateStr = day.dateObj?.toISOString().split("T")[0];
-    if (!dateStr) return;
+    document.querySelectorAll('.flatpickr-day').forEach(day => {
+        const dateStr = day.dateObj?.toISOString().split("T")[0];
+        if (!dateStr) return;
 
-    day.classList.toggle('selected', dateStr === selectedDateStr);
-});
+        day.classList.toggle('selected', dateStr === selectedDateStr);
+    });
 }
 
 function disableUnavailableDates() {
@@ -896,17 +896,18 @@ function initCalendar() {
             window.flatpickrCalendar = instance;
             updateCustomHeader(instance);
             setTimeout(() => highlightSelectedDate(), 0);
+            setTimeout(disableUnavailableDates(), 50);
         },
 
         onMonthChange(selectedDates, dateStr, instance) {
             updateCustomHeader(instance);
             highlightSelectedDate();
-            disableUnavailableDates();
+            setTimeout(disableUnavailableDates(), 50);
         },
 
         onYearChange(selectedDates, dateStr, instance) {
             highlightSelectedDate();
-            disableUnavailableDates();
+            setTimeout(disableUnavailableDates, 50);
         },
 
         onChange(selectedDates) {
@@ -920,7 +921,7 @@ function initCalendar() {
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
-            setTimeout(disableUnavailableDates, 50);
+            setTimeout(disableUnavailableDates(), 50);
         }
         
     });
