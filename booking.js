@@ -783,7 +783,7 @@ async function generateStartTimeOptions() {
     }
 
     applyScheduleSettings(schedule);
-    disableUnavailableDates();
+    //disableUnavailableDates();
     highlightSelectedDate();
     updateBookingSummary();
 
