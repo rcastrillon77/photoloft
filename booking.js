@@ -1038,8 +1038,8 @@ async function initSliderSection() {
     await generateStartTimeOptions();
     generateExtendedTimeOptions();
     highlightSelectedDate();
-    disableUnavailableDates();
-    updateMaxAvailableButton()    
+    updateMaxAvailableButton();
+    //disableUnavailableDates();  
 
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-CA');
