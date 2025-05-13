@@ -921,6 +921,7 @@ function initCalendar() {
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
+            disableUnavailableDates();
         }
         
     });
