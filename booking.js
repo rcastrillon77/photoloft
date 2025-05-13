@@ -1268,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         generateStartTimeOptions();
         highlightSelectedDate();
-        disableUnavailableDates();
+        setTimeout(disableUnavailableDates(), 50);
     });
   
     document.querySelector('.extended-time .pill-button-flex-container')?.addEventListener('change', (e) => {
@@ -1284,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateDurationDisplay(duration);
         updateBookingSummary();
         generateStartTimeOptions();
-        disableUnavailableDates();
+        setTimeout(disableUnavailableDates(), 50);
     });  
   
     document.getElementById('booking-start-time-options')?.addEventListener('change', (e) => {
@@ -1344,7 +1344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         generateExtendedTimeOptions(); 
         if (!found) await findNextAvailableDate();
         highlightSelectedDate();
-        disableUnavailableDates();
+        setTimeout(disableUnavailableDates(), 0);
     };
 
     // ================================== //
