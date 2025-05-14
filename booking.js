@@ -946,7 +946,7 @@ function initCalendar() {
 
         onYearChange(selectedDates, dateStr, instance) {
             highlightSelectedDate();
-            setTimeout(disableUnavailableDates, 50);
+            setTimeout(disableUnavailableDates, 0);
         },
 
         onChange(selectedDates) {
