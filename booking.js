@@ -1368,7 +1368,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('step-1-continue')?.addEventListener('click', async () => {
         clearInterval(countdownInterval);
         await releaseTempHold();
-
+    
+        // 🔁 Refresh selected radio and sync with bookingGlobals
+        const allRadios = Array.from(document.querySelectorAll('#booking-start-time-options input[type="radio"]'));
+        const selectedRadio = allRadios.find(r => r.checked);
+        if (!selectedRadio) {
+            alert("Please select a start time before continuing.");
+            return;
+        }
+    
+        const [hours, minutes] = selectedRadio.value.match(/.{1,2}/g).map(Number);
+        const selectedStart = hours * 60 + minutes;
+        const selectedEnd = selectedStart + bookingGlobals.booking_duration;
+    
+        // ✅ Sync bookingGlobals
+        bookingGlobals.booking_start = selectedStart;
+        bookingGlobals.booking_end = selectedEnd;
+        bookingGlobals.selected_start_time = selectedRadio.value;
+    
+        // ✅ Set hidden inputs
         document.querySelector('#duration')?.setAttribute('value', bookingGlobals.booking_duration / 60);
         document.querySelector('#start-time')?.setAttribute('value', bookingGlobals.selected_start_time);
     
@@ -1383,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .plus({ minutes: bookingGlobals.booking_end })
             .toISO();
     
-        // ✅ Fetch up-to-date events
+        // ✅ Fetch latest events from Supabase
         const { data: events, error } = await window.supabase
             .from("events")
             .select("start, end")
@@ -1396,7 +1414,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
     
-        // ✅ Check for conflict using buffer logic
         const eventsForDay = events.map(ev => ({
             start: luxon.DateTime.fromISO(ev.start, { zone: TIMEZONE }),
             end: luxon.DateTime.fromISO(ev.end, { zone: TIMEZONE })
@@ -1416,23 +1433,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("🧪 Checking temp slot:", {
             selectedStart: bookingGlobals.booking_start,
             selectedEnd: bookingGlobals.booking_end,
-            nowRounded: getCurrentRoundedMinutes(),
+            nowRounded,
             conflictDetected: conflict
         });
-          
+    
         if (conflict || bookingGlobals.booking_start < nowRounded) {
             alert("That time slot is no longer available. We'll show you the next best option.");
             await generateStartTimeOptions(true);
             updateBookingSummary();
             return;
         }
-
     
-        // ✅ Proceed with holding the time
+        // ✅ Hold the time
         const tempId = await holdTemporaryBooking(start, end);
         if (!tempId) return alert("Couldn't hold time slot. Please try again.");
     
-        // Transition to Step 2
+        // ✅ Transition to Step 2
         document.getElementById("date-cal")?.classList.add("hide");
         document.querySelector(".booking-bg-col")?.classList.remove("right");
         document.getElementById("duration-and-time")?.classList.add("hide");
@@ -1445,6 +1461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         startCountdownTimer();
     });
+    
     
 
     // Step 2 "Back" → release hold
