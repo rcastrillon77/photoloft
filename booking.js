@@ -1366,36 +1366,76 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Step 1 "Continue" → place temporary hold
     document.getElementById('step-1-continue')?.addEventListener('click', async () => {
-    clearInterval(countdownInterval);
-    await releaseTempHold();
+        clearInterval(countdownInterval);
+        await releaseTempHold();
 
-    const dt = luxon.DateTime;
-    const start = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
-        .startOf('day')
-        .plus({ minutes: bookingGlobals.booking_start })
-        .toISO();
-
-    const end = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
-        .startOf('day')
-        .plus({ minutes: bookingGlobals.booking_end })
-        .toISO();
-
-    const tempId = await holdTemporaryBooking(start, end);
-    if (!tempId) return alert("Couldn't hold time slot. Please try again.");
-
-    // UI Transition to Step 2
-    document.getElementById("date-cal")?.classList.add("hide");
-    document.querySelector(".booking-bg-col")?.classList.remove("right");
-    document.getElementById("duration-and-time")?.classList.add("hide");
-    document.getElementById("attendees-and-type")?.classList.remove("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.add("dark");
-    document.querySelector(".booking-summary-button-container")?.classList.add("hide");
-    document.getElementById("reserve-timer")?.classList.remove("hide");
-    document.getElementById("contact-info")?.classList.remove("hide");
-    document.getElementById("summary-clicker")?.classList.remove("hidden");
-
-    startCountdownTimer();
+        document.querySelector('#duration')?.setAttribute('value', bookingGlobals.booking_duration / 60);
+        document.querySelector('#start-time')?.setAttribute('value', bookingGlobals.selected_start_time);
+    
+        const dt = luxon.DateTime;
+        const start = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
+            .startOf('day')
+            .plus({ minutes: bookingGlobals.booking_start })
+            .toISO();
+    
+        const end = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
+            .startOf('day')
+            .plus({ minutes: bookingGlobals.booking_end })
+            .toISO();
+    
+        // ✅ Fetch up-to-date events
+        const { data: events, error } = await window.supabase
+            .from("events")
+            .select("start, end")
+            .eq("location_id", LOCATION_UUID)
+            .gte("start", start)
+            .lt("end", end);
+    
+        if (error || !events) {
+            alert("Could not validate availability. Please try again.");
+            return;
+        }
+    
+        // ✅ Check for conflict using buffer logic
+        const eventsForDay = events.map(ev => ({
+            start: luxon.DateTime.fromISO(ev.start, { zone: TIMEZONE }),
+            end: luxon.DateTime.fromISO(ev.end, { zone: TIMEZONE })
+        }));
+    
+        const requestedStart = bookingGlobals.booking_start - BUFFER_BEFORE;
+        const requestedEnd = bookingGlobals.booking_end + BUFFER_AFTER;
+    
+        const conflict = eventsForDay.some(({ start, end }) => {
+            const startMin = start.hour * 60 + start.minute;
+            const endMin = end.hour * 60 + end.minute;
+            return startMin < requestedEnd && endMin > requestedStart;
+        });
+    
+        if (conflict || bookingGlobals.booking_start < getCurrentRoundedMinutes()) {
+            alert("⛔ That time slot is no longer available. We'll show you the next best option.");
+            await generateStartTimeOptions(true); // regenerate
+            updateBookingSummary();
+            return;
+        }
+    
+        // ✅ Proceed with holding the time
+        const tempId = await holdTemporaryBooking(start, end);
+        if (!tempId) return alert("Couldn't hold time slot. Please try again.");
+    
+        // Transition to Step 2
+        document.getElementById("date-cal")?.classList.add("hide");
+        document.querySelector(".booking-bg-col")?.classList.remove("right");
+        document.getElementById("duration-and-time")?.classList.add("hide");
+        document.getElementById("attendees-and-type")?.classList.remove("hide");
+        document.getElementById("booking-summary-wrapper")?.classList.add("dark");
+        document.querySelector(".booking-summary-button-container")?.classList.add("hide");
+        document.getElementById("reserve-timer")?.classList.remove("hide");
+        document.getElementById("contact-info")?.classList.remove("hide");
+        document.getElementById("summary-clicker")?.classList.remove("hidden");
+    
+        startCountdownTimer();
     });
+    
 
     // Step 2 "Back" → release hold
     document.getElementById('summary-clicker')?.addEventListener('click', async () => {
