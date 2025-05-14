@@ -389,6 +389,12 @@ async function checkIfGuestHasActiveHold() {
     return true;
 }
 
+function getCurrentRoundedMinutes() {
+    const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const interval = INTERVAL * 60;
+    return Math.ceil((now.hour * 60 + now.minute) / interval) * interval;
+}
+
 // ** UI ENHANCERS ** //
 function attachRadioStyling() {
 const radios = document.querySelectorAll('.radio-option-button');
