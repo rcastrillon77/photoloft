@@ -169,12 +169,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             return startMin < requestedEnd && endMin > requestedStart;
         });
     
-        if (conflict || bookingGlobals.booking_start < getCurrentRoundedMinutes()) {
+        const nowRounded = getCurrentRoundedMinutes();
+        console.log(`⏱️ Slot check → selected: ${bookingGlobals.booking_start}, now rounded: ${nowRounded}`);
+
+        if (conflict || bookingGlobals.booking_start < nowRounded) {
             alert("That time slot is no longer available. We'll show you the next best option.");
-            await generateStartTimeOptions(true); // regenerate
+            await generateStartTimeOptions(true);
             updateBookingSummary();
             return;
         }
+
     
         // ✅ Proceed with holding the time
         const tempId = await holdTemporaryBooking(start, end);
