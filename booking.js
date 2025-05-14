@@ -960,7 +960,7 @@ function initCalendar() {
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
-            //setTimeout(() => disableUnavailableDates(), 0);
+            setTimeout(() => disableUnavailableDates(), 0);
         }
         
     });
