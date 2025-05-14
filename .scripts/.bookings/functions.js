@@ -551,34 +551,27 @@ function getAvailableStartTimes(eventsForDay) {
     const bookingDateLuxon = luxon.DateTime.fromJSDate(bookingGlobals.booking_date, { zone: window.TIMEZONE });
     const isToday = bookingDateLuxon.hasSame(now, 'day');
     const duration = bookingGlobals.booking_duration;
-    const totalRequiredTime = duration + BUFFER_BEFORE + BUFFER_AFTER;
-    const maxStart = CLOSE_TIME - totalRequiredTime;
-
-    for (let t = OPEN_TIME; t <= maxStart; t += INTERVAL * 60) {
+    
+    const earliest = OPEN_TIME - BUFFER_BEFORE;
+    const latest   = CLOSE_TIME + BUFFER_AFTER - duration;
+    
+    for (let t = earliest; t <= latest; t += INTERVAL * 60) {
         const readable = formatTime(t);
 
-        if (isToday && t < currentMinutes) {
-            console.log(`⛔ Skipping ${readable} (in the past)`);
-            continue;
-        }
+        if (t < OPEN_TIME) continue;  
 
-        // Adjusted range for checking conflicts (including buffers)
+        if (isToday && t + duration < currentMinutes) continue;
+        
         const slotStart = t - BUFFER_BEFORE;
-        const slotEnd = t + duration + BUFFER_AFTER;
+        const slotEnd   = t + duration + BUFFER_AFTER;
+        if (eventsForDay.some(ev => {
+        const { start, end } = getEventMinutesRange(ev);
+        return start < slotEnd && end > slotStart;
+        })) continue;
 
-        const hasConflict = eventsForDay.some(event => {
-            const { start, end } = getEventMinutesRange(event);
-            return start < slotEnd && end > slotStart;
-        });
-
-        if (hasConflict) {
-            console.log(`⛔ Skipping ${readable} (conflict including buffers)`);
-            continue;
-        }
-
-        console.log(`✅ Available: ${readable}`);
         startTimes.push(t);
     }
+
 
     console.log("🔍 TIMEZONE:", window.TIMEZONE);
     console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
