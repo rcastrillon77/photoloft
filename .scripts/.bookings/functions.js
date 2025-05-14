@@ -547,8 +547,8 @@ function applyScheduleSettings(daySchedule) {
 function getAvailableStartTimes(eventsForDay) {
     const startTimes = [];
     const now = luxon.DateTime.now().setZone(window.TIMEZONE);
-    const interval = INTERVAL * 60;
     const rawNow = now.hour * 60 + now.minute;
+    const interval = INTERVAL * 60;
     const currentMinutes = Math.ceil(rawNow / interval) * interval;
     const bookingDateLuxon = luxon.DateTime.fromJSDate(bookingGlobals.booking_date, { zone: window.TIMEZONE });
     const isToday = bookingDateLuxon.hasSame(now, 'day');
