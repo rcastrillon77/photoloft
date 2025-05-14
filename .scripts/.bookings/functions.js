@@ -889,13 +889,13 @@ function initCalendar() {
             window.flatpickrCalendar = instance;
             updateCustomHeader(instance);
             setTimeout(() => highlightSelectedDate(), 0);
-            setTimeout(disableUnavailableDates(), 50);
+            setTimeout(() => disableUnavailableDates(), 50);
         },
 
         onMonthChange(selectedDates, dateStr, instance) {
             updateCustomHeader(instance);
             highlightSelectedDate();
-            setTimeout(disableUnavailableDates(), 50);
+            setTimeout(() => disableUnavailableDates(), 50);
         },
 
         onYearChange(selectedDates, dateStr, instance) {
@@ -914,7 +914,7 @@ function initCalendar() {
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
-            //setTimeout(disableUnavailableDates(), 50);
+            //setTimeout(() => disableUnavailableDates(), 50);
         }
         
     });
