@@ -171,7 +171,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         const nowRounded = getCurrentRoundedMinutes();
         console.log(`⏱️ Slot check → selected: ${bookingGlobals.booking_start}, now rounded: ${nowRounded}`);
-
+        console.log("🧪 Checking temp slot:", {
+            selectedStart: bookingGlobals.booking_start,
+            selectedEnd: bookingGlobals.booking_end,
+            nowRounded: getCurrentRoundedMinutes(),
+            conflictDetected: conflict
+        });
+          
         if (conflict || bookingGlobals.booking_start < nowRounded) {
             alert("That time slot is no longer available. We'll show you the next best option.");
             await generateStartTimeOptions(true);
