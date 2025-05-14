@@ -598,8 +598,8 @@ function getAvailableStartTimes(eventsForDay) {
     const isToday = bookingDateLuxon.hasSame(now, 'day');
     const duration = bookingGlobals.booking_duration;
     
-    const earliest = OPEN_TIME - BUFFER_BEFORE;
-    const latest   = CLOSE_TIME + BUFFER_AFTER - duration;
+    const earliest = OPEN_TIME;
+    const latest   = CLOSE_TIME - duration;
 
     for (let t = earliest; t <= latest; t += INTERVAL * 60) {
         const readable = formatTime(t);
