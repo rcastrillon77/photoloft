@@ -38,9 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     
-        generateStartTimeOptions();
+        generateStartTimeOptions(true);
         highlightSelectedDate();
-        setTimeout(() => disableUnavailableDates(), 0);
     });
   
     document.querySelector('.extended-time .pill-button-flex-container')?.addEventListener('change', (e) => {
@@ -55,8 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         updateDurationDisplay(duration);
         updateBookingSummary();
-        generateStartTimeOptions();
-        setTimeout(() => disableUnavailableDates(), 0);
+        generateStartTimeOptions(true);
     });  
   
     document.getElementById('booking-start-time-options')?.addEventListener('change', (e) => {
@@ -106,17 +104,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             matchingPill.closest('.radio-option-container')?.classList.add('selected');
         }
         
-        generateStartTimeOptions(); // will call disableUnavailableDates internally
+        generateStartTimeOptions(true); // will call disableUnavailableDates internally
     });  
   
     window.setBookingDate = async function (newDate) {
         window.bookingGlobals.booking_date = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE }).toJSDate();
         updateBookingSummary();
-        const found = generateStartTimeOptions();
+        const found = generateStartTimeOptions(true);
         generateExtendedTimeOptions(); 
         if (!found) await findNextAvailableDate();
         highlightSelectedDate();
-        setTimeout(disableUnavailableDates(), 0);
     };
 
     // ================================== //
