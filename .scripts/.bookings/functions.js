@@ -670,7 +670,7 @@ function renderStartTimeOptions(startTimes) {
     });
 }
 
-async function generateStartTimeOptions() {
+async function generateStartTimeOptions(shouldDisableDates = false) {
     let selectedDate = window.bookingGlobals.booking_date;
     let schedule = getScheduleForDate(window.listingSchedule, selectedDate);
 
@@ -748,6 +748,10 @@ async function generateStartTimeOptions() {
     }
 
     updateMaxAvailableButton();
+
+    if (shouldDisableDates) {
+        requestAnimationFrame(() => disableUnavailableDates());
+    }
 
     console.log("📅 generateStartTimeOptions → booking_date:", selectedDate);
     console.log("📅 Luxon:", bookingDateLuxon.toISO());
@@ -895,12 +899,12 @@ function initCalendar() {
         onMonthChange(selectedDates, dateStr, instance) {
             updateCustomHeader(instance);
             highlightSelectedDate();
-            setTimeout(() => disableUnavailableDates(), 0);
+            generateStartTimeOptions(true); 
         },
 
         onYearChange(selectedDates, dateStr, instance) {
             highlightSelectedDate();
-            setTimeout(disableUnavailableDates, 0);
+            generateStartTimeOptions(true); 
         },
 
         onChange(selectedDates) {
@@ -909,12 +913,12 @@ function initCalendar() {
             
             window.bookingGlobals.booking_date = new Date(selectedDate);
             
-            generateStartTimeOptions();
+            generateStartTimeOptions(false);
+            requestAnimationFrame(() => disableUnavailableDates());
             generateExtendedTimeOptions();
             updateMaxAvailableButton();
             updateBookingSummary();
             highlightSelectedDate();
-            setTimeout(() => disableUnavailableDates(), 0);
         }
         
     });
@@ -986,7 +990,6 @@ async function initSliderSection() {
     generateExtendedTimeOptions();
     highlightSelectedDate();
     updateMaxAvailableButton();
-    //disableUnavailableDates();  
 
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-CA');
