@@ -1412,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     
         if (conflict || bookingGlobals.booking_start < getCurrentRoundedMinutes()) {
-            alert("⛔ That time slot is no longer available. We'll show you the next best option.");
+            alert("That time slot is no longer available. We'll show you the next best option.");
             await generateStartTimeOptions(true); // regenerate
             updateBookingSummary();
             return;
