@@ -623,7 +623,7 @@ function getAvailableStartTimes(eventsForDay) {
     console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
     console.log("📆 isToday:", isToday);
     console.log("⏱️ Current Minutes:", currentMinutes);
-    console.log("🕓 Duration:", duration, "⏲️ With Buffers:", totalRequiredTime);
+    console.log("🕓 Duration:", duration);
     console.log("🕒 OPEN:", OPEN_TIME, "CLOSE:", CLOSE_TIME);
     console.log("🛑 BUFFERS:", BUFFER_BEFORE, BUFFER_AFTER);
 
