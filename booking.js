@@ -608,7 +608,17 @@ function getAvailableStartTimes(eventsForDay) {
 
         if (t < OPEN_TIME) continue;  
 
-        if (isToday && t + duration < currentMinutes) continue;
+        if (isToday) {
+            console.log(`🧪 Slot: ${t} (${formatTime(t)}) vs Current: ${currentMinutes} (${formatTime(currentMinutes)})`);
+            if (t < currentMinutes) {
+              console.log(`⛔ Skipping ${formatTime(t)} because it's before ${formatTime(currentMinutes)}`);
+            } else {
+              console.log(`✅ Keeping ${formatTime(t)}`);
+            }
+        }
+          
+
+        if (isToday && t < currentMinutes) continue;
         
         const slotStart = t - BUFFER_BEFORE;
         const slotEnd   = t + duration + BUFFER_AFTER;
