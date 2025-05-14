@@ -553,7 +553,7 @@ function getAvailableStartTimes(eventsForDay) {
     const duration = bookingGlobals.booking_duration;
     
     const earliest = OPEN_TIME - BUFFER_BEFORE;
-    const latest   = CLOSE_TIME + BUFFER_AFTER + BUFFER_AFTER - duration;
+    const latest   = CLOSE_TIME + BUFFER_AFTER - duration;
 
     for (let t = earliest; t <= latest; t += INTERVAL * 60) {
         const readable = formatTime(t);
