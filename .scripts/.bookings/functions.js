@@ -450,6 +450,29 @@ function updateMaxAvailableButton() {
     el.classList.remove('disabled');
 }
 
+function updateAttendeeButtons() {
+    const { min, max, allowMore, maxMessage } = window.capacitySettings;
+
+    plusBtn?.classList.toggle('disabled', attendeeCount >= max);
+    minusBtn?.classList.toggle('disabled', attendeeCount <= min);
+
+    // Update max capacity message visibility
+    const msgEl = document.getElementById('max-capacity-msg');
+    if (msgEl) {
+        if (attendeeCount >= max && maxMessage) {
+            msgEl.innerHTML = maxMessage;
+            msgEl.classList.remove('hidden');
+        } else {
+            msgEl.classList.add('hidden');
+        }
+    }
+
+    // Add "+" if allowMore is true and count is at max
+    const showPlus = allowMore && attendeeCount >= max;
+    countDisplay.textContent = showPlus ? `${attendeeCount}+` : attendeeCount;
+}
+
+
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
@@ -1116,13 +1139,22 @@ async function initBookingConfig(listingId, locationId) {
                 }
             }
             bookingTypes = flat;
-            window.listingCapacity = activitiesData.details?.capacity ?? 20;
-            maxAttendees = window.listingCapacity;
-            attendeeCount = Math.min(attendeeCount, maxAttendees);
+            const capacityConfig = activitiesData.details?.capacity || {};
+            window.capacitySettings = {
+                min: capacityConfig.min ?? 1,
+                max: capacityConfig.max ?? 20,
+                interval: capacityConfig.interval ?? 1,
+                allowMore: capacityConfig["allow-more"] ?? false,
+                maxMessage: capacityConfig["max-message"] ?? null
+            };
+
+            attendeeCount = Math.max(attendeeCount, window.capacitySettings.min);
+            maxAttendees = window.capacitySettings.max;
             countDisplay.textContent = attendeeCount;
             updateAttendeesHiddenField(attendeeCount);
+            updateAttendeeButtons();
             console.log("👥 Loaded capacity:", window.listingCapacity);
-        }//new
+        }
 
 
 
