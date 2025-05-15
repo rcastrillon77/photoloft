@@ -284,9 +284,9 @@ async function checkIfGuestHasActiveHold() {
         console.error("❌ Supabase error while checking for active hold:", error);
         return false;
     }
-    
-    if (!Array.isArray(data)) {
-        console.error("⚠️ Unexpected response from Supabase: 'data' is not an array", data);
+
+    if (!Array.isArray(data) || data.length === 0 || !data[0]) {
+        console.log("❎ No active hold found.");
         return false;
     }
 
