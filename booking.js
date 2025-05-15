@@ -1687,4 +1687,75 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }, 1000);
     }
+
+    //STEP 2 LISTENERS
+    activityInput?.addEventListener("input", () => updateOptionsList(activityInput.value.trim()));
+    activityInput?.addEventListener("focus", () => updateOptionsList(activityInput.value.trim()));
+
+    activityInput?.addEventListener("keydown", (e) => {
+        const container = suggestionBox;
+        const highlighted = container.querySelector(".highlighted");
+        const options = Array.from(container.querySelectorAll(".select-option"));
+        let idx = options.indexOf(highlighted);
+    
+        if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const next = (idx + 1) % options.length;
+        options.forEach(opt => opt.classList.remove("highlighted"));
+        options[next]?.classList.add("highlighted");
+        } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prev = (idx - 1 + options.length) % options.length;
+        options.forEach(opt => opt.classList.remove("highlighted"));
+        options[prev]?.classList.add("highlighted");
+        } else if (e.key === "Enter") {
+        e.preventDefault();
+        highlighted?.click();
+        }
+    });
+
+    suggestionBox?.addEventListener("click", (e) => {
+        const optionEl = e.target.closest(".select-option");
+        if (!optionEl || selectedActivities.length >= 5) return;
+    
+        const value = optionEl.dataset.value;
+        if (!selectedActivities.includes(value)) {
+        selectedActivities.push(value);
+        renderSelectedOptions();
+        updateOptionsList('');
+        activityInput.value = '';
+        if (selectedActivities.length >= 5) activityInput.classList.add('hide');
+        }
+    });
+    
+    document.addEventListener("click", (e) => {
+        if (!suggestionBox.contains(e.target) && e.target !== activityInput) {
+        suggestionBox.classList.add("hide");
+        }
+    });
+    
+    plusBtn?.addEventListener('click', () => {
+        if (attendeeCount < maxAttendees) {
+        attendeeCount++;
+        countDisplay.textContent = attendeeCount;
+        updateAttendeesHiddenField(attendeeCount);
+        }
+    });
+    
+    minusBtn?.addEventListener('click', () => {
+        if (attendeeCount > minAttendees) {
+        attendeeCount--;
+        countDisplay.textContent = attendeeCount;
+        updateAttendeesHiddenField(attendeeCount);
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        countDisplay.textContent = attendeeCount;
+        updateAttendeesHiddenField(attendeeCount);
+        updatePurposeHiddenField();
+});
+  
+  
+  
 });
