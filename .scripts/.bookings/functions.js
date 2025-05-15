@@ -31,6 +31,15 @@ function getEventMinutesRange(event) {
     };
 }
 
+function updateFormField(id, value) {
+    const field = document.getElementById(id);
+    if (field) {
+        field.value = value;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+  
+
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
     const bufferBefore = window.BUFFER_BEFORE ?? 0;
