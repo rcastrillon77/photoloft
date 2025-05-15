@@ -1069,7 +1069,6 @@ async function initBookingConfig(listingId, locationId) {
 
         window.bookingMinDate = minDate;
         window.bookingMaxDate = maxDate;
-        window.bookingGlobals.bookingRules = rules;
 
         window.bookingGlobals.booking_date = now;
         window.bookingGlobals.booking_start = OPEN_TIME;
