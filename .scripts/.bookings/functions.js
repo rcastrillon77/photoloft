@@ -1098,6 +1098,27 @@ async function initBookingConfig(listingId, locationId) {
         window.bookingGlobals.booking_rate = FULL_RATE;
         window.bookingGlobals.booking_total = (DEFAULT_DURATION * FULL_RATE);
         window.bookingGlobals.booking_discount = null;
+
+        // --- Pull Activities ---
+        const { data: activitiesData, error: activitiesError } = await window.supabase
+        .from("listings")
+        .select("activities, details")
+        .eq("uuid", listingId)
+        .single();
+
+        if (activitiesError || !activitiesData) {
+        console.error("❌ Failed to fetch booking types:", activitiesError);
+        } else {
+        const flat = {};
+        for (const group of Object.values(activitiesData.activities || {})) {
+            for (const [key, obj] of Object.entries(group)) {
+                if (!obj.prohibited) flat[key] = obj;
+            }
+        }
+        bookingTypes = flat;
+        window.listingCapacity = activitiesData.details?.capacity;
+        }
+
     
         console.log("🧩 Booking Config:", {
             MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
