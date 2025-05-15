@@ -1188,10 +1188,8 @@ async function initBookingConfig(listingId, locationId) {
         countDisplay.textContent = attendeeCount;
         updateAttendeesHiddenField(attendeeCount);
 
-
         }
 
-    
         console.log("🧩 Booking Config:", {
             MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
             BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
