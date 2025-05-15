@@ -1109,80 +1109,81 @@ async function initBookingConfig(listingId, locationId) {
         if (activitiesError || !activitiesData) {
         console.error("❌ Failed to fetch booking types:", activitiesError);
         } else {
-        const flat = {};
-        for (const group of Object.values(activitiesData.activities || {})) {
-            for (const [key, obj] of Object.entries(group)) {
-                flat[key] = obj;
-            }
-        }
-        bookingTypes = flat;
-        window.listingCapacity = activitiesData.details?.capacity ?? 20;
-        maxAttendees = window.listingCapacity;
-        attendeeCount = Math.min(attendeeCount, maxAttendees);
-        countDisplay.textContent = attendeeCount;
-        updateAttendeesHiddenField(attendeeCount);
-        console.log("👥 Loaded capacity:", window.listingCapacity);
-
-
-
-        console.log("🧩 Booking Config:", {
-            MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
-            BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
-            minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
-        });
-
-    // --- Pull Events ---
-        const { data: eventsData, error: eventsError } = await window.supabase
-        .from("events")
-        .select("start, end")
-        .eq("location_id", locationId)
-        .gte("start", minDate.toISOString())
-        .lte("end", maxDate.toISOString());
-    
-        if (eventsError) {
-            console.error("❌ Failed to fetch booking events:", eventsError);
-        } else {
-            window.bookingEvents = eventsData || [];
-            console.log("📅 Booking Events:", window.bookingEvents);
-        }
-    
-    // --- Pull Special Rates ---
-        const { data: ratesData, error: ratesError } = await window.supabase
-        .from("special_rates")
-        .select("start, end, title, rate")
-        .eq("listing_id", listingId);
-
-        if (ratesError) {
-            console.error("❌ Failed to fetch special rates:", ratesError);
-        } else {
-            window.specialRates = {};
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            for (const entry of ratesData) {
-                const start = new Date(entry.start);
-                const end = new Date(entry.end);
-                const current = new Date(start);
-
-                while (current <= end) {
-                    const dateStr = current.toISOString().split("T")[0];
-                    const dayOfWeek = current.getDay();
-                    const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
-
-                    if (membershipRate !== undefined) {
-                        window.specialRates[dateStr] = {
-                            title: entry.title,
-                            amount: membershipRate
-                        };
-                    }
-
-                    current.setDate(current.getDate() + 1);
+            const flat = {};
+            for (const group of Object.values(activitiesData.activities || {})) {
+                for (const [key, obj] of Object.entries(group)) {
+                    flat[key] = obj;
                 }
             }
-
-            console.log("💸 Loaded specialRates →", window.specialRates);
+            bookingTypes = flat;
+            window.listingCapacity = activitiesData.details?.capacity ?? 20;
+            maxAttendees = window.listingCapacity;
+            attendeeCount = Math.min(attendeeCount, maxAttendees);
+            countDisplay.textContent = attendeeCount;
+            updateAttendeesHiddenField(attendeeCount);
+            console.log("👥 Loaded capacity:", window.listingCapacity);
         }
-    } catch (err) {
+
+
+
+            console.log("🧩 Booking Config:", {
+                MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
+                BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
+                minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
+            });
+
+        // --- Pull Events ---
+            const { data: eventsData, error: eventsError } = await window.supabase
+            .from("events")
+            .select("start, end")
+            .eq("location_id", locationId)
+            .gte("start", minDate.toISOString())
+            .lte("end", maxDate.toISOString());
+        
+            if (eventsError) {
+                console.error("❌ Failed to fetch booking events:", eventsError);
+            } else {
+                window.bookingEvents = eventsData || [];
+                console.log("📅 Booking Events:", window.bookingEvents);
+            }
+        
+        // --- Pull Special Rates ---
+            const { data: ratesData, error: ratesError } = await window.supabase
+            .from("special_rates")
+            .select("start, end, title, rate")
+            .eq("listing_id", listingId);
+
+            if (ratesError) {
+                console.error("❌ Failed to fetch special rates:", ratesError);
+            } else {
+                window.specialRates = {};
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                for (const entry of ratesData) {
+                    const start = new Date(entry.start);
+                    const end = new Date(entry.end);
+                    const current = new Date(start);
+
+                    while (current <= end) {
+                        const dateStr = current.toISOString().split("T")[0];
+                        const dayOfWeek = current.getDay();
+                        const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
+
+                        if (membershipRate !== undefined) {
+                            window.specialRates[dateStr] = {
+                                title: entry.title,
+                                amount: membershipRate
+                            };
+                        }
+
+                        current.setDate(current.getDate() + 1);
+                    }
+                }
+
+                console.log("💸 Loaded specialRates →", window.specialRates);
+            }
+        } catch (err) {
         console.error("🚨 Unexpected error initializing booking config:", err);
     }
 }
