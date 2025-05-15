@@ -1112,7 +1112,7 @@ async function initBookingConfig(listingId, locationId) {
         const flat = {};
         for (const group of Object.values(activitiesData.activities || {})) {
             for (const [key, obj] of Object.entries(group)) {
-                if (!obj.prohibited) flat[key] = obj;
+                flat[key] = obj;
             }
         }
         bookingTypes = flat;
@@ -1289,18 +1289,19 @@ function updateOptionsList(inputValue = "") {
 }
 
 function updateBookingTypeMessageBox() {
-    const box = document.querySelector(".message-box");
+    const box = document.getElementById("activity-message");
     if (!box) return;
-  
+
     const messages = new Set();
     selectedActivities.forEach(title => {
-      const match = Object.values(bookingTypes).find(bt => bt.title === title);
-      if (match?.message) messages.add(match.message);
+        const match = Object.values(bookingTypes).find(bt => bt.title === title);
+        if (match?.message) messages.add(match.message);
     });
-  
+
     box.classList.toggle('hidden', messages.size === 0);
     box.innerHTML = [...messages].map(msg => `<div>${msg}</div>`).join('');
 }
+
   
 function renderSelectedOptions() {
     const container = selectedContainer;
