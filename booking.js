@@ -104,30 +104,23 @@ function getEventMinutesRange(event) {
 function updateFormField(id, value) {
     const field = document.getElementById(id);
     if (field) {
-        field.value = value;
-        field.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-}
-
-function updateAttendeesHiddenField(newValue) {
-    const hiddenInput = document.getElementById('attendees');
-    if (hiddenInput) {
-      hiddenInput.value = newValue;
-      hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }  
+
+function updateAttendeesHiddenField(newValue) {
+    updateFormField('attendees', newValue);
+}
+  
  
 function updatePurposeHiddenField() {
     const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
       .map(el => el.textContent.trim())
       .filter(Boolean);
-  
-    const hiddenInput = document.getElementById('purpose');
-    if (hiddenInput) {
-      hiddenInput.value = selected.join(', ');
-      hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+    updateFormField('purpose', selected.join(', '));
 }
+  
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
@@ -1292,6 +1285,93 @@ window.releaseTempHold = async function () {
         console.error("⚠️ Failed to release temporary hold:", error);
     }
 };
+
+function sortBookingTypes() {
+    return Object.entries(bookingTypes)
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([id, val]) => ({ id, ...val }));
+}
+  
+function highlightMatch(text, match) {
+    if (!match) return text;
+    return text.replace(new RegExp(`(${match})`, 'ig'), '<span class="matched-string">$1</span>');
+}
+  
+function updateOptionsList(inputValue = "") {
+    const input = inputValue.toLowerCase();
+    suggestionBox.innerHTML = "";
+  
+    if (bookingTypeInstructions) {
+      bookingTypeInstructions.classList.toggle('hide', input || selectedActivities.length > 0);
+    }
+  
+    const matches = sortBookingTypes()
+      .filter(bt => !selectedActivities.includes(bt.title))
+      .filter(bt => bt.title.toLowerCase().includes(input))
+      .slice(0, 3);
+  
+    if (!matches.length && input) {
+      const el = document.createElement('div');
+      el.className = "select-option highlighted";
+      el.innerHTML = `<div>Other: <span class="matched-string">${input}</span></div><div class="add-option">+ Add Option</div>`;
+      el.dataset.value = `Other: ${input}`;
+      suggestionBox.appendChild(el);
+    } else {
+      matches.forEach((bt, i) => {
+        const el = document.createElement('div');
+        el.className = `select-option ${i === 0 ? 'highlighted' : ''}`;
+        el.innerHTML = `<div>${highlightMatch(bt.title, input)}</div><div class="add-option">+ Add Option</div>`;
+        el.dataset.value = bt.title;
+        suggestionBox.appendChild(el);
+      });
+    }
+  
+    suggestionBox.classList.remove('hide');
+    updateBookingTypeMessageBox();
+}
+
+function updateBookingTypeMessageBox() {
+    const box = document.querySelector(".message-box");
+    if (!box) return;
+  
+    const messages = new Set();
+    selectedActivities.forEach(title => {
+      const match = Object.values(bookingTypes).find(bt => bt.title === title);
+      if (match?.message) messages.add(match.message);
+    });
+  
+    box.classList.toggle('hidden', messages.size === 0);
+    box.innerHTML = [...messages].map(msg => `<div>${msg}</div>`).join('');
+}
+  
+function renderSelectedOptions() {
+    const container = selectedContainer;
+    const box = document.querySelector(".message-box");
+    container.innerHTML = "";
+  
+    selectedActivities.forEach(activity => {
+      const el = document.createElement("div");
+      el.className = "selected-option";
+      el.innerHTML = `<div>${activity}</div><div class="select-option-close-out"><div class="x-icon-container"><div class="x-icon-line-vertical"></div><div class="x-icon-line-horizontal"></div></div></div>`;
+  
+      el.querySelector(".x-icon-container")?.addEventListener("click", () => {
+        selectedActivities = selectedActivities.filter(a => a !== activity);
+        renderSelectedOptions();
+        updateOptionsList(activityInput.value);
+        activityInput.classList.remove("hide");
+        if (selectedActivities.length === 0) {
+          container.classList.add("hide");
+          box?.classList.add("hidden");
+        }
+      });
+  
+      container.appendChild(el);
+    });
+  
+    container.classList.toggle('hide', selectedActivities.length === 0);
+    updatePurposeHiddenField();
+}
+  
 
 
 // ================================== //
