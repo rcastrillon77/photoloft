@@ -1035,6 +1035,7 @@ async function initBookingConfig(listingId, locationId) {
         const schedule = listingData.schedule || {};
         const rules = schedule['booking-rules'] || {};
         window.listingSchedule = schedule;
+        window.bookingGlobals.bookingRules = rules;
     
         MIN_DURATION = rules.minimum ?? 1;
         MAX_DURATION = rules.max ?? 4;
@@ -1068,6 +1069,7 @@ async function initBookingConfig(listingId, locationId) {
 
         window.bookingMinDate = minDate;
         window.bookingMaxDate = maxDate;
+        window.bookingGlobals.bookingRules = rules;
 
         window.bookingGlobals.booking_date = now;
         window.bookingGlobals.booking_start = OPEN_TIME;
