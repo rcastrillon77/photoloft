@@ -213,15 +213,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 🕓 3. Check if the start time is already in the past
         const now = luxon.DateTime.now().setZone(TIMEZONE);
         const interval = INTERVAL * 60;
-        const currentMinutes = Math.ceil((now.hour * 60 + now.minute) / interval) * interval;
-    
+        const rawNow = now.hour * 60 + now.minute;
+        const currentMinutes = Math.ceil(rawNow / interval) * interval;
+
+        const isToday = now.startOf('day').equals(bookingDateLuxon.startOf('day'));
+        const isPast = isToday && bookingGlobals.booking_start < currentMinutes;
+
         console.log("⏰ Time comparison:", {
             now: now.toISO(),
             currentMinutes,
-            bookingStart: bookingGlobals.booking_start
+            bookingStart: bookingGlobals.booking_start,
+            isToday,
+            isPast
         });
-    
-        const isPast = bookingGlobals.booking_start < currentMinutes;
+
     
         // 🚫 4. Block if conflict or in the past
         console.log("🧪 Step 1 validation check:");
