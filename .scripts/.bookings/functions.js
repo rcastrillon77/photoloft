@@ -1116,14 +1116,14 @@ async function initBookingConfig(listingId, locationId) {
             }
         }
         bookingTypes = flat;
-        window.listingCapacity = activitiesData.details?.capacity;
-
-        // Now that listingCapacity is available, clamp the value
-        attendeeCount = Math.min(attendeeCount, window.listingCapacity ?? 20);
+        window.listingCapacity = activitiesData.details?.capacity ?? 20;
+        maxAttendees = window.listingCapacity;
+        attendeeCount = Math.min(attendeeCount, maxAttendees);
         countDisplay.textContent = attendeeCount;
         updateAttendeesHiddenField(attendeeCount);
+        console.log("👥 Loaded capacity:", window.listingCapacity);
 
-        }
+
 
         console.log("🧩 Booking Config:", {
             MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
