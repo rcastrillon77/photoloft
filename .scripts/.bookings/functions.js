@@ -1117,6 +1117,13 @@ async function initBookingConfig(listingId, locationId) {
         }
         bookingTypes = flat;
         window.listingCapacity = activitiesData.details?.capacity;
+
+        // Now that listingCapacity is available, clamp the value
+        attendeeCount = Math.min(attendeeCount, window.listingCapacity ?? 20);
+        countDisplay.textContent = attendeeCount;
+        updateAttendeesHiddenField(attendeeCount);
+
+
         }
 
     
