@@ -1366,14 +1366,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Step 1 "Continue" → place temporary hold
     document.getElementById('step-1-continue')?.addEventListener('click', async () => {
+        console.log("🟢 Step 1 Continue clicked");
         clearInterval(countdownInterval);
         await releaseTempHold();
     
-        // 🔁 Refresh selected radio and sync with bookingGlobals
+        // 🔍 1. Get the selected radio input
         const allRadios = Array.from(document.querySelectorAll('#booking-start-time-options input[type="radio"]'));
         const selectedRadio = allRadios.find(r => r.checked);
         if (!selectedRadio) {
             alert("Please select a start time before continuing.");
+            console.log("❌ No radio selected.");
             return;
         }
     
@@ -1381,74 +1383,113 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selectedStart = hours * 60 + minutes;
         const selectedEnd = selectedStart + bookingGlobals.booking_duration;
     
-        // ✅ Sync bookingGlobals
+        // 🔁 Sync bookingGlobals
         bookingGlobals.booking_start = selectedStart;
         bookingGlobals.booking_end = selectedEnd;
         bookingGlobals.selected_start_time = selectedRadio.value;
     
-        // ✅ Set hidden inputs
         document.querySelector('#duration')?.setAttribute('value', bookingGlobals.booking_duration / 60);
         document.querySelector('#start-time')?.setAttribute('value', bookingGlobals.selected_start_time);
     
+        console.log("📝 User selection:", {
+            selectedStart,
+            selectedEnd,
+            selected_start_time: bookingGlobals.selected_start_time,
+            duration: bookingGlobals.booking_duration
+        });
+    
+        // 🧭 Set up time range for querying all events on selected day
         const dt = luxon.DateTime;
-        const start = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
-            .startOf('day')
-            .plus({ minutes: bookingGlobals.booking_start })
-            .toISO();
+        const bookingDateLuxon = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE });
+        const dayStart = bookingDateLuxon.startOf('day').toISO();
+        const dayEnd = bookingDateLuxon.endOf('day').toISO();
     
-        const end = dt.fromJSDate(bookingGlobals.booking_date, { zone: TIMEZONE })
-            .startOf('day')
-            .plus({ minutes: bookingGlobals.booking_end })
-            .toISO();
+        console.log("📅 Selected day:", {
+            booking_date: bookingDateLuxon.toISODate(),
+            dayStart,
+            dayEnd
+        });
     
-        // ✅ Fetch latest events from Supabase
         const { data: events, error } = await window.supabase
             .from("events")
             .select("start, end")
             .eq("location_id", LOCATION_UUID)
-            .gte("start", start)
-            .lt("end", end);
+            .gte("start", dayStart)
+            .lt("end", dayEnd);
     
         if (error || !events) {
+            console.error("❌ Supabase event fetch error:", error);
             alert("Could not validate availability. Please try again.");
             return;
         }
     
-        const eventsForDay = events.map(ev => ({
-            start: luxon.DateTime.fromISO(ev.start, { zone: TIMEZONE }),
-            end: luxon.DateTime.fromISO(ev.end, { zone: TIMEZONE })
-        }));
+        console.log("📦 Events for selected day:", events);
     
+        // 🧮 2. Check for overlap using buffer logic
         const requestedStart = bookingGlobals.booking_start - BUFFER_BEFORE;
         const requestedEnd = bookingGlobals.booking_end + BUFFER_AFTER;
     
-        const conflict = eventsForDay.some(({ start, end }) => {
-            const startMin = start.hour * 60 + start.minute;
-            const endMin = end.hour * 60 + end.minute;
-            return startMin < requestedEnd && endMin > requestedStart;
+        console.log("🧪 Checking against buffer range:", {
+            requestedStart,
+            requestedEnd
         });
     
-        const nowRounded = getCurrentRoundedMinutes();
-        console.log(`⏱️ Slot check → selected: ${bookingGlobals.booking_start}, now rounded: ${nowRounded}`);
-        console.log("🧪 Checking temp slot:", {
-            selectedStart: bookingGlobals.booking_start,
-            selectedEnd: bookingGlobals.booking_end,
-            nowRounded,
-            conflictDetected: conflict
+        const conflict = events.some(ev => {
+            const evStart = luxon.DateTime.fromISO(ev.start, { zone: TIMEZONE });
+            const evEnd = luxon.DateTime.fromISO(ev.end, { zone: TIMEZONE });
+            const startMin = evStart.hour * 60 + evStart.minute;
+            const endMin = evEnd.hour * 60 + evEnd.minute;
+    
+            const overlaps = startMin < requestedEnd && endMin > requestedStart;
+            if (overlaps) {
+                console.log("❌ Conflict with event:", {
+                    evStart: evStart.toISO(),
+                    evEnd: evEnd.toISO(),
+                    startMin,
+                    endMin
+                });
+            }
+            return overlaps;
         });
     
-        if (conflict || bookingGlobals.booking_start < nowRounded) {
+        // 🕓 3. Check if the start time is already in the past
+        const now = luxon.DateTime.now().setZone(TIMEZONE);
+        const interval = INTERVAL * 60;
+        const currentMinutes = Math.ceil((now.hour * 60 + now.minute) / interval) * interval;
+    
+        console.log("⏰ Time comparison:", {
+            now: now.toISO(),
+            currentMinutes,
+            bookingStart: bookingGlobals.booking_start
+        });
+    
+        const isPast = bookingGlobals.booking_start < currentMinutes;
+    
+        // 🚫 4. Block if conflict or in the past
+        if (conflict || isPast) {
+            console.warn("🚫 Slot is invalid:", {
+                conflict,
+                isPast
+            });
+    
             alert("That time slot is no longer available. We'll show you the next best option.");
             await generateStartTimeOptions(true);
             updateBookingSummary();
             return;
         }
     
-        // ✅ Hold the time
-        const tempId = await holdTemporaryBooking(start, end);
-        if (!tempId) return alert("Couldn't hold time slot. Please try again.");
+        // ✅ 5. Hold the time
+        const start = bookingDateLuxon.startOf('day').plus({ minutes: selectedStart }).toISO();
+        const end = bookingDateLuxon.startOf('day').plus({ minutes: selectedEnd }).toISO();
     
-        // ✅ Transition to Step 2
+        const tempId = await holdTemporaryBooking(start, end);
+        if (!tempId) {
+            alert("Couldn't hold time slot. Please try again.");
+            return;
+        }
+    
+        // 🟢 6. Transition to Step 2
+        console.log("✅ Slot confirmed. Proceeding to Step 2.");
         document.getElementById("date-cal")?.classList.add("hide");
         document.querySelector(".booking-bg-col")?.classList.remove("right");
         document.getElementById("duration-and-time")?.classList.add("hide");
@@ -1461,6 +1502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         startCountdownTimer();
     });
+    
     
     
 
