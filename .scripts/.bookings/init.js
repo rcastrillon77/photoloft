@@ -224,6 +224,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isPast = bookingGlobals.booking_start < currentMinutes;
     
         // 🚫 4. Block if conflict or in the past
+        console.log("🧪 Step 1 validation check:");
+        console.log("→ Conflict:", conflict);
+        console.log("→ Start time:", bookingGlobals.booking_start);
+        console.log("→ Now rounded:", currentMinutes);
+
         if (conflict || isPast) {
             console.warn("🚫 Slot is invalid:", {
                 conflict,
@@ -261,9 +266,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         startCountdownTimer();
     });
     
-    
-    
-
     // Step 2 "Back" → release hold
     document.getElementById('summary-clicker')?.addEventListener('click', async () => {
     if (!document.getElementById("booking-summary-wrapper")?.classList.contains("dark")) return;
