@@ -1398,9 +1398,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookingGlobals.booking_end = selectedEnd;
         bookingGlobals.selected_start_time = selectedRadio.value;
     
-        document.querySelector('#duration')?.setAttribute('value', bookingGlobals.booking_duration / 60);
-        document.querySelector('#start-time')?.setAttribute('value', bookingGlobals.selected_start_time);
-    
+        updateFormField('duration', bookingGlobals.booking_duration / 60);
+        updateFormField('start-time', bookingGlobals.selected_start_time);
+
         console.log("📝 User selection:", {
             selectedStart,
             selectedEnd,
