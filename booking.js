@@ -84,7 +84,27 @@ function updateFormField(id, value) {
         field.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }
+
+function updateAttendeesHiddenField(newValue) {
+    const hiddenInput = document.getElementById('attendees');
+    if (hiddenInput) {
+      hiddenInput.value = newValue;
+      hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
   
+ 
+function updatePurposeHiddenField() {
+    const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
+      .map(el => el.textContent.trim())
+      .filter(Boolean);
+  
+    const hiddenInput = document.getElementById('purpose');
+    if (hiddenInput) {
+      hiddenInput.value = selected.join(', ');
+      hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
