@@ -1743,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         const value = optionEl.dataset.value;
     
-        const selected = bookingTypes?.[Object.keys(bookingTypes).find(key => bookingTypes[key].title === value)];
+        const selected = Object.values(bookingTypes).find(bt => bt.title === value);
         if (selected?.prohibited) {
             alert(selected.message || "This activity is not allowed in the studio.");
             return;
@@ -1756,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             activityInput.value = '';
             if (selectedActivities.length >= 5) activityInput.classList.add('hide');
         }
-    });
+    });    
     
     
     document.addEventListener("click", (e) => {
