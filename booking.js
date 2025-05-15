@@ -47,7 +47,7 @@ window.listingSchedule = {};
 //Step 2
 let attendeeCount = 4; // Starting value — adjust if needed
 const minAttendees = 1;
-const maxAttendees = 20;
+let maxAttendees = window.listingCapacity ?? 20;
 
 const plusBtn = document.getElementById('attendees-more-btn');
 const minusBtn = document.getElementById('attendees-less-btn');
@@ -58,12 +58,7 @@ const suggestionBox = document.querySelector('.select-options-container');
 const selectedContainer = document.querySelector('.selected-options-container');
 const bookingTypeInstructions = document.getElementById('booking-type-instructions');
 
-const bookingTypes = {
-  "portrait-session": { title: "Portrait Session", message: null, count: 20 },
-  "boudoir-photo": { title: "Boudoir Photography", message: "While Boudoir is accepted, please be aware that the studio has security cameras recording at all times. The cameras can be disabled by submitting a request including proof of insurance and a signed liability waiver.", count: 15 },
-  "family-photo": { title: "Family Photography", message: null, count: 12 },
-  "product-photo": { title: "Product Photography", message: null, count: 5 }
-};
+let bookingTypes = {};
 
 let selectedActivities = [];
 
