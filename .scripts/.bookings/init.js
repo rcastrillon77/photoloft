@@ -344,14 +344,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!optionEl || selectedActivities.length >= 5) return;
     
         const value = optionEl.dataset.value;
+    
+        const selected = bookingTypes?.[Object.keys(bookingTypes).find(key => bookingTypes[key].title === value)];
+        if (selected?.prohibited) {
+            alert(selected.message || "This activity is not allowed in the studio.");
+            return;
+        }
+    
         if (!selectedActivities.includes(value)) {
-        selectedActivities.push(value);
-        renderSelectedOptions();
-        updateOptionsList('');
-        activityInput.value = '';
-        if (selectedActivities.length >= 5) activityInput.classList.add('hide');
+            selectedActivities.push(value);
+            renderSelectedOptions();
+            updateOptionsList('');
+            activityInput.value = '';
+            if (selectedActivities.length >= 5) activityInput.classList.add('hide');
         }
     });
+    
     
     document.addEventListener("click", (e) => {
         if (!suggestionBox.contains(e.target) && e.target !== activityInput) {
@@ -379,8 +387,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         countDisplay.textContent = attendeeCount;
         updateAttendeesHiddenField(attendeeCount);
         updatePurposeHiddenField();
-});
-  
-  
+    });
   
 });
