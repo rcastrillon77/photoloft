@@ -91,8 +91,7 @@ function updateAttendeesHiddenField(newValue) {
       hiddenInput.value = newValue;
       hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
-  }
-  
+}  
  
 function updatePurposeHiddenField() {
     const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
