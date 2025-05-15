@@ -1798,21 +1798,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     plusBtn?.addEventListener('click', () => {
-        if (attendeeCount < maxAttendees) {
-            attendeeCount++;
+        const { max, interval } = window.capacitySettings;
+        if (attendeeCount + interval <= max) {
+            attendeeCount += interval;
             countDisplay.textContent = attendeeCount;
             updateAttendeesHiddenField(attendeeCount);
+            updateAttendeeButtons();
         }
     });
-    
     
     minusBtn?.addEventListener('click', () => {
-        if (attendeeCount > minAttendees) {
-        attendeeCount--;
-        countDisplay.textContent = attendeeCount;
-        updateAttendeesHiddenField(attendeeCount);
+        const { min, interval } = window.capacitySettings;
+        if (attendeeCount - interval >= min) {
+            attendeeCount -= interval;
+            countDisplay.textContent = attendeeCount;
+            updateAttendeesHiddenField(attendeeCount);
+            updateAttendeeButtons();
         }
     });
+    
+    
 
     document.addEventListener("DOMContentLoaded", () => {
         countDisplay.textContent = attendeeCount;
