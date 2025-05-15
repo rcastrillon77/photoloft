@@ -1122,7 +1122,7 @@ async function initBookingConfig(listingId, locationId) {
             countDisplay.textContent = attendeeCount;
             updateAttendeesHiddenField(attendeeCount);
             console.log("👥 Loaded capacity:", window.listingCapacity);
-        }
+        }//new
 
 
 
