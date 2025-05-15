@@ -285,7 +285,7 @@ async function checkIfGuestHasActiveHold() {
         return false;
     }
 
-    if (!data || data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
         console.log("❎ No active holds found.");
         return false;
     }
