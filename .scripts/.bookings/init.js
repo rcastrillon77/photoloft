@@ -369,11 +369,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     plusBtn?.addEventListener('click', () => {
         if (attendeeCount < maxAttendees) {
-        attendeeCount++;
-        countDisplay.textContent = attendeeCount;
-        updateAttendeesHiddenField(attendeeCount);
+            attendeeCount++;
+            countDisplay.textContent = attendeeCount;
+            updateAttendeesHiddenField(attendeeCount);
         }
     });
+    
     
     minusBtn?.addEventListener('click', () => {
         if (attendeeCount > minAttendees) {
