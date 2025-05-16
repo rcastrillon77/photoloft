@@ -107,15 +107,13 @@ function updateFormField(id, value) {
 function updateAttendeesHiddenField(newValue) {
     updateFormField('attendees', newValue);
 }
-  
- 
+
 function updatePurposeHiddenField() {
     const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
       .map(el => el.textContent.trim())
       .filter(Boolean);
     updateFormField('purpose', selected.join(', '));
 }
-  
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
