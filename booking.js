@@ -1942,12 +1942,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
             // ✅ 2. Reload latest confirmed events
             const minDate = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: "America/Chicago" }).startOf('day');
-                const maxDate = minDate.endOf('day');
+            const maxDate = minDate.endOf('day');
 
                 const { data: refreshedEvents, error } = await supabase
                 .from("events")
                 .select("start, end")
-                .eq("location_id", window.bookingGlobals.listing_id)
+                .eq("location_id", LOCATION_UUID)
                 .eq("status", "confirmed")
                 .gte("start", minDate.toISO())
                 .lte("end", maxDate.toISO());
