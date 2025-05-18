@@ -1033,18 +1033,22 @@ async function requestPaymentIntent() {
     }
 }
 
-async function checkIfTempHoldIsStillValid() {
-    const now = luxon.DateTime.now().toISO();
-    const { data } = await supabase
+async function isTempHoldStillValid() {
+    const { data, error } = await supabase
       .from("temp_events")
       .select("expires_at")
       .eq("user_id", window.supabaseUser?.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
   
-    return data && data.expires_at && luxon.DateTime.fromISO(data.expires_at) > luxon.DateTime.now();
-}
+    if (!data || error) return false;
+  
+    const now = luxon.DateTime.now();
+    const expiry = luxon.DateTime.fromISO(data.expires_at);
+    return expiry > now;
+  }
+  
 
   // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
