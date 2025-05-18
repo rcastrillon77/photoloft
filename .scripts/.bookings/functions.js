@@ -48,6 +48,7 @@ function updatePurposeHiddenField() {
       .map(el => el.textContent.trim())
       .filter(Boolean);
     updateFormField('purpose', selected.join(', '));
+    window.bookingGlobals.activities = selected;
 }
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
@@ -1449,5 +1450,7 @@ function renderSelectedOptions() {
   
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
+    window.bookingGlobals.activities = [...selectedActivities];
+
 }
   
