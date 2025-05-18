@@ -11,6 +11,7 @@ let DEFAULT_DURATION = 2;
 let EXTENDED_OPTIONS = [6, 8, 10, 12];
 let BUFFER_BEFORE = 15;
 let BUFFER_AFTER = 15;
+let TAX_RATE = 8.25
 
 let BOOKING_WINDOW_DAYS = 60;
 let OPEN_TIME = 8 * 60;
@@ -36,7 +37,8 @@ window.bookingGlobals = {
     booking_rate: FULL_RATE,
     booking_total: DEFAULT_DURATION * FULL_RATE,
     booking_discount: null,
-    selected_start_time: minutesToTimeValue(OPEN_TIME)
+    selected_start_time: minutesToTimeValue(OPEN_TIME),
+    taxRate: TAX_RATE
 };
 
 // === Event & Rate Storage
@@ -46,7 +48,7 @@ window.listingSchedule = {};
 
 //Source
 const urlParams = new URLSearchParams(window.location.search);
-const bookingSource = urlParams.get('source') || 'direct';
+const bookingSource = urlParams.get('source') || null;
 
 
 //Step 2
@@ -68,11 +70,11 @@ let bookingTypes = {};
 let selectedActivities = [];
 
 const payload = {
-    rate: bookingGlobals.rate,
+    rate: bookingGlobals.booking_rate,
     date: bookingGlobals.booking_date,
-    start_time: bookingGlobals.start_time,
-    duration: bookingGlobals.duration,
-    listing_uuid: bookingGlobals.listing_id,
+    start_time: bookingGlobals.booking_start,
+    duration: bookingGlobals.booking_duration,
+    listing_uuid: LISTING_UUID,
     tax_rate: window.bookingGlobals.taxRate,
   
     first_name: document.getElementById('booking-first-name')?.value,
@@ -81,8 +83,8 @@ const payload = {
     phone: document.getElementById('booking-phone')?.value,
     user_uuid: window.supabaseUser?.id || null,
   
-    activities: window.bookingGlobals.activities || [],
-    attendees: window.bookingGlobals.attendees || 1,
+    activities: document.getElementById('purpose') || [],
+    attendees: document.getElementById('attendees') || 1,
     source: bookingSource,
   
     discount_code: window.bookingGlobals.discountCode || null,
