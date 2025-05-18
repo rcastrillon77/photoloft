@@ -912,6 +912,7 @@ async function requestPaymentIntent() {
     const payload = {
         rate: bookingGlobals.booking_rate,
         date: bookingGlobals.booking_date,
+        timezone: window.TIMEZONE,
         start_time: bookingGlobals.booking_start,
         duration: bookingGlobals.booking_duration,
         listing_uuid: LISTING_UUID,
