@@ -888,6 +888,26 @@ async function requestPaymentIntent() {
     const urlParams = new URLSearchParams(window.location.search);
     const bookingSource = urlParams.get('source') || null;
 
+    const selectedLabels = window.bookingGlobals.activities || [];
+
+    const selected = [];
+    const other = [];
+
+    selectedLabels.forEach(label => {
+    const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
+    if (match) {
+        selected.push(match[0]); // push the ID (e.g. "general-photo")
+    } else {
+        other.push(label); // push the custom text (e.g. "Sunset Rooftop Vibes")
+    }
+    });
+
+    const activityPayload = {
+    selected, // pre-defined activity IDs
+    other     // custom user-typed entries
+    };
+
+
     const payload = {
         rate: bookingGlobals.booking_rate,
         date: bookingGlobals.booking_date,
@@ -902,7 +922,7 @@ async function requestPaymentIntent() {
         phone: document.getElementById('booking-phone')?.value,
         user_uuid: window.supabaseUser?.id || null,
     
-        activities: document.getElementById('purpose')?.value?.split(',').map(s => s.trim()).filter(Boolean) || [],
+        activities: activityPayload || [],
         attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
         source: bookingSource,
     
