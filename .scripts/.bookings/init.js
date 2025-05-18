@@ -394,5 +394,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAttendeesHiddenField(attendeeCount);
         updatePurposeHiddenField();
     });
+
+    document.getElementById("confirm-and-pay")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+      
+        const button = e.currentTarget;
+        if (button.classList.contains("disabled") || button.hasAttribute("disabled")) {
+          console.warn("🚫 Confirm & Pay button is disabled. Aborting.");
+          return;
+        }
+      
+        // Check if booking date is still valid
+        const bookingDate = window.bookingGlobals.booking_date;
+        const startTime = window.bookingGlobals.start_time;
+        const now = luxon.DateTime.now().setZone("America/Chicago");
+      
+        // Combine selected date + time into one Luxon DateTime
+        const startDateTime = luxon.DateTime.fromISO(`${bookingDate}T${startTime}`, {
+          zone: "America/Chicago"
+        });
+      
+        if (!startDateTime.isValid || startDateTime < now) {
+          alert("⚠️ Your selected time is no longer available. Please select a new time.");
+          return;
+        }
+      
+        // If we use a temp hold system, confirm it still exists
+        const holdValid = await checkIfTempHoldIsStillValid(); // placeholder, implement as needed
+        if (!holdValid) {
+          alert("⚠️ Your reservation hold expired. Please select your time again.");
+          return;
+        }
+      
+        // Proceed to create payment intent
+        //button.classList.add("loading"); // Optional UI spinner
+        await requestPaymentIntent();
+        button.classList.remove("loading");
+      
+        // Now proceed to render step 3 (payment step)
+        //goToPaymentStep(); // placeholder for your actual UI logic
+      });      
   
 });
