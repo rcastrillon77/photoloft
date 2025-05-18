@@ -471,6 +471,16 @@ function updateAttendeeButtons() {
     countDisplay.textContent = showPlus ? `${attendeeCount}+` : attendeeCount;
 }
 
+function goToStep3() {
+    document.getElementById("attendees-and-type")?.classList.add("hide");
+    document.getElementById("booking-summary-wrapper")?.classList.add("shrink");
+    document.querySelector(".booking-bg-col")?.classList.add("hide");
+    document.getElementById("date-cal")?.classList.add("hidden");
+    document.getElementById("final-summary")?.classList.remove("hidden");
+    document.getElementById("stripe-payment")?.classList.remove("hide");
+  
+    console.log("➡️ Moved to Step 3: Payment");
+}  
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
@@ -974,10 +984,28 @@ async function isTempHoldStillValid() {
     const now = luxon.DateTime.now();
     const expiry = luxon.DateTime.fromISO(data.expires_at);
     return expiry > now;
-  }
+}
+
+// ** PAYMENT ** //
+
+function setupStripeElements() {
+    if (!window.bookingGlobals.client_secret) {
+        console.error("❌ Missing client_secret, can't set up Stripe Elements");
+        return;
+    }
+  
+    stripe = Stripe("pk_live_51Pc8eHHPk1zi7F68Lfo7LHLTmpxCNsSidfCzjFELM9Ajum07WIMljcsbU9L1R2Tejvue1BaZ0xuDwcpiXjwMgrdq00eUxlyH9D"); // 🔐 Replace with your live/test key
+    elements = stripe.elements();
+  
+    cardElement = elements.create("card");
+    cardElement.mount("#stripe-card-element"); // Make sure this exists in your HTML
+  
+    console.log("💳 Stripe Elements mounted");
+}
   
 
-  // ** CALENDAR SYNC ** //
+
+// ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
     const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
 
