@@ -1974,8 +1974,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         // ✅ Proceed with payment intent
         await requestPaymentIntent();
-        //goToPaymentStep(); // <- transition UI to stripe step
+        goToStep3();
     });
-              
+
+    document.getElementById("pay-now-btn")?.addEventListener("click", async () => {
+        const clientSecret = window.bookingGlobals.client_secret;
+        const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
+        const email = document.getElementById("booking-email")?.value;
+        const phone = document.getElementById("booking-phone")?.value;
+      
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: {
+                card: cardElement,
+                billing_details: {
+                name,
+                email,
+                phone
+                }
+            }
+        });
+      
+        if (error) {
+            console.error("❌ Stripe payment failed:", error.message);
+            alert("Payment failed: " + error.message);
+        } else if (paymentIntent && paymentIntent.status === "succeeded") {
+            console.log("✅ Payment succeeded:", paymentIntent.id);
+            // Continue to booking confirmation step
+            showBookingConfirmation();
+        }
+    });           
   
 });
