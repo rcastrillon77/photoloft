@@ -1001,8 +1001,8 @@ async function requestPaymentIntent() {
         phone: document.getElementById('booking-phone')?.value,
         user_uuid: window.supabaseUser?.id || null,
     
-        activities: document.getElementById('purpose') || [],
-        attendees: document.getElementById('attendees') || 1,
+        activities: document.getElementById('purpose')?.value?.split(',').map(s => s.trim()).filter(Boolean) || [],
+        attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
         source: bookingSource,
     
         discount_code: window.bookingGlobals.discountCode || null,
