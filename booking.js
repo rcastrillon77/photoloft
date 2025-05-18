@@ -1935,36 +1935,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         const holdStillValid = await isTempHoldStillValid();
       
         if (!holdStillValid) {
-          console.warn("🔁 Temp hold expired. Cleaning up and rechecking...");
-      
-          // ✅ 1. Clean up expired holds
-          await deleteExpiredHolds();
-      
-          // ✅ 2. Reload latest confirmed events
-          const { data: refreshedEvents, error } = await supabase
-            .from("events")
-            .select("*")
-            .eq("location_id", window.bookingGlobals.listing_id)
-            .eq("status", "confirmed")
-            .gte("start", minDate.toISOString())
-            .lte("end", maxDate.toISOString())
-      
-          if (error || !refreshedEvents) {
-            alert("⚠️ Error checking current availability. Please try again.");
-            return;
-          }
-      
-          const startCode = window.bookingGlobals.selected_start_time;
-          const startMinutes = parseInt(startCode.substring(0, 2)) * 60 + parseInt(startCode.substring(2), 10);
-          const durationMinutes = window.bookingGlobals.duration * 60;
-      
-          const stillAvailable = isTimeSlotAvailable(startMinutes, durationMinutes, refreshedEvents);
-      
-          if (!stillAvailable) {
-            alert("⚠️ Your selected time has been taken. Please choose another.");
-            //returnToStepOne(); // <- your function to reset UI
-            return;
-          }
+            console.warn("🔁 Temp hold expired. Cleaning up and rechecking...");
+        
+            // ✅ 1. Clean up expired holds
+            await deleteExpiredHolds();
+        
+            // ✅ 2. Reload latest confirmed events
+            const minDate = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: "America/Chicago" }).startOf('day');
+                const maxDate = minDate.endOf('day');
+
+                const { data: refreshedEvents, error } = await supabase
+                .from("events")
+                .select("start, end")
+                .eq("location_id", window.bookingGlobals.listing_id)
+                .eq("status", "confirmed")
+                .gte("start", minDate.toISO())
+                .lte("end", maxDate.toISO());
+
+        
+                if (error || !refreshedEvents) {
+                    console.error("❌ Supabase fetch error:", error);
+                    console.log("🔍 Data:", refreshedEvents);
+                    alert("⚠️ Error checking current availability. Please try again.");
+                    return;
+                }
+                
+        
+            const startCode = window.bookingGlobals.selected_start_time;
+            const startMinutes = parseInt(startCode.substring(0, 2)) * 60 + parseInt(startCode.substring(2), 10);
+            const durationMinutes = window.bookingGlobals.duration * 60;
+        
+            const stillAvailable = isTimeSlotAvailable(startMinutes, durationMinutes, refreshedEvents);
+        
+            if (!stillAvailable) {
+                alert("⚠️ Your selected time has been taken. Please choose another.");
+                //returnToStepOne(); // <- your function to reset UI
+                return;
+            }
         }
       
         // ✅ Proceed with payment intent
