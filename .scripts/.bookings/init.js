@@ -417,7 +417,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             .select("*")
             .eq("location_id", window.bookingGlobals.listing_id)
             .eq("status", "confirmed")
-            .gte("start", window.bookingGlobals.booking_date); // adjust as needed
+            .gte("start", minDate.toISOString())
+            .lte("end", maxDate.toISOString())
       
           if (error || !refreshedEvents) {
             alert("⚠️ Error checking current availability. Please try again.");
