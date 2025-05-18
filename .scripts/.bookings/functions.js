@@ -899,7 +899,7 @@ async function requestPaymentIntent() {
     if (match) {
         selected.push(match[0]); // push the ID (e.g. "general-photo")
     } else {
-        other.push(label); // push the custom text (e.g. "Sunset Rooftop Vibes")
+        other.push(label.replace(/^Other:\s*/i, "").trim());
     }
     });
 
