@@ -884,7 +884,75 @@ async function findNextAvailableDate(maxDays = 30) {
     return null;
 }
 
-// ** CALENDAR SYNC ** //
+async function requestPaymentIntent() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingSource = urlParams.get('source') || 'direct';
+  
+    const payload = {
+      rate: window.bookingGlobals.rate,
+      date: window.bookingGlobals.booking_date,
+      start_time: window.bookingGlobals.start_time,
+      duration: window.bookingGlobals.duration,
+      listing_uuid: window.bookingGlobals.listing_id,
+      tax_rate: window.bookingGlobals.taxRate,
+  
+      first_name: document.getElementById('booking-first-name')?.value,
+      last_name: document.getElementById('booking-last-name')?.value,
+      email: document.getElementById('booking-email')?.value,
+      phone: document.getElementById('booking-phone')?.value,
+      user_uuid: window.supabaseUser?.id || null,
+  
+      activities: window.bookingGlobals.activities || [],
+      attendees: window.bookingGlobals.attendees || 1,
+      source: bookingSource,
+  
+      // Optional fields (add later in step 3)
+      discount_code: window.bookingGlobals.discountCode || null,
+      discount_certificate_uuid: window.bookingGlobals.discountUUID || null,
+      credits_applied: window.bookingGlobals.creditsApplied || 0.0
+    };
+  
+    try {
+      const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!response.ok) {
+        throw new Error(`PaymentIntent webhook failed: ${response.status}`);
+      }
+  
+      const data = await response.json();
+  
+      // Store client_secret and intent ID for Step 3
+      window.bookingGlobals.client_secret = data.client_secret;
+      window.bookingGlobals.payment_intent_id = data.payment_intent_id;
+  
+      console.log("✅ PaymentIntent created:", data);
+  
+    } catch (err) {
+      console.error("❌ Error requesting PaymentIntent:", err);
+      // Show UI error here if needed
+    }
+}
+
+async function checkIfTempHoldIsStillValid() {
+    const now = luxon.DateTime.now().toISO();
+    const { data } = await supabase
+      .from("temp_events")
+      .select("expires_at")
+      .eq("user_id", window.supabaseUser?.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+  
+    return data && data.expires_at && luxon.DateTime.fromISO(data.expires_at) > luxon.DateTime.now();
+}
+
+  // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
     const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
 
