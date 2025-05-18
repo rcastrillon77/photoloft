@@ -44,6 +44,11 @@ window.bookingEvents = [];
 window.specialRates = {};
 window.listingSchedule = {};
 
+//Source
+const urlParams = new URLSearchParams(window.location.search);
+const bookingSource = urlParams.get('source') || 'direct';
+
+
 //Step 2
 let attendeeCount = 4; // Starting value — adjust if needed
 const minAttendees = 1;
@@ -61,3 +66,27 @@ const bookingTypeInstructions = document.getElementById('booking-type-instructio
 let bookingTypes = {};
 
 let selectedActivities = [];
+
+const payload = {
+    rate: bookingGlobals.rate,
+    date: bookingGlobals.booking_date,
+    start_time: bookingGlobals.start_time,
+    duration: bookingGlobals.duration,
+    listing_uuid: bookingGlobals.listing_id,
+    tax_rate: window.bookingGlobals.taxRate,
+  
+    first_name: document.getElementById('booking-first-name')?.value,
+    last_name: document.getElementById('booking-last-name')?.value,
+    email: document.getElementById('booking-email')?.value,
+    phone: document.getElementById('booking-phone')?.value,
+    user_uuid: window.supabaseUser?.id || null,
+  
+    activities: window.bookingGlobals.activities || [],
+    attendees: window.bookingGlobals.attendees || 1,
+    source: bookingSource,
+  
+    discount_code: window.bookingGlobals.discountCode || null,
+    discount_certificate_uuid: window.bookingGlobals.discountUUID || null, 
+    credits_applied: window.bookingGlobals.creditsApplied || 0.0
+  };
+  
