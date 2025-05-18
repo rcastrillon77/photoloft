@@ -24,6 +24,10 @@ let maxDate = new Date();
 let refreshTimeout = null;
 let isRefreshingStartTimes = false;
 
+let stripe;
+let elements;
+let cardElement;
+
 // === User & Membership Info
 const MEMBERSHIP = (window.supabaseUser?.membership || 'non-member').toLowerCase();
 const PREPAID_HOURS = window.supabaseUser?.prepaid || 0;
