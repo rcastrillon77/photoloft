@@ -984,7 +984,32 @@ async function findNextAvailableDate(maxDays = 30) {
 }
 
 async function requestPaymentIntent() {
-  
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingSource = urlParams.get('source') || null;
+
+    const payload = {
+        rate: bookingGlobals.booking_rate,
+        date: bookingGlobals.booking_date,
+        start_time: bookingGlobals.booking_start,
+        duration: bookingGlobals.booking_duration,
+        listing_uuid: LISTING_UUID,
+        tax_rate: window.bookingGlobals.taxRate,
+    
+        first_name: document.getElementById('booking-first-name')?.value,
+        last_name: document.getElementById('booking-last-name')?.value,
+        email: document.getElementById('booking-email')?.value,
+        phone: document.getElementById('booking-phone')?.value,
+        user_uuid: window.supabaseUser?.id || null,
+    
+        activities: document.getElementById('purpose') || [],
+        attendees: document.getElementById('attendees') || 1,
+        source: bookingSource,
+    
+        discount_code: window.bookingGlobals.discountCode || null,
+        discount_certificate_uuid: window.bookingGlobals.discountUUID || null, 
+        credits_applied: window.bookingGlobals.creditsApplied || 0.0
+    };
+    
     try {
       const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
         method: "POST",
