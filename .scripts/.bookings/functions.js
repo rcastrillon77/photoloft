@@ -1208,7 +1208,7 @@ async function initBookingConfig(listingId, locationId) {
                     flat[key] = obj;
                 }
             }
-            window.bookingGlobals.taxRate = capacityConfig = activitiesData.details?.["tax-rate"];
+            window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
             bookingTypes = flat;
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
