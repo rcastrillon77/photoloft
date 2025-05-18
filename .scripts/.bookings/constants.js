@@ -38,7 +38,10 @@ window.bookingGlobals = {
     booking_total: DEFAULT_DURATION * FULL_RATE,
     booking_discount: null,
     selected_start_time: minutesToTimeValue(OPEN_TIME),
-    taxRate: TAX_RATE
+    taxRate: TAX_RATE,
+    discountCode: null,
+    discountUUID: null,
+    creditsApplied: 0
 };
 
 // === Event & Rate Storage
