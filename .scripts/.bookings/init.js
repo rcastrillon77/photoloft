@@ -400,37 +400,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const button = e.currentTarget;
         if (button.classList.contains("disabled") || button.hasAttribute("disabled")) {
-          console.warn("🚫 Confirm & Pay button is disabled. Aborting.");
           return;
         }
       
-        // ⏱ Validate time slot
-        const bookingDate = window.bookingGlobals.booking_date;
-        const startCode = window.bookingGlobals.selected_start_time;
-        const hours = parseInt(startCode.substring(0, 2), 10);
-        const minutes = parseInt(startCode.substring(2), 10);
+        const holdStillValid = await isTempHoldStillValid();
       
-        const startDateTime = luxon.DateTime.fromJSDate(bookingDate, { zone: "America/Chicago" })
-          .startOf("day")
-          .plus({ hours, minutes });
+        if (!holdStillValid) {
+          console.warn("🔁 Temp hold expired. Cleaning up and rechecking...");
       
-        const now = luxon.DateTime.now().setZone("America/Chicago");
+          // ✅ 1. Clean up expired holds
+          await deleteExpiredHolds();
       
-        if (!startDateTime.isValid || startDateTime < now) {
-          alert("⚠️ Your selected time is no longer available. Please select a new time.");
-          return;
+          // ✅ 2. Reload latest confirmed events
+          const { data: refreshedEvents, error } = await supabase
+            .from("calendar_events")
+            .select("*")
+            .eq("studio_id", window.bookingGlobals.listing_id)
+            .eq("status", "confirmed")
+            .gte("start", window.bookingGlobals.booking_date); // adjust as needed
+      
+          if (error || !refreshedEvents) {
+            alert("⚠️ Error checking current availability. Please try again.");
+            return;
+          }
+      
+          const startCode = window.bookingGlobals.selected_start_time;
+          const startMinutes = parseInt(startCode.substring(0, 2)) * 60 + parseInt(startCode.substring(2), 10);
+          const durationMinutes = window.bookingGlobals.duration * 60;
+      
+          const stillAvailable = isTimeSlotAvailable(startMinutes, durationMinutes, refreshedEvents);
+      
+          if (!stillAvailable) {
+            alert("⚠️ Your selected time has been taken. Please choose another.");
+            //returnToStepOne(); // <- your function to reset UI
+            return;
+          }
         }
       
-        const holdValid = await checkIfTempHoldIsStillValid();
-        if (!holdValid) {
-          alert("⚠️ Your reservation hold expired. Please select your time again.");
-          return;
-        }
-      
-        // ✅ Create PaymentIntent
+        // ✅ Proceed with payment intent
         await requestPaymentIntent();
-      
-        // ✅ (Next step: show payment form / Stripe Elements)
-      });         
+        //goToPaymentStep(); // <- transition UI to stripe step
+    });
+              
   
 });
