@@ -1208,6 +1208,7 @@ async function initBookingConfig(listingId, locationId) {
                     flat[key] = obj;
                 }
             }
+            window.bookingGlobals.taxRate = capacityConfig = activitiesData.details?.["tax-rate"];
             bookingTypes = flat;
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
@@ -1402,7 +1403,6 @@ function updateBookingTypeMessageBox() {
     box.classList.toggle('hidden', messages.size === 0);
     box.innerHTML = [...messages].map(msg => `<div>${msg}</div>`).join('');
 }
-
   
 function renderSelectedOptions() {
     const container = selectedContainer;
