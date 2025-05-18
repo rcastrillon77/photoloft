@@ -413,9 +413,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       
           // ✅ 2. Reload latest confirmed events
           const { data: refreshedEvents, error } = await supabase
-            .from("calendar_events")
+            .from("events")
             .select("*")
-            .eq("studio_id", window.bookingGlobals.listing_id)
+            .eq("location_id", window.bookingGlobals.listing_id)
             .eq("status", "confirmed")
             .gte("start", window.bookingGlobals.booking_date); // adjust as needed
       
