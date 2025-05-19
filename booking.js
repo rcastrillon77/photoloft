@@ -663,7 +663,6 @@ function populateFinalSummary() {
     document.querySelector("#final-booking-summary-taxes .summary-line-item-price").textContent = `$${tax.toFixed(2)}`;
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
-  
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
