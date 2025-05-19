@@ -555,7 +555,8 @@ function goToStep3() {
     document.querySelector(".booking-bg-col")?.classList.add("right");
     document.getElementById("date-cal")?.classList.add("hidden");
     document.getElementById("final-summary")?.classList.remove("hidden");
-    document.querySelector(".summary-clicker")?.classList.remove("hidden");
+    document.getElementById("stripe-payment")?.classList.remove("hide");
+    document.querySelector(".summary-clicker")?.classList.add("hidden");
   
     // New summary layout
     document.getElementById("initial-booking-summary")?.classList.add("hide");
