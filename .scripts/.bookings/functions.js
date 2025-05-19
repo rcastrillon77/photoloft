@@ -524,55 +524,59 @@ function populateFinalSummary() {
       activityList.appendChild(pill);
     });
   
-    // Price rows
+    // Line item conditions
     const baseHours = (globals.booking_duration / 60).toFixed(1);
     const baseRate = globals.booking_rate;
     const baseTotal = baseHours * baseRate;
-  
-    document.getElementById("final-booking-summary-li-booking").textContent = `Booking (${baseHours} Hrs x $${baseRate}/hr)`;
-    document.getElementById("final-booking-summary-t-booking").textContent = `$${baseTotal.toFixed(2)}`;
-  
-    // Line item conditions
+
+    const bookingLine = document.querySelector("#final-booking-summary-booking");
+    if (bookingLine) {
+    bookingLine.querySelector(".summary-line-item").textContent = `Booking (${baseHours} Hrs x $${baseRate}/hr)`;
+    bookingLine.querySelector(".summary-line-item-price").textContent = `$${baseTotal.toFixed(2)}`;
+    }
+
+    // Get values
     const discountAmount = globals.booking_discount?.amount || 0;
     const creditsAmount = globals.creditsApplied || 0;
     const couponCode = globals.discountCode || "";
-  
-    // Special rate
-    const specialRateRow = document.getElementById("final-booking-summary-li-special-rate")?.closest(".summary-line-item-container");
-    if (discountAmount && specialRateRow) {
-      specialRateRow.classList.remove("hide");
-      document.getElementById("final-booking-summary-t-special-rate").textContent = `- $${discountAmount.toFixed(2)}`;
-    } else {
-      specialRateRow?.classList.add("hide");
+    const taxRate = globals.taxRate/100 || 0.0825;
+
+    // Toggle discount line
+    const discountLine = document.getElementById("final-booking-summary-special-rate");
+    discountLine?.classList.toggle("hide", !discountAmount);
+    if (discountAmount) {
+    discountLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
     }
-  
-    // Credits
-    const creditsRow = document.getElementById("final-booking-summary-t-credits")?.closest(".summary-line-item-container");
-    if (creditsAmount && creditsRow) {
-      creditsRow.classList.remove("hide");
-      document.getElementById("final-booking-summary-t-credits").textContent = `- $${creditsAmount.toFixed(2)}`;
-    } else {
-      creditsRow?.classList.add("hide");
+
+    // Toggle credits line
+    const creditsLine = document.getElementById("final-booking-summary-credits");
+    creditsLine?.classList.toggle("hide", !creditsAmount);
+    if (creditsAmount) {
+    creditsLine.querySelector(".summary-line-item-price").textContent = `- $${creditsAmount.toFixed(2)}`;
     }
-  
-    // Coupon code
-    const codeRow = document.getElementById("final-booking-summary-li-code")?.closest(".summary-line-item-container");
-    if (couponCode && codeRow) {
-      codeRow.classList.remove("hide");
-      document.getElementById("final-booking-summary-li-code").textContent = `${couponCode}`;
-      document.getElementById("final-booking-summary-t-code").textContent = `- $${discountAmount.toFixed(2)}`;
-    } else {
-      codeRow?.classList.add("hide");
+
+    // Toggle code line
+    const codeLine = document.getElementById("final-booking-summary-code");
+    codeLine?.classList.toggle("hide", !couponCode);
+    if (couponCode) {
+    codeLine.querySelector(".summary-line-item").textContent = `${couponCode}`;
+    codeLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
     }
-  
-    // Subtotal / tax / total
+
+    // Subtotal logic (hide if nothing applied)
+    const shouldHideSubtotal = !discountAmount && !creditsAmount && !couponCode;
+    document.getElementById("final-booking-summary-subtotal")?.classList.toggle("hide", shouldHideSubtotal);
+    document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
+
+    // Subtotal, tax, total
     const subtotal = baseTotal - discountAmount - creditsAmount;
-    const tax = subtotal * (globals.taxRate || 0.0825);
+    const tax = subtotal * taxRate;
     const total = subtotal + tax;
-  
-    const subtotalRow = document.getElementById("final-booking-summary-t-subtotal")?.closest(".summary-line-item-container");
-    const divider = document.querySelector(".summary-divider");
-  
+
+    document.querySelector("#final-booking-summary-subtotal .summary-line-item-price").textContent = `$${subtotal.toFixed(2)}`;
+    document.querySelector("#final-booking-summary-taxes .summary-line-item-price").textContent = `$${tax.toFixed(2)}`;
+    document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
+
     if (!discountAmount && !creditsAmount && !couponCode) {
       subtotalRow?.classList.add("hide");
       divider?.classList.add("hide");
