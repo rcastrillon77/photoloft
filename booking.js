@@ -2128,9 +2128,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             payment_method: {
                 card: cardElement,
                 billing_details: {
-                name,
-                email,
-                phone
+                    name,
+                    email,
+                    phone
                 }
             }
         });
