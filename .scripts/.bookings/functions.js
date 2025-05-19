@@ -497,7 +497,7 @@ function populateFinalSummary() {
     const globals = window.bookingGlobals;
     const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
   
-    // Basic date/time
+    // 📅 Date, time
     document.getElementById("final-summary-date").textContent = luxonDate.toFormat("MMMM d, yyyy");
   
     const startMinutes = globals.booking_start;
@@ -506,7 +506,7 @@ function populateFinalSummary() {
     document.getElementById("final-summary-start").textContent = formatMinutesToTime(startMinutes);
     document.getElementById("final-summary-end").textContent = formatMinutesToTime(endMinutes);
   
-    // Contact and guests
+    // 👥 Name, email, phone, attendees
     document.getElementById("final-summary-attendees").textContent = globals.attendees || 1;
     const first = document.getElementById("booking-first-name")?.value || "";
     const last = document.getElementById("booking-last-name")?.value || "";
@@ -514,81 +514,83 @@ function populateFinalSummary() {
     document.getElementById("email").textContent = document.getElementById("booking-email")?.value || "";
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
   
-    // Activities pills
+    // 🏷️ Activities
+    const selectedLabels = globals.activities || [];
+    const selected = [];
+    const other = [];
+  
+    selectedLabels.forEach(label => {
+      const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
+      if (match) {
+        selected.push(match[0]);
+      } else {
+        other.push(label.replace(/^Other:\s*/i, "").trim());
+      }
+    });
+  
     const activityList = document.getElementById("final-summary-activities");
     activityList.innerHTML = "";
-    (globals.activities || []).forEach(label => {
+    [...selected, ...other].forEach(label => {
       const pill = document.createElement("div");
       pill.className = "booking-summary-value pill";
       pill.textContent = label;
       activityList.appendChild(pill);
     });
   
-    // Line item conditions
+    const activityLabel = document.getElementById("final-summary-activities-label");
+    activityLabel.textContent = (selected.length + other.length) === 1 ? "Activity" : "Activities";
+  
+    // 💵 Line items
     const baseHours = (globals.booking_duration / 60).toFixed(1);
     const baseRate = globals.booking_rate;
     const baseTotal = baseHours * baseRate;
-
+  
     const bookingLine = document.querySelector("#final-booking-summary-booking");
     if (bookingLine) {
-    bookingLine.querySelector(".summary-line-item").textContent = `Booking (${baseHours} Hrs x $${baseRate}/hr)`;
-    bookingLine.querySelector(".summary-line-item-price").textContent = `$${baseTotal.toFixed(2)}`;
+      bookingLine.querySelector(".summary-line-item").textContent = `Booking (${baseHours} Hrs x $${baseRate}/hr)`;
+      bookingLine.querySelector(".summary-line-item-price").textContent = `$${baseTotal.toFixed(2)}`;
     }
-
-    // Get values
+  
     const discountAmount = globals.booking_discount?.amount || 0;
     const creditsAmount = globals.creditsApplied || 0;
     const couponCode = globals.discountCode || "";
-    const taxRate = globals.taxRate/100 || 0.0825;
-
-    // Toggle discount line
+    const taxRate = (globals.taxRate || 8.25) / 100;
+  
+    // Toggle special rate
     const discountLine = document.getElementById("final-booking-summary-special-rate");
     discountLine?.classList.toggle("hide", !discountAmount);
     if (discountAmount) {
-    discountLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
+      discountLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
     }
-
-    // Toggle credits line
+  
+    // Toggle credits
     const creditsLine = document.getElementById("final-booking-summary-credits");
     creditsLine?.classList.toggle("hide", !creditsAmount);
     if (creditsAmount) {
-    creditsLine.querySelector(".summary-line-item-price").textContent = `- $${creditsAmount.toFixed(2)}`;
+      creditsLine.querySelector(".summary-line-item-price").textContent = `- $${creditsAmount.toFixed(2)}`;
     }
-
-    // Toggle code line
+  
+    // Toggle coupon
     const codeLine = document.getElementById("final-booking-summary-code");
     codeLine?.classList.toggle("hide", !couponCode);
     if (couponCode) {
-    codeLine.querySelector(".summary-line-item").textContent = `${couponCode}`;
-    codeLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
+      codeLine.querySelector(".summary-line-item").textContent = `${couponCode}`;
+      codeLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
     }
-
-    // Subtotal logic (hide if nothing applied)
+  
     const shouldHideSubtotal = !discountAmount && !creditsAmount && !couponCode;
     document.getElementById("final-booking-summary-subtotal")?.classList.toggle("hide", shouldHideSubtotal);
     document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
-
-    // Subtotal, tax, total
+  
     const subtotal = baseTotal - discountAmount - creditsAmount;
     const tax = subtotal * taxRate;
     const total = subtotal + tax;
-
+  
     document.querySelector("#final-booking-summary-subtotal .summary-line-item-price").textContent = `$${subtotal.toFixed(2)}`;
     document.querySelector("#final-booking-summary-taxes .summary-line-item-price").textContent = `$${tax.toFixed(2)}`;
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
-
-    if (!discountAmount && !creditsAmount && !couponCode) {
-      subtotalRow?.classList.add("hide");
-      divider?.classList.add("hide");
-    } else {
-      subtotalRow?.classList.remove("hide");
-      divider?.classList.remove("hide");
-      document.getElementById("final-booking-summary-t-subtotal").textContent = `$${subtotal.toFixed(2)}`;
-    }
+}
   
-    document.getElementById("final-booking-summary-t-taxes").textContent = `$${tax.toFixed(2)}`;
-    document.getElementById("final-booking-summary-t-total").textContent = `$${total.toFixed(2)}`;
-}  
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
