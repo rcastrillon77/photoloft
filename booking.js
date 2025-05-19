@@ -1179,10 +1179,45 @@ function setupStripeElements() {
     stripe = Stripe("pk_live_51Pc8eHHPk1zi7F68Lfo7LHLTmpxCNsSidfCzjFELM9Ajum07WIMljcsbU9L1R2Tejvue1BaZ0xuDwcpiXjwMgrdq00eUxlyH9D"); // 🔐 Replace with your live/test key
     elements = stripe.elements();
   
-    cardElement = elements.create("card");
-    cardElement.mount("#stripe-card-element"); // Make sure this exists in your HTML
-  
-    console.log("💳 Stripe Elements mounted");
+    const style = {
+        base: {
+          fontSize: "1.5em",
+          color: "#191918",
+          fontFamily: "'Inter', sans-serif",
+          "::placeholder": {
+            color: "#19191800"
+          }
+        },
+        invalid: {
+          color: "#e5424d",
+          iconColor: "#e5424d"
+        }
+    };
+    
+    const cardElement = elements.create("card", { style });
+    cardElement.mount("#stripe-card-element");
+
+    const wrapper = document.querySelector(".stripe-wrapper");
+
+    cardElement.on("focus", () => {
+        wrapper.classList.add("focused");
+    });
+
+    cardElement.on("blur", () => {
+        wrapper.classList.remove("focused");
+    });
+
+    cardElement.on("change", (event) => {
+    if (event.complete || event.value) {
+        wrapper.classList.add("filled");
+    } else {
+        wrapper.classList.remove("filled");
+    }
+    });
+
+    // Save for use in payment handler
+    window.stripe = stripe;
+    window.cardElement = cardElement;
 }
   
 
