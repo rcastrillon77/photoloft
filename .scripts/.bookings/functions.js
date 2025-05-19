@@ -478,52 +478,44 @@ function updateAttendeeButtons() {
 
 function goToStep3() {
     document.getElementById("attendees-and-type")?.classList.add("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.add("shrink");
-    document.querySelector(".booking-bg-col")?.classList.add("hide");
+    document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
+    document.querySelector(".booking-bg-col")?.classList.add("right");
     document.getElementById("date-cal")?.classList.add("hidden");
+    document.getElementById("final-summary")?.classList.remove("hidden");
+    document.querySelector(".summary-clicker")?.classList.remove("hidden");
   
-    // ✅ Swap the summary views
+    // New summary layout
     document.getElementById("initial-booking-summary")?.classList.add("hide");
     document.querySelector(".booking-summary-section.final")?.classList.remove("hide");
   
-    // ✅ Show Stripe payment section
-    document.getElementById("final-summary")?.classList.remove("hidden");
-    document.getElementById("stripe-payment")?.classList.remove("hide");
-    
     populateFinalSummary();
     setupStripeElements();
-  
-    console.log("➡️ Moved to Step 3: Payment");
-}
+}  
 
 function populateFinalSummary() {
     const globals = window.bookingGlobals;
     const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
   
-    // Final booking date (e.g. November 1, 2025)
+    // Basic date/time
     document.getElementById("final-summary-date").textContent = luxonDate.toFormat("MMMM d, yyyy");
   
-    // Final start and end time
     const startMinutes = globals.booking_start;
     const endMinutes = globals.booking_start + globals.booking_duration;
   
     document.getElementById("final-summary-start").textContent = formatMinutesToTime(startMinutes);
     document.getElementById("final-summary-end").textContent = formatMinutesToTime(endMinutes);
   
-    // Final attendees
+    // Contact and guests
     document.getElementById("final-summary-attendees").textContent = globals.attendees || 1;
-  
-    // Final name, email, phone
     const first = document.getElementById("booking-first-name")?.value || "";
     const last = document.getElementById("booking-last-name")?.value || "";
     document.getElementById("final-summary-name").textContent = `${first} ${last}`;
     document.getElementById("email").textContent = document.getElementById("booking-email")?.value || "";
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
   
-    // Final activities
+    // Activities pills
     const activityList = document.getElementById("final-summary-activities");
     activityList.innerHTML = "";
-  
     (globals.activities || []).forEach(label => {
       const pill = document.createElement("div");
       pill.className = "booking-summary-value pill";
@@ -531,28 +523,67 @@ function populateFinalSummary() {
       activityList.appendChild(pill);
     });
   
-    // Final pricing (these are IDs from your HTML)
-    document.getElementById("final-booking-summary-li-booking").textContent =
-      `Booking (${(globals.booking_duration / 60).toFixed(1)} Hrs x $${globals.booking_rate}/hr)`;
-    document.getElementById("final-booking-summary-t-booking").textContent =
-      `$${(globals.booking_duration / 60 * globals.booking_rate).toFixed(2)}`;
+    // Price rows
+    const baseHours = (globals.booking_duration / 60).toFixed(1);
+    const baseRate = globals.booking_rate;
+    const baseTotal = baseHours * baseRate;
   
-    // Discounts, credits, subtotal, taxes, total
-    const discount = globals.booking_discount?.amount || 0;
-    const credits = globals.creditsApplied || 0;
-    const subtotal = globals.booking_total || 0;
-    const tax = subtotal * (globals.taxRate || 0);
+    document.getElementById("final-booking-summary-li-booking").textContent = `Booking (${baseHours} Hrs x $${baseRate}/hr)`;
+    document.getElementById("final-booking-summary-t-booking").textContent = `$${baseTotal.toFixed(2)}`;
+  
+    // Line item conditions
+    const discountAmount = globals.booking_discount?.amount || 0;
+    const creditsAmount = globals.creditsApplied || 0;
+    const couponCode = globals.discountCode || "";
+  
+    // Special rate
+    const specialRateRow = document.getElementById("final-booking-summary-li-special-rate")?.closest(".summary-line-item-container");
+    if (discountAmount && specialRateRow) {
+      specialRateRow.classList.remove("hide");
+      document.getElementById("final-booking-summary-t-special-rate").textContent = `- $${discountAmount.toFixed(2)}`;
+    } else {
+      specialRateRow?.classList.add("hide");
+    }
+  
+    // Credits
+    const creditsRow = document.getElementById("final-booking-summary-t-credits")?.closest(".summary-line-item-container");
+    if (creditsAmount && creditsRow) {
+      creditsRow.classList.remove("hide");
+      document.getElementById("final-booking-summary-t-credits").textContent = `- $${creditsAmount.toFixed(2)}`;
+    } else {
+      creditsRow?.classList.add("hide");
+    }
+  
+    // Coupon code
+    const codeRow = document.getElementById("final-booking-summary-li-code")?.closest(".summary-line-item-container");
+    if (couponCode && codeRow) {
+      codeRow.classList.remove("hide");
+      document.getElementById("final-booking-summary-li-code").textContent = `${couponCode}`;
+      document.getElementById("final-booking-summary-t-code").textContent = `- $${discountAmount.toFixed(2)}`;
+    } else {
+      codeRow?.classList.add("hide");
+    }
+  
+    // Subtotal / tax / total
+    const subtotal = baseTotal - discountAmount - creditsAmount;
+    const tax = subtotal * (globals.taxRate || 0.0825);
     const total = subtotal + tax;
   
-    document.getElementById("final-booking-summary-t-special-rate").textContent = discount ? `- $${discount.toFixed(2)}` : "";
-    document.getElementById("final-booking-summary-t-credits").textContent = credits ? `- $${credits.toFixed(2)}` : "";
-    document.getElementById("final-booking-summary-li-code").textContent = globals.discountCode || "";
-    document.getElementById("final-booking-summary-t-code").textContent = globals.discountCode ? `- $${discount.toFixed(2)}` : "";
+    const subtotalRow = document.getElementById("final-booking-summary-t-subtotal")?.closest(".summary-line-item-container");
+    const divider = document.querySelector(".summary-divider");
   
-    document.getElementById("final-booking-summary-t-subtotal").textContent = `$${subtotal.toFixed(2)}`;
+    if (!discountAmount && !creditsAmount && !couponCode) {
+      subtotalRow?.classList.add("hide");
+      divider?.classList.add("hide");
+    } else {
+      subtotalRow?.classList.remove("hide");
+      divider?.classList.remove("hide");
+      document.getElementById("final-booking-summary-t-subtotal").textContent = `$${subtotal.toFixed(2)}`;
+    }
+  
     document.getElementById("final-booking-summary-t-taxes").textContent = `$${tax.toFixed(2)}`;
     document.getElementById("final-booking-summary-t-total").textContent = `$${total.toFixed(2)}`;
-}
+}  
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
