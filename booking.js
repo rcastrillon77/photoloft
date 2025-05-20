@@ -664,6 +664,22 @@ function populateFinalSummary() {
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
 
+function updatePaymentUIState() {
+    const isPolicyChecked = document.getElementById("accept-policies")?.checked;
+    const cardComplete = window.cardElements?.cardNumber?._complete &&
+                         window.cardElements?.cardExpiry?._complete &&
+                         window.cardElements?.cardCvc?._complete;
+  
+    // Show/hide Pay Now button
+    document.getElementById("pay-now-btn")?.classList.toggle("hide", !(isPolicyChecked && cardComplete));
+  
+    // Show/hide Apple/Google Pay
+    const prContainer = document.getElementById("payment-request-button");
+    if (prContainer) {
+      prContainer.style.display = isPolicyChecked ? "block" : "none";
+    }
+}
+
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
