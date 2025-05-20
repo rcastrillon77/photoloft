@@ -666,7 +666,7 @@ function populateFinalSummary() {
 
 function updatePaymentUIState() {
     const isPolicyChecked = document.getElementById("accept-policies")?.checked;
-    
+
     const prContainer = document.getElementById("payment-request-button");
     if (prContainer) {
       prContainer.style.display = isPolicyChecked ? "block" : "none";
@@ -1210,9 +1210,9 @@ function setupStripeElements() {
         { element: cardNumber, id: "card-number-element" },
         { element: cardExpiry, id: "card-expiry-element" },
         { element: cardCvc, id: "card-cvc-element" }
-      ];
+    ];
       
-      mountTargets.forEach(({ element, id }) => {
+    mountTargets.forEach(({ element, id }) => {
         const wrapper = document.getElementById(id)?.closest(".form-input");
         const target = document.getElementById(id);
         const label = wrapper?.querySelector(".field-label");
@@ -1234,7 +1234,19 @@ function setupStripeElements() {
             label?.classList.remove("small");
           }
         });
-      });
+    });
+
+    if (window.cardElements) {
+        ["cardNumber", "cardExpiry", "cardCvc"].forEach((key) => {
+            window.cardElements[key]?.on("change", () => {
+                document.querySelectorAll(".form-button-container .button").forEach((btn) => {
+                    updateButtonStateForButton?.(btn);
+                });
+            });
+        });
+    }
+      
+      
   
     window.stripe = stripe;
     window.cardElements = { cardNumber, cardExpiry, cardCvc };
