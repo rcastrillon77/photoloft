@@ -1098,56 +1098,65 @@ async function isTempHoldStillValid() {
 // ** PAYMENT ** //
 
 function setupStripeElements() {
-    if (!window.bookingGlobals.client_secret) {
-        console.error("❌ Missing client_secret, can't set up Stripe Elements");
-        return;
-    }
-  
-    stripe = Stripe("pk_live_51Pc8eHHPk1zi7F68Lfo7LHLTmpxCNsSidfCzjFELM9Ajum07WIMljcsbU9L1R2Tejvue1BaZ0xuDwcpiXjwMgrdq00eUxlyH9D"); // 🔐 Replace with your live/test key
-    elements = stripe.elements();
+    const stripe = Stripe("YOUR_PUBLISHABLE_KEY");
+    const elements = stripe.elements();
   
     const style = {
-        base: {
-          fontSize: "1.5em",
-          color: "#191918",
-          fontFamily: "'Inter', sans-serif",
-          "::placeholder": {
-            color: "#19191800"
-          }
-        },
-        invalid: {
-          color: "#e5424d",
-          iconColor: "#e5424d"
+      base: {
+        fontSize: "1.5em",
+        color: "currentColor",
+        fontFamily: "'Inter', sans-serif",
+        "::placeholder": {
+          color: "transparent" // you’re hiding placeholder text
         }
+      },
+      invalid: {
+        color: "#e5424d",
+        iconColor: "#e5424d"
+      }
     };
-    
-    const cardElement = elements.create("card", { style });
-    cardElement.mount("#stripe-card-element");
-
-    const wrapper = document.querySelector(".stripe-wrapper");
-
-    cardElement.on("focus", () => {
-        wrapper.classList.add("focused");
-    });
-
-    cardElement.on("blur", () => {
-        wrapper.classList.remove("focused");
-    });
-
-    cardElement.on("change", (event) => {
-    if (event.complete || event.value) {
-        wrapper.classList.add("filled");
-    } else {
-        wrapper.classList.remove("filled");
-    }
-    });
-
-    // Save for use in payment handler
-    window.stripe = stripe;
-    window.cardElement = cardElement;
-}
   
-
+    const cardNumber = elements.create("cardNumber", { style });
+    const cardExpiry = elements.create("cardExpiry", { style });
+    const cardCvc = elements.create("cardCvc", { style });
+  
+    cardNumber.mount("#card-number-element");
+    cardExpiry.mount("#card-expiry-element");
+    cardCvc.mount("#card-cvc-element");
+  
+    const mountTargets = [
+        { element: cardNumber, id: "card-number-element" },
+        { element: cardExpiry, id: "card-expiry-element" },
+        { element: cardCvc, id: "card-cvc-element" }
+      ];
+      
+      mountTargets.forEach(({ element, id }) => {
+        const wrapper = document.getElementById(id)?.closest(".form-input");
+        const target = document.getElementById(id);
+        const label = wrapper?.querySelector(".field-label");
+      
+        element.on("focus", () => {
+          wrapper?.classList.add("-wfp-focus");
+          target?.classList.add("-wfp-focus");
+        });
+      
+        element.on("blur", () => {
+          wrapper?.classList.remove("-wfp-focus");
+          target?.classList.remove("-wfp-focus");
+        });
+      
+        element.on("change", (event) => {
+          if (event.complete || event.value) {
+            label?.classList.add("small"); // ✅ Shrink label only when something is typed
+          } else {
+            label?.classList.remove("small");
+          }
+        });
+      });
+  
+    window.stripe = stripe;
+    window.cardElements = { cardNumber, cardExpiry, cardCvc };
+}
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
