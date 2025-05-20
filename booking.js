@@ -671,7 +671,7 @@ function updatePaymentUIState() {
                          window.cardElements?.cardCvc?._complete;
   
     // Show/hide Pay Now button
-    document.getElementById("pay-now-btn")?.classList.toggle("hide", !(isPolicyChecked && cardComplete));
+    document.getElementById("pay-now-btn")?.classList.toggle("disabled", !(isPolicyChecked && cardComplete));
   
     // Show/hide Apple/Google Pay
     const prContainer = document.getElementById("payment-request-button");
