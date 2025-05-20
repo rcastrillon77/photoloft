@@ -2162,31 +2162,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         goToStep3();
     });
 
-    document.getElementById("pay-now-btn")?.addEventListener("click", async () => {
+    document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+      
         const clientSecret = window.bookingGlobals.client_secret;
         const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
         const email = document.getElementById("booking-email")?.value;
         const phone = document.getElementById("booking-phone")?.value;
       
-        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: {
-                card: cardElement,
-                billing_details: {
-                    name,
-                    email,
-                    phone
-                }
+        const { cardNumber } = window.cardElements;
+      
+        const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardNumber,
+            billing_details: {
+              name,
+              email,
+              phone
             }
+          },
+          setup_future_usage: "off_session" // ✅ Save for future automatic charges
         });
       
         if (error) {
-            console.error("❌ Stripe payment failed:", error.message);
-            alert("Payment failed: " + error.message);
-        } else if (paymentIntent && paymentIntent.status === "succeeded") {
-            console.log("✅ Payment succeeded:", paymentIntent.id);
-            // Continue to booking confirmation step
-            showBookingConfirmation();
+          console.error("❌ Payment error:", error.message);
+          alert("Payment failed: " + error.message);
+        } else if (paymentIntent?.status === "succeeded") {
+          console.log("✅ Payment succeeded");
+          showBookingConfirmation();
         }
-    });           
+    });              
   
 });
