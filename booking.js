@@ -1201,26 +1201,28 @@ function setupStripeElements() {
   
     window.stripe = stripe;
     window.cardElements = { cardNumber, cardExpiry, cardCvc };
-
+    
     ["cardNumber", "cardExpiry", "cardCvc"].forEach((key) => {
         window.cardElements[key]?.on("change", (e) => {
-          stripeStatus[key] = e.complete;
+          window.stripeStatus[key] = e.complete;
       
           document.querySelectorAll('[data-requires-stripe="true"]').forEach((btn) => {
             const item = btn.querySelector(`[data-field="payment-details"]`);
             const check = item?.querySelector(".check");
             const x = item?.querySelector(".x");
-            const stripeComplete = stripeStatus.cardNumber && stripeStatus.cardExpiry && stripeStatus.cardCvc;
+            const stripeComplete = window.stripeStatus.cardNumber && window.stripeStatus.cardExpiry && window.stripeStatus.cardCvc;
       
             if (check && x) {
               check.classList.toggle("hidden", !stripeComplete);
               x.classList.toggle("hidden", stripeComplete);
             }
       
-            updateButtonState(btn);
+            // Trigger button validation update
+            window.updateButtonStateForButton?.(btn);
           });
         });
     });
+      
       
     // 🔥 Use real values passed in after Make.com response
     const clientSecret = window.bookingGlobals?.client_secret;
