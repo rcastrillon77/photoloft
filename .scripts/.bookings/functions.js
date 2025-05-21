@@ -1144,11 +1144,10 @@ function setupStripeElements() {
               x.classList.toggle("hidden", stripeComplete);
             }
       
-            // Trigger button validation update
             window.updateButtonStateForButton?.(btn);
           });
         });
-    });
+    });      
       
       
     // 🔥 Use real values passed in after Make.com response
