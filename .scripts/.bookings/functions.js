@@ -1155,7 +1155,8 @@ function setupStripeElements() {
         paymentRequestButton: {
           type: "default",
           theme: "dark",
-          height: "60px"
+          height: "60px",
+          borderRadius: "30px"
         }
       }
     });
