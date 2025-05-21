@@ -664,15 +664,6 @@ function populateFinalSummary() {
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
 
-function updatePaymentUIState() {
-    const isPolicyChecked = document.getElementById("accept-policies")?.checked;
-
-    const prContainer = document.getElementById("payment-request-button");
-    if (prContainer) {
-      prContainer.style.display = isPolicyChecked ? "block" : "none";
-    }
-}
-
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
@@ -1152,8 +1143,9 @@ async function requestPaymentIntent() {
       // Store client_secret and intent ID for Step 3
       window.bookingGlobals.client_secret = data.client_secret;
       window.bookingGlobals.payment_intent_id = data.payment_intent_id;
-  
+      window.bookingGlobals.payment_amount = data.amount; 
       console.log("✅ PaymentIntent created:", data);
+      setupStripeElements();
   
     } catch (err) {
       console.error("❌ Error requesting PaymentIntent:", err);
@@ -1180,21 +1172,22 @@ async function isTempHoldStillValid() {
 // ** PAYMENT ** //
 
 function setupStripeElements() {
-    const stripe = Stripe("YOUR_PUBLISHABLE_KEY");
+    const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
     const elements = stripe.elements();
   
     const style = {
       base: {
-        fontSize: "1.5em",
-        color: "currentColor",
-        fontFamily: "'Inter', sans-serif",
+        color: "#191918",
+        fontFamily: "Founders Grotesk, Arial, sans-serif",
+        fontWeight: "300",
+        letterSpacing: "2px",
+        fontSize: "1em",
         "::placeholder": {
-          color: "transparent" // you’re hiding placeholder text
+          color: "rgba(25, 25, 24, 0.65)"
         }
       },
       invalid: {
-        color: "#e5424d",
-        iconColor: "#e5424d"
+        color: "#e53e3e"
       }
     };
   
@@ -1206,51 +1199,69 @@ function setupStripeElements() {
     cardExpiry.mount("#card-expiry-element");
     cardCvc.mount("#card-cvc-element");
   
-    const mountTargets = [
-        { element: cardNumber, id: "card-number-element" },
-        { element: cardExpiry, id: "card-expiry-element" },
-        { element: cardCvc, id: "card-cvc-element" }
-    ];
-      
-    mountTargets.forEach(({ element, id }) => {
-        const wrapper = document.getElementById(id)?.closest(".form-input");
-        const target = document.getElementById(id);
-        const label = wrapper?.querySelector(".field-label");
-      
-        element.on("focus", () => {
-          wrapper?.classList.add("-wfp-focus");
-          target?.classList.add("-wfp-focus");
-        });
-      
-        element.on("blur", () => {
-          wrapper?.classList.remove("-wfp-focus");
-          target?.classList.remove("-wfp-focus");
-        });
-      
-        element.on("change", (event) => {
-          if (event.complete || event.value) {
-            label?.classList.add("small"); // ✅ Shrink label only when something is typed
-          } else {
-            label?.classList.remove("small");
-          }
-        });
-    });
-
-    if (window.cardElements) {
-        ["cardNumber", "cardExpiry", "cardCvc"].forEach((key) => {
-            window.cardElements[key]?.on("change", () => {
-                document.querySelectorAll(".form-button-container .button").forEach((btn) => {
-                    updateButtonStateForButton?.(btn);
-                });
-            });
-        });
-    }
-      
-      
-  
     window.stripe = stripe;
     window.cardElements = { cardNumber, cardExpiry, cardCvc };
-}
+  
+    // 🔥 Use real values passed in after Make.com response
+    const clientSecret = window.bookingGlobals?.client_secret;
+    const amount = window.bookingGlobals?.payment_amount;
+  
+    if (!clientSecret || !amount) {
+      console.warn("Stripe setup skipped: Missing client secret or amount.");
+      return;
+    }
+  
+    const paymentRequest = stripe.paymentRequest({
+      country: 'US',
+      currency: 'usd',
+      total: {
+        label: 'Total',
+        amount: amount
+      },
+      requestPayerName: true,
+      requestPayerEmail: true
+    });
+  
+    const prButton = elements.create("paymentRequestButton", {
+      paymentRequest,
+      style: {
+        paymentRequestButton: {
+          type: "default",
+          theme: "dark",
+          height: "60px"
+        }
+      }
+    });
+  
+    paymentRequest.canMakePayment().then((result) => {
+      const prContainer = document.getElementById("payment-request-button");
+      if (result) {
+        prButton.mount("#payment-request-button");
+        prContainer.style.display = "block";
+      } else {
+        prContainer.style.display = "none";
+      }
+    });
+  
+    paymentRequest.on("paymentmethod", async (ev) => {
+      try {
+        const { error } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: ev.paymentMethod.id
+        }, { handleActions: true });
+  
+        if (error) {
+          ev.complete("fail");
+          alert("❌ Payment failed: " + error.message);
+        } else {
+          ev.complete("success");
+          window.location.href = "/thank-you"; // 🔁 Update as needed
+        }
+      } catch (err) {
+        console.error("Stripe Payment Error:", err);
+        ev.complete("fail");
+      }
+    });
+}  
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
