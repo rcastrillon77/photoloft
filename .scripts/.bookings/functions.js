@@ -46,6 +46,7 @@ function updateFormField(id, value) {
 
 function updateAttendeesHiddenField(newValue) {
     updateFormField('attendees', newValue);
+    window.bookingGlobals.attendees = parseInt(newValue, 10);
 }
 
 function updatePurposeHiddenField() {
@@ -513,32 +514,30 @@ function populateFinalSummary() {
     document.getElementById("final-summary-name").textContent = `${first} ${last}`;
     document.getElementById("email").textContent = document.getElementById("booking-email")?.value || "";
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
-  
+    document.getElementById("final-summary-attendees-label").textContent = globals.attendees === 1 ? "Guest" : "Guests";
+
     // 🏷️ Activities
     const selectedLabels = globals.activities || [];
-    const selected = [];
-    const other = [];
-  
-    selectedLabels.forEach(label => {
-      const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
-      if (match) {
-        selected.push(match[0]);
-      } else {
-        other.push(label.replace(/^Other:\s*/i, "").trim());
-      }
-    });
-  
+
     const activityList = document.getElementById("final-summary-activities");
     activityList.innerHTML = "";
-    [...selected, ...other].forEach(label => {
-      const pill = document.createElement("div");
-      pill.className = "booking-summary-value pill";
-      pill.textContent = label;
-      activityList.appendChild(pill);
+
+    selectedLabels.forEach(label => {
+    const pill = document.createElement("div");
+    pill.className = "booking-summary-value pill";
+    selectedLabels.forEach(label => {
+        const cleanLabel = label.replace(/^Other:\s*/i, "").trim();
+        const pill = document.createElement("div");
+        pill.className = "booking-summary-value pill";
+        pill.textContent = cleanLabel;
+        activityList.appendChild(pill);
+      });
+      
+    activityList.appendChild(pill);
     });
   
     const activityLabel = document.getElementById("final-summary-activities-label");
-    activityLabel.textContent = (selected.length + other.length) === 1 ? "Activity" : "Activities";
+    activityLabel.textContent = selectedLabels.length === 1 ? "Activity" : "Activities";
   
     // 💵 Line items
     const baseHours = (globals.booking_duration / 60).toFixed(1);
@@ -1148,7 +1147,7 @@ function setupStripeElements() {
               check.classList.toggle("hidden", !stripeComplete);
               x.classList.toggle("hidden", stripeComplete);
             }
-            
+
             window.updateButtonStateForButton?.(btn);
           });
         });
@@ -1620,11 +1619,12 @@ function highlightMatch(text, match) {
 }
   
 function updateOptionsList(inputValue = "") {
-    const input = inputValue.toLowerCase();
+    const rawInput = inputValue.trim();
+    const input = rawInput.toLowerCase(); // for matching
     suggestionBox.innerHTML = "";
   
     if (bookingTypeInstructions) {
-      bookingTypeInstructions.classList.toggle('hide', input || selectedActivities.length > 0);
+      bookingTypeInstructions.classList.toggle('hide', rawInput || selectedActivities.length > 0);
     }
   
     const matches = sortBookingTypes()
@@ -1632,11 +1632,11 @@ function updateOptionsList(inputValue = "") {
       .filter(bt => bt.title.toLowerCase().includes(input))
       .slice(0, 3);
   
-    if (!matches.length && input) {
+    if (!matches.length && rawInput) {
       const el = document.createElement('div');
       el.className = "select-option highlighted";
-      el.innerHTML = `<div>Other: <span class="matched-string">${input}</span></div><div class="add-option">+ Add Option</div>`;
-      el.dataset.value = `Other: ${input}`;
+      el.innerHTML = `<div>Other: <span class="matched-string">${rawInput}</span></div><div class="add-option">+ Add Option</div>`;
+      el.dataset.value = `Other: ${rawInput}`; // ✅ preserve original casing
       suggestionBox.appendChild(el);
     } else {
       matches.forEach((bt, i) => {
@@ -1651,6 +1651,7 @@ function updateOptionsList(inputValue = "") {
     suggestionBox.classList.remove('hide');
     updateBookingTypeMessageBox();
 }
+  
 
 function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
