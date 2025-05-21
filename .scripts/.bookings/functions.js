@@ -1133,21 +1133,27 @@ function setupStripeElements() {
         window.cardElements[key]?.on("change", (e) => {
           window.stripeStatus[key] = e.complete;
       
-          document.querySelectorAll('[data-requires-stripe="true"]').forEach((btn) => {
-            const item = btn.querySelector(`[data-field="payment-details"]`);
-            const check = item?.querySelector(".check");
-            const x = item?.querySelector(".x");
-            const stripeComplete = window.stripeStatus.cardNumber && window.stripeStatus.cardExpiry && window.stripeStatus.cardCvc;
+          document.querySelectorAll(".form-button-container .button[data-requires-stripe='true']").forEach((btn) => {
+            const helperContent = btn.querySelector(".helper .helper-content");
+            const stripeRow = helperContent?.querySelector(`[data-field="payment-details"]`);
+            const check = stripeRow?.querySelector(".check");
+            const x = stripeRow?.querySelector(".x");
+      
+            const stripeComplete =
+              window.stripeStatus.cardNumber &&
+              window.stripeStatus.cardExpiry &&
+              window.stripeStatus.cardCvc;
       
             if (check && x) {
               check.classList.toggle("hidden", !stripeComplete);
               x.classList.toggle("hidden", stripeComplete);
             }
-      
+            
             window.updateButtonStateForButton?.(btn);
           });
         });
-    });      
+      });
+          
       
       
     // 🔥 Use real values passed in after Make.com response
