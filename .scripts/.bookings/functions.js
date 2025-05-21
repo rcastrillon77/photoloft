@@ -1108,7 +1108,7 @@ function setupStripeElements() {
         fontFamily: "Founders Grotesk, Arial, sans-serif",
         fontWeight: "300",
         letterSpacing: "2px",
-        fontSize: "1em",
+        fontSize: "24px",
         "::placeholder": {
           color: "rgba(25, 25, 24, 0.65)"
         }
