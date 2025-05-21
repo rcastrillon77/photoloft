@@ -319,7 +319,7 @@ async function checkIfGuestHasActiveHold() {
     const hold = data[0];
     console.log("✅ Active hold found:", hold);
 
-    // Rehydrate bookingGlobals
+    // Rehydrate preselection values only
     const start = luxon.DateTime.fromISO(hold.start_time, { zone });
     const end = luxon.DateTime.fromISO(hold.end_time, { zone });
 
@@ -327,46 +327,17 @@ async function checkIfGuestHasActiveHold() {
     const endMinutes = end.hour * 60 + end.minute;
     const duration = endMinutes - startMinutes;
 
-    window.bookingGlobals.booking_start = startMinutes;
-    window.bookingGlobals.booking_end = endMinutes;
-    window.bookingGlobals.booking_duration = duration;
-    window.bookingGlobals.booking_date = start.toJSDate();
-    window.bookingGlobals.selected_start_time = minutesToTimeValue(startMinutes);
+    window.preselectedBooking = {
+        date: start.toISODate(),           // "2025-05-22"
+        time: hold.start_time,             // full ISO string
+        duration: duration / 60            // in hours
+    };
 
-    console.log("⏩ Skipping to Step 2 with:", {
-        booking_start: startMinutes,
-        booking_end: endMinutes,
-        duration,
-        date: window.bookingGlobals.booking_date,
-        selected_start_time: window.bookingGlobals.selected_start_time
-    });
-
-    // Step 2 transition
-    const clicker = document.getElementById('summary-clicker');
-    const continueBtn = document.getElementById('step-1-continue');
-
-    const summaryWrapper = document.getElementById('booking-summary-wrapper');
-    const dateCal = document.getElementById('date-cal');
-    const bookingBgCol = document.querySelector('.booking-bg-col');
-    const durationAndTime = document.getElementById('duration-and-time');
-    const attendeesAndType = document.getElementById('attendees-and-type');
-    const summaryButtonContainer = document.querySelector('.booking-summary-button-container');
-    const reserveTimer = document.getElementById('reserve-timer');
-    const contactInfo = document.getElementById('contact-info');
-
-    dateCal?.classList.add('hide');
-    bookingBgCol?.classList.remove('right');
-    durationAndTime?.classList.add('hide');
-    attendeesAndType?.classList.remove('hide');
-    summaryWrapper?.classList.add('dark');
-    summaryButtonContainer?.classList.add('hide');
-    reserveTimer?.classList.remove('hide');
-    contactInfo?.classList.remove('hide');
-    clicker?.classList.remove('hidden');
-
-    updateBookingSummary();
+    // ✅ Release hold immediately so user can re-select it freely
+    await releaseTempHold(hold.id);
 
     return true;
+
 }
 
 function getCurrentRoundedMinutes() {
@@ -936,6 +907,42 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     console.log("📅 Luxon:", bookingDateLuxon.toISO());
 
     return await renderStartTimeOptions(availableTimes);
+
+    // ✅ Preselect held booking data (if exists)
+    if (window.preselectedBooking) {
+        const { date, time, duration } = window.preselectedBooking;
+    
+        // Set calendar date (if not already applied)
+        if (window.flatpickrCalendar) {
+        window.flatpickrCalendar.setDate(date, true); // triggers onChange
+        }
+    
+        // Set slider + globals
+        const slider = document.getElementById("duration-slider");
+        if (slider) {
+        slider.value = duration;
+        updateDurationDisplay(duration * 60);
+        window.bookingGlobals.booking_duration = duration * 60;
+        setSliderProgress(duration);
+        }
+    
+        // Set selected time radio
+        const targetTimeValue = luxon.DateTime.fromISO(time).toFormat("h:mm a");
+        const radios = document.querySelectorAll(".radio-option-label");
+        radios.forEach((label) => {
+        if (label.textContent.trim() === targetTimeValue) {
+            const input = label.previousElementSibling;
+            if (input?.type === "radio") {
+            input.checked = true;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+        }
+        });
+    
+        console.log("🟢 Preselected booking restored:", window.preselectedBooking);
+        window.preselectedBooking = null;
+    }
+  
 }
 
 async function findNextAvailableDate(maxDays = 30) {
