@@ -1725,7 +1725,6 @@ function updateOptionsList(inputValue = "") {
     updateBookingTypeMessageBox();
 }
   
-
 function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
     if (!box) return;
