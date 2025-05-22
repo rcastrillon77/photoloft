@@ -1495,12 +1495,14 @@ async function initBookingConfig(listingId, locationId) {
             });
 
         // --- Pull Events ---
-            const { data: eventsData, error: eventsError } = await window.supabase
+            const { data: eventsData } = await window.supabase
             .from("events")
             .select("start, end")
             .eq("location_id", locationId)
+            .eq("status", "confirmed")
             .gte("start", minDate.toISOString())
             .lte("end", maxDate.toISOString());
+      
         
             if (eventsError) {
                 console.error("❌ Failed to fetch booking events:", eventsError);
