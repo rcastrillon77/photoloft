@@ -1571,7 +1571,7 @@ async function initBookingConfig(listingId, locationId) {
             const { data: eventsData } = await window.supabase
             .from("events")
             .select("start, end")
-            .eq("location_id", locationId)
+            .eq("location_id", LOCATION_UUID)
             .eq("status", "confirmed")
             .gte("start", minDate.toISOString())
             .lte("end", maxDate.toISOString());
