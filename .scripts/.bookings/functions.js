@@ -803,16 +803,7 @@ function renderStartTimeOptions(startTimes) {
         validRadios[0];
 
         if (selectedRadio) {
-            selectedRadio.checked = true;
-            window.bookingGlobals.selected_start_time = selectedRadio.value;
-
-            const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
-            const start = h * 60 + m;
-            window.bookingGlobals.booking_start = start;
-            window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
-
-            updateBookingSummary();
-            selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            selectedRadio.click();
         }
 
         attachRadioStyling();
