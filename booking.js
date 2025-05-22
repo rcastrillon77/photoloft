@@ -876,7 +876,16 @@ function renderStartTimeOptions(startTimes) {
         validRadios[0];
 
         if (selectedRadio) {
-            selectedRadio.click();
+            selectedRadio.checked = true;
+            window.bookingGlobals.selected_start_time = selectedRadio.value;
+
+            const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
+            const start = h * 60 + m;
+            window.bookingGlobals.booking_start = start;
+            window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
+
+            updateBookingSummary();
+            selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         attachRadioStyling();
@@ -970,6 +979,8 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     console.log("📅 generateStartTimeOptions → booking_date:", selectedDate);
     console.log("📅 Luxon:", bookingDateLuxon.toISO());
 
+    return await renderStartTimeOptions(availableTimes);
+
     // ✅ Preselect held booking data (if exists)
     if (window.preselectedBooking) {
         const { date, time, duration } = window.preselectedBooking;
@@ -1004,8 +1015,6 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
         console.log("🟢 Preselected booking restored:", window.preselectedBooking);
         window.preselectedBooking = null;
     }
-
-    return await renderStartTimeOptions(availableTimes);
   
 }
 
@@ -1568,14 +1577,12 @@ async function initBookingConfig(listingId, locationId) {
             });
 
         // --- Pull Events ---
-            const { data: eventsData } = await window.supabase
+            const { data: eventsData, error: eventsError } = await window.supabase
             .from("events")
             .select("start, end")
-            .eq("location_id", LOCATION_UUID)
-            .eq("status", "confirmed")
+            .eq("location_id", locationId)
             .gte("start", minDate.toISOString())
             .lte("end", maxDate.toISOString());
-      
         
             if (eventsError) {
                 console.error("❌ Failed to fetch booking events:", eventsError);
@@ -1768,7 +1775,6 @@ function renderSelectedOptions() {
     window.bookingGlobals.activities = [...selectedActivities];
 
 }
-  
 
 
 // ================================== //
