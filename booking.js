@@ -1966,12 +1966,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         const events = await fetchEventsForDate(window.bookingGlobals.booking_date);
     
-        if (error || !events) {
-            console.error("❌ Supabase event fetch error:", error);
-            alert("Could not validate availability. Please try again.");
-            return;
-        }
-    
         console.log("📦 Events for selected day:", events);
     
         // 🧮 2. Check for overlap using buffer logic
