@@ -501,8 +501,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Refresh UI total (optional)
         populateFinalSummary();
     });
-    
-    
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -533,6 +531,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           console.log("✅ Payment succeeded");
           showBookingConfirmation();
         }
-    });              
+    }); 
+    
+    document.getElementById("confirm-booking")?.addEventListener("click", async () => {
+        await submitFinalBooking(); // defined below
+    });
+    
+    document.getElementById("reservation-page-btn")?.addEventListener("click", () => {
+        const id = window.bookingGlobals.booking_uuid;
+        if (id) {
+          window.location.href = `https://photoloft.co/b?booking=${id}`;
+        }
+    });
   
 });
