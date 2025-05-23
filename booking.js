@@ -360,12 +360,12 @@ async function checkIfGuestHasActiveHold() {
     }
 
     let query = window.supabase
-    .from('temp_events')
-    .select('*')
-    .eq('listing_id', LISTING_UUID)
-    .eq('location_id', LOCATION_UUID)
-    .gt('expires_at', now)
-    .limit(1);
+        .from('temp_events')
+        .select('uuid')
+        .eq('listing_id', LISTING_UUID)
+        .eq('location_id', LOCATION_UUID)
+        .gt('expires_at', now)
+        .limit(1);
 
     if (userId) {
         console.log("🧑‍💻 Checking for holds by user ID:", userId);
@@ -382,33 +382,28 @@ async function checkIfGuestHasActiveHold() {
         return false;
     }
 
-    if (!Array.isArray(data) || data.length === 0 || !data[0]) {
+    if (!data?.length) {
         console.log("❎ No active hold found.");
         return false;
     }
 
-    const hold = data[0];
-    console.log("✅ Active hold found:", hold);
+    const holdId = data[0]?.uuid;
 
-    // Rehydrate preselection values only
-    const start = luxon.DateTime.fromISO(hold.start_time, { zone });
-    const end = luxon.DateTime.fromISO(hold.end_time, { zone });
+    if (holdId) {
+        console.log("🗑️ Found stale hold, deleting it:", holdId);
+        const { error: deleteError } = await window.supabase
+            .from('temp_events')
+            .delete()
+            .eq('uuid', holdId);
 
-    const startMinutes = start.hour * 60 + start.minute;
-    const endMinutes = end.hour * 60 + end.minute;
-    const duration = endMinutes - startMinutes;
+        if (deleteError) {
+            console.error("❌ Error deleting stale hold:", deleteError);
+        } else {
+            console.log("✅ Stale hold deleted.");
+        }
+    }
 
-    window.preselectedBooking = {
-        date: start.toISODate(),           // "2025-05-22"
-        time: hold.start_time,             // full ISO string
-        duration: duration / 60            // in hours
-    };
-
-    // ✅ Release hold immediately so user can re-select it freely
-    await releaseTempHold(hold.id);
-
-    return true;
-
+    return false;
 }
 
 function getCurrentRoundedMinutes() {
@@ -976,58 +971,6 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
 
     console.log("📅 generateStartTimeOptions → booking_date:", selectedDate);
     console.log("📅 Luxon:", bookingDateLuxon.toISO());
-
-    // ✅ Preselect held booking data (if exists)
-    if (window.preselectedBooking) {
-    const { date, time, duration } = window.preselectedBooking;
-    const zone = window.TIMEZONE;
-
-    console.log("🟢 Attempting to restore preselected booking:", window.preselectedBooking);
-
-    // Step 1: Set date and simulate calendar click like findNextAvailableDate()
-    if (window.flatpickrCalendar) {
-        window.flatpickrCalendar.setDate(new Date(date), true);
-        highlightSelectedDate();
-    }    
-
-    // Step 2: Set slider + globals
-    const slider = document.getElementById("duration-slider");
-    if (slider) {
-        console.log("🎚️ Setting slider to:", duration);
-        slider.value = duration;
-        updateDurationDisplay(duration * 60);
-        window.bookingGlobals.booking_duration = duration * 60;
-        setSliderProgress(duration);
-    }
-
-    // Step 3: Set start time radio using .click()
-    const selectedTime = luxon.DateTime.fromISO(time, { zone }).toFormat("h:mm a");
-    console.log("🕒 Targeting start time radio with label:", selectedTime);
-
-    const radios = document.querySelectorAll(".radio-option-label");
-    let matched = false;
-
-    for (const label of radios) {
-        const labelText = label.textContent.trim();
-        console.log("🧪 Checking label:", labelText);
-        if (labelText === selectedTime) {
-            const input = label.previousElementSibling;
-            if (input?.type === "radio") {
-                console.log("✅ Clicking radio input:", input.value);
-                input.click();
-                matched = true;
-                break;
-            }
-        }
-    }
-
-    if (!matched) {
-        console.warn("⚠️ No matching time radio found for:", selectedTime);
-    }
-
-    window.preselectedBooking = null;
-}
-
 
     return await renderStartTimeOptions(availableTimes);
   
