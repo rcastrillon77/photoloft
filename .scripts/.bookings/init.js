@@ -256,7 +256,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById("reserve-timer")?.classList.remove("hide");
         document.getElementById("contact-info")?.classList.remove("hide");
         document.getElementById("summary-clicker")?.classList.remove("hidden");
-    
+        
+        prefillContactInfoIfLoggedIn();
         startCountdownTimer();
     });
     
@@ -436,6 +437,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         // ✅ Proceed with payment intent
         await requestPaymentIntent();
+
+        // 🔍 Check if user exists by email (if not logged in)
+        if (!window.supabaseUser?.id) {
+            const email = document.getElementById("booking-email")?.value?.trim().toLowerCase();
+            if (email) {
+            const { data, error } = await window.supabase
+                .from("users")
+                .select("uuid, credits")
+                .ilike("email", email) // case-insensitive match
+                .maybeSingle();
+        
+            if (error) {
+                console.error("❌ Error looking up user by email:", error);
+            } else if (data?.uuid) {
+                console.log("👤 Matched existing user:", data);
+                window.bookingGlobals.user_uuid_override = data.uuid;
+                window.bookingGlobals.credits = data.credits || 0;
+        
+                if (data.credits > 0) {
+                document.getElementById("credits-section")?.classList.remove("hidden");
+                document.getElementById("final-summary-credit-amount").textContent = `$${data.credits.toFixed(2)}`;
+                }
+            }
+            }
+        }
+  
         goToStep3();
     });
 
