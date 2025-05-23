@@ -907,42 +907,69 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     // ✅ Preselect held booking data (if exists)
     if (window.preselectedBooking) {
         const { date, time, duration } = window.preselectedBooking;
+        const zone = window.TIMEZONE;
     
-        // Set calendar date (already handled upstream, but safe to enforce)
-        window.bookingGlobals.booking_date = new Date(date);
-        if (window.flatpickrCalendar) {
-            window.flatpickrCalendar.setDate(date, true); // triggers onChange
-        }
+        console.log("🟢 Attempting to restore preselected booking:", window.preselectedBooking);
     
-        // Update slider
+        // Step 1: Set date and simulate calendar click like findNextAvailableDate()
+        const formattedDate = new Date(date).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        }).replace(/\s+/g, ' ').trim();
+    
+        console.log(`🔍 Looking for date element with aria-label: "${formattedDate}"`);
+    
+        setTimeout(() => {
+            const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+            console.log("🔍 Date element result:", dateElement);
+    
+            if (dateElement) {
+                console.log("✅ Clicking on calendar date");
+                dateElement.click();
+            } else {
+                console.warn("❌ Could not find calendar date element for click.");
+            }
+        }, 300);
+    
+        // Step 2: Set slider + globals
         const slider = document.getElementById("duration-slider");
         if (slider) {
+            console.log("🎚️ Setting slider to:", duration);
             slider.value = duration;
             updateDurationDisplay(duration * 60);
             window.bookingGlobals.booking_duration = duration * 60;
             setSliderProgress(duration);
         }
     
-        // Save preselection into bookingGlobals (time will be "HH:mm a" string)
-        const selectedTime = luxon.DateTime.fromISO(time, { zone: window.TIMEZONE }).toFormat("h:mm a");
+        // Step 3: Set start time radio using .click()
+        const selectedTime = luxon.DateTime.fromISO(time, { zone }).toFormat("h:mm a");
+        console.log("🕒 Targeting start time radio with label:", selectedTime);
+    
         const radios = document.querySelectorAll(".radio-option-label");
+        let matched = false;
     
         for (const label of radios) {
-            if (label.textContent.trim() === selectedTime) {
+            const labelText = label.textContent.trim();
+            console.log("🧪 Checking label:", labelText);
+            if (labelText === selectedTime) {
                 const input = label.previousElementSibling;
                 if (input?.type === "radio") {
-                    // Use click to fire all change listeners
+                    console.log("✅ Clicking radio input:", input.value);
                     input.click();
-                    console.log("🟢 Clicked preselected time:", selectedTime);
+                    matched = true;
                     break;
                 }
             }
         }
     
-        console.log("🟢 Preselected booking restored:", window.preselectedBooking);
+        if (!matched) {
+            console.warn("⚠️ No matching time radio found for:", selectedTime);
+        }
+    
         window.preselectedBooking = null;
     }
-    
+
     return await renderStartTimeOptions(availableTimes);
   
 }
