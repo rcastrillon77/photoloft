@@ -535,8 +535,8 @@ async function goToStep3() {
 
 async function populateFinalSummary() {
     const globals = window.bookingGlobals;
-    const bookingDateLuxon = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
-    const TZ_ABBREVIATION = bookingDateLuxon.offsetNameShort || "CT";
+    const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
+    const TZ_ABBREVIATION = luxonDate.offsetNameShort || "CT";
 
 
     
