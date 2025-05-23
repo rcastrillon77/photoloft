@@ -460,7 +460,10 @@ async function goToStep3() {
 
 async function populateFinalSummary() {
     const globals = window.bookingGlobals;
-    const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
+    const TZ_ABBREVIATION = bookingDateLuxon.offsetNameShort || "CT";
+
+
     
     // Listing Name    
     const nameEl = document.getElementById('final-summary-listing-name');
@@ -474,8 +477,9 @@ async function populateFinalSummary() {
     const startMinutes = globals.booking_start;
     const endMinutes = globals.booking_start + globals.booking_duration;
   
-    document.getElementById("final-summary-start").textContent = formatMinutesToTime(startMinutes);
-    document.getElementById("final-summary-end").textContent = formatMinutesToTime(endMinutes);
+    document.getElementById("final-summary-start").innerHTML = `${formatMinutesToTime(startMinutes)} <span class="tz-suffix">${TZ_ABBREVIATION}</span>`;
+    document.getElementById("final-summary-end").innerHTML = `${formatMinutesToTime(endMinutes)} <span class="tz-suffix">${TZ_ABBREVIATION}</span>`;
+
   
     // 👥 Name, email, phone, attendees
     document.getElementById("final-summary-attendees").textContent = `${globals.attendees || 1} ${(globals.attendees === 1) ? 'Guest' : 'Guests'}`;
