@@ -516,7 +516,7 @@ function updateAttendeeButtons() {
     countDisplay.textContent = showPlus ? `${attendeeCount}+` : attendeeCount;
 }
 
-function goToStep3() {
+async function goToStep3() {
     document.getElementById("attendees-and-type")?.classList.add("hide");
     document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
     document.querySelector(".booking-bg-col")?.classList.add("right");
@@ -529,7 +529,7 @@ function goToStep3() {
     document.getElementById("initial-booking-summary")?.classList.add("hide");
     document.querySelector(".booking-summary-section.final")?.classList.remove("hide");
   
-    populateFinalSummary();
+    await populateFinalSummary();
     setupStripeElements();
 }  
 
