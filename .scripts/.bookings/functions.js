@@ -1587,8 +1587,7 @@ function prefillContactInfoIfLoggedIn() {
     setField("booking-last-name", last_name);
   
     window.bookingGlobals.user_uuid_override = window.supabaseUser.id;
-  }
-  
+}
 
 // ================================== //
 // ========  NEW FUNCTIONS  ========= //
