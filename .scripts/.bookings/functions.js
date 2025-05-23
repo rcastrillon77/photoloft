@@ -478,13 +478,12 @@ async function populateFinalSummary() {
     document.getElementById("final-summary-end").textContent = formatMinutesToTime(endMinutes);
   
     // 👥 Name, email, phone, attendees
-    document.getElementById("final-summary-attendees").textContent = globals.attendees || 1;
+    document.getElementById("final-summary-attendees").textContent = `${globals.attendees || 1} ${(globals.attendees === 1) ? 'Guest' : 'Guests'}`;
     const first = document.getElementById("booking-first-name")?.value || "";
     const last = document.getElementById("booking-last-name")?.value || "";
     document.getElementById("final-summary-name").textContent = `${first} ${last}`;
     document.getElementById("email").textContent = document.getElementById("booking-email")?.value || "";
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
-    document.getElementById("final-summary-attendees-label").textContent = globals.attendees === 1 ? "Guest" : "Guests";
 
     // 🏷️ Activities
     const selectedLabels = globals.activities || [];
