@@ -466,6 +466,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         goToStep3();
     });
 
+    document.getElementById("use-credits")?.addEventListener("click", async () => {
+        const button = document.getElementById("use-credits");
+        const icon = button.querySelector(".btn-check-icon");
+        const label = button.querySelector("div:nth-child(2)");
+        const active = button.classList.contains("active");
+    
+        const subtotal = window.bookingGlobals.booking_total || 0;
+        const credits = window.bookingGlobals.credits || 0;
+    
+        if (!subtotal || !credits) return;
+    
+        if (active) {
+            // Removing credits
+            label.textContent = "Removing credits...";
+            await updatePaymentIntent(subtotal);
+            window.bookingGlobals.creditsApplied = 0;
+    
+            button.classList.remove("active");
+            icon.classList.add("hide");
+            label.textContent = "Use your credits for this booking";
+        } else {
+            // Applying credits
+            label.textContent = "Applying credits...";
+            const applied = Math.min(subtotal, credits);
+            await updatePaymentIntent(subtotal - applied);
+            window.bookingGlobals.creditsApplied = applied;
+    
+            button.classList.add("active");
+            icon.classList.remove("hide");
+            label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
+        }
+    
+        // Refresh UI total (optional)
+        populateFinalSummary();
+    });
+    
+    
+
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
         e.preventDefault();
       
