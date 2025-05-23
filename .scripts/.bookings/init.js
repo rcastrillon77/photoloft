@@ -512,6 +512,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const { cardNumber } = window.cardElements;
       
+        setButtonText("#pay-now-btn", "Processing Payment...");
+
         const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
           payment_method: {
             card: cardNumber,
@@ -527,14 +529,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (error) {
           console.error("❌ Payment error:", error.message);
           alert("Payment failed: " + error.message);
+          setButtonText("#pay-now-btn", "Pay with Card");
         } else if (paymentIntent?.status === "succeeded") {
-          console.log("✅ Payment succeeded");
-          showBookingConfirmation();
+            setButtonText("#pay-now-btn", "Creating Booking...");
+            console.log("✅ Payment succeeded");
+            await submitFinalBooking();
         }
+          
     }); 
     
     document.getElementById("confirm-booking")?.addEventListener("click", async () => {
-        await submitFinalBooking(); // defined below
+        setButtonText("#confirm-booking", "Creating Booking...");
+        await submitFinalBooking();
     });
     
     document.getElementById("reservation-page-btn")?.addEventListener("click", () => {
