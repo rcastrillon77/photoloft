@@ -464,27 +464,8 @@ async function populateFinalSummary() {
     
     // Listing Name    
     const nameEl = document.getElementById('final-summary-listing-name');
-    if (!nameEl || !window.LISTING_UUID) return;
-
-    try {
-        const { data, error } = await window.supabase
-            .from("listings")
-            .select("name")
-            .eq("uuid", window.LISTING_UUID)
-            .single();
-
-        if (error) {
-            console.error("❌ Error fetching listing name:", error);
-            nameEl.textContent = "Listing";
-            return;
-        }
-
-        if (data?.name) {
-            nameEl.textContent = data.name;
-        }
-    } catch (err) {
-        console.error("❌ Unexpected error fetching listing:", err);
-        nameEl.textContent = "Listing";
+    if (nameEl) {
+        nameEl.textContent = window.listingName || "Listing";
     }
   
     // 📅 Date, time
