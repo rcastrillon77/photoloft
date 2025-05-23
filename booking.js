@@ -1946,12 +1946,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dayEnd
         });
     
-        const { data: events, error } = await window.supabase
-            .from("events")
-            .select("start, end")
-            .eq("location_id", LOCATION_UUID)
-            .gte("start", dayStart)
-            .lt("end", dayEnd);
+        const events = await fetchEventsForDate(window.bookingGlobals.booking_date);
     
         if (error || !events) {
             console.error("❌ Supabase event fetch error:", error);
