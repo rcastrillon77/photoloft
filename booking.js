@@ -979,8 +979,6 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     console.log("📅 generateStartTimeOptions → booking_date:", selectedDate);
     console.log("📅 Luxon:", bookingDateLuxon.toISO());
 
-    return await renderStartTimeOptions(availableTimes);
-
     // ✅ Preselect held booking data (if exists)
     if (window.preselectedBooking) {
         const { date, time, duration } = window.preselectedBooking;
@@ -1015,6 +1013,8 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
         console.log("🟢 Preselected booking restored:", window.preselectedBooking);
         window.preselectedBooking = null;
     }
+
+    return await renderStartTimeOptions(availableTimes);
   
 }
 
