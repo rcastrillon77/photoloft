@@ -305,12 +305,10 @@ async function refreshStartTimeOptions() {
     isRefreshingStartTimes = true;
 
     try {
-        const { data: events, error } = await window.supabase
-        .from("events")
-        .select("start, end")
-        .eq("location_id", LOCATION_UUID)
-        .gte("start", window.bookingMinDate.toISOString())
-        .lte("end", window.bookingMaxDate.toISOString());
+        const events = await fetchEventsForRange(window.bookingMinDate, window.bookingMaxDate);
+        window.bookingEvents = events;
+        console.log("🔄 Refreshed bookingEvents:", window.bookingEvents);
+
 
         if (error) {
             console.error("❌ Failed to refresh confirmed bookings:", error);
@@ -1175,6 +1173,31 @@ async function isTempHoldStillValid() {
     return expiry > now;
 }
 
+async function fetchEventsForRange(start, end) {
+    const { data, error } = await window.supabase
+      .from("events")
+      .select("start, end")
+      .eq("location_id", LOCATION_UUID)
+      .gte("start", start.toISOString())
+      .lte("end", end.toISOString());
+  
+    if (error) {
+      console.error("❌ Failed to fetch events:", error);
+      return [];
+    }
+  
+    return data;
+}
+  
+  async function fetchEventsForDate(date) {
+    const zone = window.TIMEZONE;
+    const dayStart = luxon.DateTime.fromJSDate(date, { zone }).startOf('day');
+    const dayEnd = dayStart.endOf('day');
+  
+    return fetchEventsForRange(dayStart.toJSDate(), dayEnd.toJSDate());
+}
+  
+
 // ** PAYMENT ** //
 
 function setupStripeElements() {
@@ -1577,19 +1600,10 @@ async function initBookingConfig(listingId, locationId) {
             });
 
         // --- Pull Events ---
-            const { data: eventsData, error: eventsError } = await window.supabase
-            .from("events")
-            .select("start, end")
-            .eq("location_id", locationId)
-            .gte("start", minDate.toISOString())
-            .lte("end", maxDate.toISOString());
+        const eventsData = await fetchEventsForRange(minDate, maxDate);
+        window.bookingEvents = eventsData;
+        console.log("📅 Booking Events:", window.bookingEvents);
         
-            if (eventsError) {
-                console.error("❌ Failed to fetch booking events:", eventsError);
-            } else {
-                window.bookingEvents = eventsData || [];
-                console.log("📅 Booking Events:", window.bookingEvents);
-            }
         
         // --- Pull Special Rates ---
             const { data: ratesData, error: ratesError } = await window.supabase
