@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const { cardNumber } = window.cardElements;
       
-        setButtonText("#pay-now-btn", "Processing Payment...");
+        setButtonText("#pay-now-btn", "Processing Payment...", true);
 
         const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
           payment_method: {
@@ -529,9 +529,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (error) {
           console.error("❌ Payment error:", error.message);
           alert("Payment failed: " + error.message);
-          setButtonText("#pay-now-btn", "Pay with Card");
+          setButtonText("#pay-now-btn", "Pay with Card", false);
         } else if (paymentIntent?.status === "succeeded") {
-            setButtonText("#pay-now-btn", "Creating Booking...");
+            setButtonText("#pay-now-btn", "Creating Booking...", true);
             console.log("✅ Payment succeeded");
             await submitFinalBooking();
         }
@@ -539,7 +539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }); 
     
     document.getElementById("confirm-booking")?.addEventListener("click", async () => {
-        setButtonText("#confirm-booking", "Creating Booking...");
+        setButtonText("#confirm-booking", "Creating Booking...", true);
         await submitFinalBooking();
     });
     
