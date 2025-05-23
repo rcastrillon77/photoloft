@@ -1316,6 +1316,54 @@ function setupStripeElements() {
     });
 }  
 
+async function updatePaymentIntent() {
+    const {
+        booking_rate = 0,
+        booking_duration = 0,
+        discountCode,
+        creditsApplied = 0,
+        booking_discount,
+        taxRate = window.bookingGlobals.taxRate,
+        payment_intent_id,
+        transaction_uuid
+    } = window.bookingGlobals;
+
+    const hours = booking_duration / 60;
+    const certificateDiscount = booking_discount?.discount_amount ? parseFloat(booking_discount.discount_amount) : 0;
+
+    const subtotalBeforeTax = (booking_rate * hours) - certificateDiscount - creditsApplied;
+    const cleanSubtotal = Math.max(0, subtotalBeforeTax);
+    const subtotalTaxes = cleanSubtotal * (taxRate / 100);
+    const total = cleanSubtotal + subtotalTaxes;
+
+    const payload = {
+        final_rate: booking_rate,
+        hours: hours,
+        certificate_discount: certificateDiscount,
+        user_credits: creditsApplied,
+        subtotal: cleanSubtotal,
+        tax_rate: taxRate,
+        subtotal_taxes: subtotalTaxes,
+        total: total,
+        payment_intent_id: payment_intent_id || null,
+        transaction_uuid: transaction_uuid || null,
+    };
+
+    try {
+        const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        console.log("✅ updatePaymentIntent sent:", payload);
+    } catch (err) {
+        console.error("❌ Failed to update payment intent:", err);
+    }
+}
+
+
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
     const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
