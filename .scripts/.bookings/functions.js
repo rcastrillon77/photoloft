@@ -600,7 +600,7 @@ async function submitFinalBooking() {
       user_credits_applied: g.creditsApplied || 0,
       subtotal: g.booking_total || 0,
       tax_rate: g.taxRate || 0,
-      tax_total: roundTo2((g.booking_total || 0) * ((g.taxRate || 0) / 100)),
+      tax_total: roundDecimals((g.booking_total || 0) * ((g.taxRate || 0) / 100)),
       total: g.payment_amount || 0,
   
       source: new URLSearchParams(window.location.search).get('source') || null
