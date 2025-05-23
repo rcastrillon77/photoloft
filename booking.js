@@ -1077,82 +1077,6 @@ async function findNextAvailableDate(maxDays = 30) {
     return null;
 }
 
-async function requestPaymentIntent() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const bookingSource = urlParams.get('source') || null;
-
-    const selectedLabels = window.bookingGlobals.activities || [];
-
-    const selected = [];
-    const other = [];
-
-    selectedLabels.forEach(label => {
-    const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
-    if (match) {
-        selected.push(match[0]); // push the ID (e.g. "general-photo")
-    } else {
-        other.push(label.replace(/^Other:\s*/i, "").trim());
-    }
-    });
-
-    const activityPayload = {
-    selected, // pre-defined activity IDs
-    other     // custom user-typed entries
-    };
-
-
-    const payload = {
-        rate: bookingGlobals.booking_rate,
-        date: bookingGlobals.booking_date,
-        timezone: window.TIMEZONE,
-        start_time: bookingGlobals.booking_start,
-        duration: bookingGlobals.booking_duration,
-        listing_uuid: LISTING_UUID,
-        tax_rate: window.bookingGlobals.taxRate,
-    
-        first_name: document.getElementById('booking-first-name')?.value,
-        last_name: document.getElementById('booking-last-name')?.value,
-        email: document.getElementById('booking-email')?.value,
-        phone: document.getElementById('booking-phone')?.value,
-        user_uuid: window.supabaseUser?.id || null,
-    
-        activities: activityPayload || [],
-        attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
-        source: bookingSource,
-    
-        discount_code: window.bookingGlobals.discountCode || null,
-        discount_certificate_uuid: window.bookingGlobals.discountUUID || null, 
-        credits_applied: window.bookingGlobals.creditsApplied || 0.0
-    };
-    
-    try {
-      const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-  
-      if (!response.ok) {
-        throw new Error(`PaymentIntent webhook failed: ${response.status}`);
-      }
-  
-      const data = await response.json();
-  
-      // Store client_secret and intent ID for Step 3
-      window.bookingGlobals.client_secret = data.client_secret;
-      window.bookingGlobals.payment_intent_id = data.payment_intent_id;
-      window.bookingGlobals.payment_amount = data.amount; 
-      console.log("✅ PaymentIntent created:", data);
-      setupStripeElements();
-  
-    } catch (err) {
-      console.error("❌ Error requesting PaymentIntent:", err);
-      // Show UI error here if needed
-    }
-}
-
 async function isTempHoldStillValid() {
     const { data, error } = await supabase
       .from("temp_events")
@@ -1315,6 +1239,102 @@ function setupStripeElements() {
       }
     });
 }  
+
+async function requestPaymentIntent() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingSource = urlParams.get('source') || null;
+
+    const selectedLabels = window.bookingGlobals.activities || [];
+
+    const selected = [];
+    const other = [];
+
+    selectedLabels.forEach(label => {
+        const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
+        if (match) {
+            selected.push(match[0]); // push predefined ID
+        } else {
+            other.push(label.replace(/^Other:\s*/i, "").trim());
+        }
+    });
+
+    const {
+        booking_rate = 0,
+        booking_duration = 0,
+        booking_discount,
+        creditsApplied = 0,
+        taxRate = 0,
+    } = window.bookingGlobals;
+
+    const hours = booking_duration / 60;
+    const certificateDiscount = booking_discount?.discount_amount ? parseFloat(booking_discount.discount_amount) : 0;
+
+    const subtotalBeforeTax = (booking_rate * hours) - certificateDiscount - creditsApplied;
+    const subtotal = Math.max(0, subtotalBeforeTax);
+    const subtotalTaxes = subtotal * (taxRate / 100);
+    const total = subtotal + subtotalTaxes;
+
+    const activityPayload = {
+        selected,
+        other
+    };
+
+    const payload = {
+        rate: booking_rate,
+        hours,
+        certificate_discount: certificateDiscount,
+        user_credits: creditsApplied,
+        subtotal,
+        tax_rate: taxRate,
+        subtotal_taxes: subtotalTaxes,
+        total,
+
+        date: bookingGlobals.booking_date,
+        timezone: window.TIMEZONE,
+        start_time: bookingGlobals.booking_start,
+        duration: bookingGlobals.booking_duration,
+        listing_uuid: LISTING_UUID,
+
+        first_name: document.getElementById('booking-first-name')?.value,
+        last_name: document.getElementById('booking-last-name')?.value,
+        email: document.getElementById('booking-email')?.value,
+        phone: document.getElementById('booking-phone')?.value,
+        user_uuid: window.supabaseUser?.id || window.bookingGlobals.user_uuid_override || null,
+
+        activities: activityPayload,
+        attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
+        source: bookingSource,
+
+        discount_code: window.bookingGlobals.discountCode || null,
+        discount_certificate_uuid: window.bookingGlobals.discountUUID || null,
+        credits_applied: creditsApplied
+    };
+
+    try {
+        const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);
+
+        const data = await response.json();
+
+        // Store return values
+        window.bookingGlobals.client_secret = data.client_secret;
+        window.bookingGlobals.payment_intent_id = data.payment_intent_id;
+        window.bookingGlobals.transaction_uuid = data.transaction_uuid;
+        window.bookingGlobals.payment_amount = data.amount;
+
+        console.log("✅ PaymentIntent created:", data);
+        setupStripeElements();
+
+    } catch (err) {
+        console.error("❌ Error requesting PaymentIntent:", err);
+        // Optional: display UI error
+    }
+}
 
 async function updatePaymentIntent() {
     const {
