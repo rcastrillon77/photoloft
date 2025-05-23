@@ -908,37 +908,41 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     if (window.preselectedBooking) {
         const { date, time, duration } = window.preselectedBooking;
     
-        // Set calendar date (if not already applied)
+        // Set calendar date (already handled upstream, but safe to enforce)
+        window.bookingGlobals.booking_date = new Date(date);
         if (window.flatpickrCalendar) {
-        window.flatpickrCalendar.setDate(date, true); // triggers onChange
+            window.flatpickrCalendar.setDate(date, true); // triggers onChange
         }
     
-        // Set slider + globals
+        // Update slider
         const slider = document.getElementById("duration-slider");
         if (slider) {
-        slider.value = duration;
-        updateDurationDisplay(duration * 60);
-        window.bookingGlobals.booking_duration = duration * 60;
-        setSliderProgress(duration);
+            slider.value = duration;
+            updateDurationDisplay(duration * 60);
+            window.bookingGlobals.booking_duration = duration * 60;
+            setSliderProgress(duration);
         }
     
-        // Set selected time radio
-        const targetTimeValue = luxon.DateTime.fromISO(time).toFormat("h:mm a");
+        // Save preselection into bookingGlobals (time will be "HH:mm a" string)
+        const selectedTime = luxon.DateTime.fromISO(time, { zone: window.TIMEZONE }).toFormat("h:mm a");
         const radios = document.querySelectorAll(".radio-option-label");
-        radios.forEach((label) => {
-        if (label.textContent.trim() === targetTimeValue) {
-            const input = label.previousElementSibling;
-            if (input?.type === "radio") {
-            input.checked = true;
-            input.dispatchEvent(new Event("change", { bubbles: true }));
+    
+        for (const label of radios) {
+            if (label.textContent.trim() === selectedTime) {
+                const input = label.previousElementSibling;
+                if (input?.type === "radio") {
+                    // Use click to fire all change listeners
+                    input.click();
+                    console.log("🟢 Clicked preselected time:", selectedTime);
+                    break;
+                }
             }
         }
-        });
     
         console.log("🟢 Preselected booking restored:", window.preselectedBooking);
         window.preselectedBooking = null;
     }
-
+    
     return await renderStartTimeOptions(availableTimes);
   
 }
