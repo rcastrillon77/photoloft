@@ -641,6 +641,12 @@ function formatMembershipLabel(level) {
     }
 }
 
+function setButtonText(id, text) {
+    document.querySelectorAll(`${id} .button-text`).forEach(el => {
+      el.textContent = text;
+    });
+}  
+
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
