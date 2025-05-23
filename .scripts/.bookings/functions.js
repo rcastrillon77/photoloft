@@ -458,6 +458,14 @@ async function goToStep3() {
     setupStripeElements();
 }  
 
+function showBookingConfirmation() {
+    document.getElementById("stripe-payment")?.classList.add("hide");
+    document.getElementById("confirmation-section")?.classList.remove("hide");
+    document.getElementById("booking-summary-wrapper")?.classList.add("shrink");
+    document.querySelector(".booking-bg-col")?.classList.add("confirmation");
+    document.querySelector(".booking-component")?.classList.add("confirmation");
+}  
+
 async function populateFinalSummary() {
     const globals = window.bookingGlobals;
     const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
@@ -556,6 +564,74 @@ async function populateFinalSummary() {
     document.querySelector("#final-booking-summary-taxes .summary-line-item-price").textContent = `$${tax.toFixed(2)}`;
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
+
+async function submitFinalBooking() {
+    const g = window.bookingGlobals;
+  
+    const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
+    const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
+  
+    const activities = {
+      selected: g.activities?.filter(a => !a.startsWith("Other:")) || [],
+      other: g.activities?.filter(a => a.startsWith("Other:")).map(a => a.replace(/^Other:\s*/, "").trim()) || []
+    };
+  
+    const payload = {
+      listing_uuid: LISTING_UUID,
+      user_uuid: window.supabaseUser?.id || g.user_uuid_override || null,
+      date: g.booking_date,
+      start: bookingStart.toISO(),
+      end: bookingEnd.toISO(),
+      duration: g.booking_duration,
+      attendees: g.attendees || 1,
+      activities,
+      first_name: document.getElementById('booking-first-name')?.value || "",
+      last_name: document.getElementById('booking-last-name')?.value || "",
+      email: document.getElementById('booking-email')?.value || "",
+      phone: document.getElementById('booking-phone')?.value || "",
+  
+      payment_intent_id: g.payment_intent_id || null,
+      transaction_uuid: g.transaction_uuid || null,
+      temp_hold_uuid: g.temp_hold_uuid || null,
+  
+      base_rate: g.base_rate || g.booking_rate,
+      final_rate: g.booking_rate,
+      final_rate_name: g.rate_label || null,
+  
+      discount_code: g.discountCode || null,
+      discount_code_uuid: g.discountUUID || null,
+      discount_code_total: g.certificate_discount || 0,
+  
+      user_credits_applied: g.creditsApplied || 0,
+      subtotal: g.booking_total || 0,
+      tax_rate: g.taxRate || 0,
+      tax_total: roundTo2((g.booking_total || 0) * ((g.taxRate || 0) / 100)),
+      total: g.payment_amount || 0,
+  
+      source: new URLSearchParams(window.location.search).get('source') || null
+    };
+  
+    try {
+      const res = await fetch("https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!res.ok) throw new Error(`Make.com create booking failed: ${res.status}`);
+  
+      const result = await res.json();
+  
+      // Store booking UUID for redirect
+      window.bookingGlobals.booking_uuid = result.booking_uuid;
+  
+      showBookingConfirmation();
+  
+    } catch (err) {
+      console.error("❌ Failed to create booking:", err);
+      alert("Something went wrong confirming your booking. Please try again.");
+    }
+}  
 
 function formatMembershipLabel(level) {
     switch (level) {
@@ -1161,7 +1237,7 @@ function setupStripeElements() {
           alert("❌ Payment failed: " + error.message);
         } else {
           ev.complete("success");
-          window.location.href = "/thank-you"; // 🔁 Update as needed
+          await submitFinalBooking();
         }
       } catch (err) {
         console.error("Stripe Payment Error:", err);
@@ -1258,6 +1334,23 @@ async function requestPaymentIntent() {
         window.bookingGlobals.payment_intent_id = data.payment_intent_id;
         window.bookingGlobals.transaction_uuid = data.transaction_uuid;
         window.bookingGlobals.payment_amount = data.amount;
+
+        const total = window.bookingGlobals.payment_amount;
+
+        const stripeContainer = document.querySelector(".form-button-container");
+        const confirmContainer = document.getElementById("confirm-button-container");
+        const prButton = document.getElementById("payment-request-button");
+
+        if (total === 0) {
+        stripeContainer?.classList.add("hide");
+        confirmContainer?.classList.remove("hide");
+        prButton?.classList.add("hide");
+        } else {
+        stripeContainer?.classList.remove("hide");
+        confirmContainer?.classList.add("hide");
+        prButton?.classList.remove("hide");
+        }
+
 
         console.log("✅ PaymentIntent created:", data);
         setupStripeElements();
