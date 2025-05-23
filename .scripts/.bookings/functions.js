@@ -554,6 +554,14 @@ function populateFinalSummary() {
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
 
+function formatMembershipLabel(level) {
+    switch (level) {
+        case 'paid-member': return 'Pro Member';
+        case 'free-member': return 'Free Member';
+        default: return 'Non-member';
+    }
+}
+
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
@@ -570,7 +578,8 @@ function updateBookingSummary() {
         booking_date,
         booking_start,
         booking_end,
-        booking_duration
+        booking_duration,
+        membership_level = 'non-member'
     } = window.bookingGlobals;
 
     const hoursDecimal = booking_duration / 60;
@@ -585,45 +594,58 @@ function updateBookingSummary() {
     const dateKey = booking_date.toISOString().split("T")[0];
     const special = window.specialRates?.[dateKey];
 
-    // 🔄 Use selected date for rate
-    const scheduleForDate = getScheduleForDate(window.listingSchedule, booking_date);
-    const baseRate = scheduleForDate?.rate ?? FULL_RATE;
+    // 🧾 Always compare to non-member base rate
+    const nonMemberSchedule = getScheduleForDate(window.listingSchedule, booking_date, 'non-member');
+    const baseRate = nonMemberSchedule?.rate ?? FULL_RATE;
 
-    // 🔽 Apply same-day rate if applicable
-    let finalRate = baseRate;
-    let discountTitle = '';
+    // 🔑 Actual member rate
+    const memberSchedule = getScheduleForDate(window.listingSchedule, booking_date, membership_level);
+    let finalRate = memberSchedule?.rate ?? baseRate;
+    let rateLabel = '';
     let discountAmount = 0;
 
+    // ⭐️ Special rate overrides all
     if (special) {
         finalRate = special.amount;
-        discountTitle = special.title || "Special Rate";
-        discountEl.textContent = discountTitle;
+        rateLabel = special.title || "Special Rate";
+        discountEl.textContent = rateLabel;
         discountEl.classList.remove("hidden");
-    } else if (isToday && scheduleForDate) {
-        const sameDayKey = ("same-day-rate" in scheduleForDate) ? "same-day-rate" : "same-day";
-        if (sameDayKey in scheduleForDate && scheduleForDate[sameDayKey] !== undefined) {
-            finalRate = scheduleForDate[sameDayKey];
-            discountTitle = "Same-day discount";
-            discountEl.textContent = discountTitle;
+    }
+    // 📆 Same-day rate
+    else if (isToday && memberSchedule) {
+        const sameDayKey = 'same-day-rate' in memberSchedule ? 'same-day-rate' : 'same-day';
+        if (sameDayKey in memberSchedule && memberSchedule[sameDayKey] !== undefined) {
+            finalRate = memberSchedule[sameDayKey];
+            rateLabel = "Same-day Discount";
+            discountEl.textContent = rateLabel;
             discountEl.classList.remove("hidden");
         } else {
             discountEl.classList.add("hidden");
         }
-    } else {
+    }
+    // 🧍 Membership fallback label
+    else {
         discountEl.classList.add("hidden");
+        if (membership_level !== 'non-member') {
+            rateLabel = formatMembershipLabel(membership_level);
+        } else {
+            rateLabel = "Non-member";
+        }
     }
 
     if (totalRateEl) totalRateEl.textContent = `$${finalRate}/hr`;
 
-    const baseTotal = (booking_duration / 60) * baseRate;
-    const discountedTotal = (booking_duration / 60) * finalRate;
+    const baseTotal = hoursDecimal * baseRate;
+    const discountedTotal = hoursDecimal * finalRate;
     discountAmount = baseTotal - discountedTotal;
 
-    // Update bookingGlobals
+    // 💾 Store in bookingGlobals
+    window.bookingGlobals.base_rate = baseRate;
     window.bookingGlobals.booking_rate = finalRate;
     window.bookingGlobals.booking_total = discountedTotal;
+    window.bookingGlobals.rate_label = rateLabel;
     window.bookingGlobals.booking_discount = discountAmount > 0 ? {
-        title: discountTitle,
+        title: rateLabel,
         rate: finalRate,
         discount_amount: discountAmount.toFixed(2),
         total_due: discountedTotal.toFixed(2),
@@ -633,7 +655,7 @@ function updateBookingSummary() {
     const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
     const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
 
-    // ⏱️ Timezone label
+    // 🕓 Timezone label
     const longName = startTime.offsetNameLong;
     const shortName = startTime.offsetNameShort;
 
