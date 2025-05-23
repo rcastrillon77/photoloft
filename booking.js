@@ -2493,6 +2493,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
         e.preventDefault();
+
+        if (e.currentTarget.classList.contains("processing")) return;
       
         const clientSecret = window.bookingGlobals.client_secret;
         const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
@@ -2512,7 +2514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               phone
             }
           },
-          setup_future_usage: "off_session" // ✅ Save for future automatic charges
+          setup_future_usage: "off_session"
         });
       
         if (error) {
@@ -2528,6 +2530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }); 
     
     document.getElementById("confirm-booking")?.addEventListener("click", async () => {
+        if (e.currentTarget.classList.contains("processing")) return;
         setButtonText("#confirm-booking", "Creating Booking...", true);
         await submitFinalBooking();
     });
