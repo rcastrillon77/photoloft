@@ -716,11 +716,18 @@ function formatMembershipLabel(level) {
     }
 }
 
-function setButtonText(id, text) {
-    document.querySelectorAll(`${id} .button-text`).forEach(el => {
+function setButtonText(id, text, isProcessing = false) {
+    const button = document.querySelector(id);
+    if (!button) return;
+  
+    // Update text
+    button.querySelectorAll(".button-text").forEach(el => {
       el.textContent = text;
     });
-}  
+  
+    // Toggle class
+    button.classList.toggle("processing", isProcessing);
+}
 
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
