@@ -1044,7 +1044,7 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     }
 
     return await renderStartTimeOptions(availableTimes);
-  
+    
 }
 
 async function findNextAvailableDate(maxDays = 30) {
