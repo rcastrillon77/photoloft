@@ -480,8 +480,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (active) {
             // Removing credits
             label.textContent = "Removing credits...";
-            await updatePaymentIntent(subtotal);
             window.bookingGlobals.creditsApplied = 0;
+            await updatePaymentIntent(subtotal);
     
             button.classList.remove("active");
             icon.classList.add("hide");
@@ -490,8 +490,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Applying credits
             label.textContent = "Applying credits...";
             const applied = Math.min(subtotal, credits);
-            await updatePaymentIntent(subtotal - applied);
             window.bookingGlobals.creditsApplied = applied;
+            await updatePaymentIntent(subtotal - applied);
     
             button.classList.add("active");
             icon.classList.remove("hide");
