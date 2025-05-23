@@ -533,9 +533,34 @@ function goToStep3() {
     setupStripeElements();
 }  
 
-function populateFinalSummary() {
+async function populateFinalSummary() {
     const globals = window.bookingGlobals;
     const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
+    
+    // Listing Name    
+    const nameEl = document.getElementById('final-summary-listing-name');
+    if (!nameEl || !window.LISTING_UUID) return;
+
+    try {
+        const { data, error } = await window.supabase
+            .from("listings")
+            .select("name")
+            .eq("uuid", window.LISTING_UUID)
+            .single();
+
+        if (error) {
+            console.error("❌ Error fetching listing name:", error);
+            nameEl.textContent = "Listing";
+            return;
+        }
+
+        if (data?.name) {
+            nameEl.textContent = data.name;
+        }
+    } catch (err) {
+        console.error("❌ Unexpected error fetching listing:", err);
+        nameEl.textContent = "Listing";
+    }
   
     // 📅 Date, time
     document.getElementById("final-summary-date").textContent = luxonDate.toFormat("MMMM d, yyyy");
@@ -562,18 +587,12 @@ function populateFinalSummary() {
     activityList.innerHTML = "";
 
     selectedLabels.forEach(label => {
-    const pill = document.createElement("div");
-    pill.className = "booking-summary-value pill";
-    selectedLabels.forEach(label => {
-        const cleanLabel = label.replace(/^Other:\s*/i, "").trim();
-        const pill = document.createElement("div");
-        pill.className = "booking-summary-value pill";
-        pill.textContent = cleanLabel;
-        activityList.appendChild(pill);
-      });
-      
-    activityList.appendChild(pill);
-    });
+      const cleanLabel = label.replace(/^Other:\s*/i, "").trim();
+      const pill = document.createElement("div");
+      pill.className = "booking-summary-value pill";
+      pill.textContent = cleanLabel;
+      activityList.appendChild(pill);
+    });    
   
     const activityLabel = document.getElementById("final-summary-activities-label");
     activityLabel.textContent = selectedLabels.length === 1 ? "Activity" : "Activities";
