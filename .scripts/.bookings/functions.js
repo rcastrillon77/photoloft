@@ -1122,6 +1122,8 @@ function setupStripeElements() {
       requestPayerName: true,
       requestPayerEmail: true
     });
+
+    window.paymentRequest = paymentRequest;
   
     const prButton = elements.create("paymentRequestButton", {
       paymentRequest,
@@ -1129,7 +1131,7 @@ function setupStripeElements() {
         paymentRequestButton: {
           type: "default",
           theme: "dark",
-          height: "60px",
+          height: "57.6px",
           borderRadius: "30px"
         }
       }
@@ -1278,7 +1280,7 @@ async function updatePaymentIntent() {
 
     const subtotal = roundDecimals(Math.max(0, (booking_rate * hours) - certificateDiscount - credits));
     const subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
-    const total = roundDecimals(subtotal + subtotalTaxes);
+    const total = roundDecimals(subtotal + subtotalTaxes);          
 
     const payload = {
         final_rate: booking_rate,
@@ -1302,6 +1304,16 @@ async function updatePaymentIntent() {
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         console.log("✅ updatePaymentIntent sent:", payload);
+
+        if (window.paymentRequest && typeof window.paymentRequest.update === "function") {
+            window.paymentRequest.update({
+              total: {
+                label: "Total",
+                amount: Math.round(total * 100)
+              }
+            });
+        }
+
     } catch (err) {
         console.error("❌ Failed to update payment intent:", err);
     }
@@ -1434,7 +1446,7 @@ function initCalendar() {
 }
 
 function generateExtendedTimeOptions() {
-    const container = document.querySelector('.extended-time .pill-button-flex-container');
+        const container = document.querySelector('.extended-time .pill-button-flex-container');
     const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
 
     container.innerHTML = '';
