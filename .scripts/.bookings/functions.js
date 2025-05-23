@@ -1567,6 +1567,28 @@ async function initBookingConfig(listingId, locationId) {
     }
 }
 
+function prefillContactInfoIfLoggedIn() {
+    if (!window.supabaseUser) return;
+  
+    const { email, phone, first_name, last_name } = window.supabaseUser;
+  
+    const setField = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = value || '';
+        el.setAttribute('readonly', 'readonly'); // disable editing
+        el.classList.add('readonly'); // optional for styling
+      }
+    };
+  
+    setField("booking-email", email);
+    setField("booking-phone", phone);
+    setField("booking-first-name", first_name);
+    setField("booking-last-name", last_name);
+  
+    window.bookingGlobals.user_uuid_override = window.supabaseUser.id;
+  }
+  
 
 // ================================== //
 // ========  NEW FUNCTIONS  ========= //
