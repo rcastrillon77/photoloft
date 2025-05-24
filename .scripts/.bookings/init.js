@@ -630,33 +630,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         let finalDiscount = 0;
       
         if (discount.type === "currency") {
-          finalDiscount = discount.amount;
-          window.bookingGlobals.certificate_discount = finalDiscount;
+            finalDiscount = discount.amount;
+            window.bookingGlobals.certificate_discount = finalDiscount;
+            window.bookingGlobals.discountCode = code.toUpperCase();
+            window.bookingGlobals.discountUUID = cert.id;
         } else if (discount.type === "percent") {
-          finalDiscount = (discount.amount / 100) * (rate * hours);
-          window.bookingGlobals.certificate_discount = finalDiscount;
+            finalDiscount = (discount.amount / 100) * (rate * hours);
+            window.bookingGlobals.certificate_discount = finalDiscount;
+            window.bookingGlobals.discountCode = code.toUpperCase();
+            window.bookingGlobals.discountUUID = cert.id;
         } else if (discount.type === "minutes") {
-          finalDiscount = (discount.amount * rate) / 60;
-          window.bookingGlobals.certificate_discount = finalDiscount;
+            finalDiscount = (discount.amount * rate) / 60;
+            window.bookingGlobals.certificate_discount = finalDiscount;
+            window.bookingGlobals.discountCode = code.toUpperCase();
+            window.bookingGlobals.discountUUID = cert.id;
         } else if (discount.type === "rate") {
-          if (window.bookingGlobals.final_rate > discount.amount) {
-            window.bookingGlobals.old_rate = window.bookingGlobals.final_rate;
-            window.bookingGlobals.old_rate_label = window.bookingGlobals.rate_label;
-            window.bookingGlobals.final_rate = discount.amount;
-            window.bookingGlobals.rate_label = code.toUpperCase();
-            window.bookingGlobals.certificate_discount = 0;
+          if (window.bookingGlobals.final_rate > discount.amount) 
+
+            finalDiscount = (hours * rate) - (hours * discount.amount);
+            window.bookingGlobals.certificate_discount = finalDiscount;
+            window.bookingGlobals.discountCode = code.toUpperCase();
+            window.bookingGlobals.discountUUID = cert.id;
           } else {
             alert("Your current rate is lower than the coupon's rate");
           }
         }
       
-        console.log("💸 Final discount:", finalDiscount);
-      
-        window.bookingGlobals.discountCode = code.toUpperCase();
-        window.bookingGlobals.discountUUID = cert.id;
-      
         populateFinalSummary();
-        updateBookingSummary();
+        updatePaymentIntent();
       
         alert(discount.type === "rate"
           ? `Coupon applied: your hourly rate is now $${discount.amount}.`
