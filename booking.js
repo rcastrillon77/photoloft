@@ -1519,6 +1519,9 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
     let total = totalBase;
     let rateUsed = false;
   
+    console.log("📦 Starting discount stacking...");
+    console.log("💰 Base total:", totalBase, "| Hours:", hours, "| Final rate:", finalRate);
+  
     const typePriority = { rate: 0, minutes: 1, currency: 2, percent: 3 };
     const sorted = [...certs].sort((a, b) => {
       const p1 = typePriority[a.type] ?? 99;
@@ -1533,34 +1536,45 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
       const { code, uuid, type, amount, rules } = cert;
       let discountAmount = 0;
   
-      // ✅ Threshold check
       const threshold = rules?.threshold;
       if (threshold) {
         const val = threshold.amount ?? 0;
         const passes = threshold.type === 'currency'
           ? totalBase >= val
           : (hours * 60) >= val;
-        if (!passes) continue;
+        if (!passes) {
+          console.log(`⏳ Skipping ${code} (fails threshold of ${val} ${threshold.type})`);
+          continue;
+        }
       }
   
-      // 🧮 Apply by type
       if (type === 'rate') {
-        if (rateUsed) continue;
+        if (rateUsed) {
+          console.log(`⚠️ Skipping ${code} (already used rate coupon)`);
+          continue;
+        }
         if (newRate > amount) {
           discountAmount = roundDecimals((newRate - amount) * hours);
           newRate = amount;
           rateUsed = true;
-        } else continue;
+          console.log(`📉 Applying rate override (${code}): -$${discountAmount}`);
+        } else {
+          console.log(`🔕 Skipping ${code} (rate already lower)`);
+          continue;
+        }
       } else if (type === 'minutes') {
         discountAmount = roundDecimals((amount * newRate) / 60);
+        console.log(`⏱️ Minutes (${code}): -$${discountAmount}`);
       } else if (type === 'currency') {
         discountAmount = roundDecimals(amount);
+        console.log(`💵 Currency (${code}): -$${discountAmount}`);
       } else if (type === 'percent') {
         discountAmount = roundDecimals(total * (amount / 100));
+        console.log(`📊 Percent (${code}): -$${discountAmount}`);
       }
   
-      // ✅ Limit check
       if (rules?.limit && discountAmount > rules.limit) {
+        console.log(`🔒 Applying limit for ${code}: was $${discountAmount}, capped to $${rules.limit}`);
         discountAmount = rules.limit;
       }
   
@@ -1568,6 +1582,7 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
       results.push({ code, uuid, amount: discountAmount });
     }
   
+    console.log("✅ Final stacked discounts:", results);
     return results;
 }  
 
