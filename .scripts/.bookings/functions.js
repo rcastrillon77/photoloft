@@ -579,7 +579,6 @@ async function populateFinalSummary() {
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
   
-
 async function submitFinalBooking() {
     const g = window.bookingGlobals;
   
@@ -1145,7 +1144,6 @@ async function fetchEventsForRange(start, end) {
   
 
 // ** PAYMENT ** //
-
 function setupStripeElements() {
     const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
     const elements = stripe.elements();
@@ -1438,6 +1436,64 @@ async function updatePaymentIntent() {
         console.error("❌ Failed to update payment intent:", err);
     }
 }
+
+function applyStackedDiscounts(certs = [], finalRate, hours) {
+    const totalBase = finalRate * hours;
+    let newRate = finalRate;
+    let total = totalBase;
+    let rateUsed = false;
+  
+    const typePriority = { rate: 0, minutes: 1, currency: 2, percent: 3 };
+    const sorted = [...certs].sort((a, b) => {
+      const p1 = typePriority[a.type] ?? 99;
+      const p2 = typePriority[b.type] ?? 99;
+      if (p1 === p2 && a.type === 'percent') return a.amount - b.amount;
+      return p1 - p2;
+    });
+  
+    const results = [];
+  
+    for (const cert of sorted) {
+      const { code, uuid, type, amount, rules } = cert;
+      let discountAmount = 0;
+  
+      // ✅ Threshold check
+      const threshold = rules?.threshold;
+      if (threshold) {
+        const val = threshold.amount ?? 0;
+        const passes = threshold.type === 'currency'
+          ? totalBase >= val
+          : (hours * 60) >= val;
+        if (!passes) continue;
+      }
+  
+      // 🧮 Apply by type
+      if (type === 'rate') {
+        if (rateUsed) continue;
+        if (newRate > amount) {
+          discountAmount = roundDecimals((newRate - amount) * hours);
+          newRate = amount;
+          rateUsed = true;
+        } else continue;
+      } else if (type === 'minutes') {
+        discountAmount = roundDecimals((amount * newRate) / 60);
+      } else if (type === 'currency') {
+        discountAmount = roundDecimals(amount);
+      } else if (type === 'percent') {
+        discountAmount = roundDecimals(total * (amount / 100));
+      }
+  
+      // ✅ Limit check
+      if (rules?.limit && discountAmount > rules.limit) {
+        discountAmount = rules.limit;
+      }
+  
+      total -= discountAmount;
+      results.push({ code, uuid, amount: discountAmount });
+    }
+  
+    return results;
+}  
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
