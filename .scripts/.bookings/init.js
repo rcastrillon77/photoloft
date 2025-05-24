@@ -644,14 +644,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ✅ Recalculate
         const hours = window.bookingGlobals.booking_duration / 60;
         const finalRate = window.bookingGlobals.final_rate;
-      
-        const result = applyStackedDiscounts(window.bookingGlobals.appliedCertificates, finalRate, hours);
-      
-        // ✅ Flatten results for UI and submission
-        window.bookingGlobals.discountTotals = result.map(r => r.amount);
-        window.bookingGlobals.discountCodes = result.map(r => r.code);
-        window.bookingGlobals.discountUUIDs = result.map(r => r.uuid);
-      
+
+        const { results, failures, creditsToUser } = applyStackedDiscounts(
+            window.bookingGlobals.appliedCertificates,
+            finalRate,
+            hours
+        );
+        
+        window.bookingGlobals.discountTotals = results.map(r => r.amount);
+        window.bookingGlobals.discountCodes = results.map(r => r.code);
+        window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
+        window.bookingGlobals.creditsToUser = creditsToUser > 0 ? creditsToUser : 0;
+
+        if (creditsToUser > 0) {
+            alert(`Only part of "${upperCode}" was applied. $${creditsToUser.toFixed(2)} has been saved as account credit.`);
+        }  
+        
+        console.log("💳 Total credits to user:", window.bookingGlobals.creditsToUser);
+
+        // Show alert for any failed coupons (only the last one just added)
+        const failed = failures.find(f => f.code === upperCode);
+        if (failed) {
+        alert(`Coupon ${upperCode} could not be applied: ${failed.reason}`);
+        // Also remove it from appliedCertificates since it wasn't used
+        window.bookingGlobals.appliedCertificates = window.bookingGlobals.appliedCertificates.filter(c => c.code !== upperCode);
+        return;
+        }
+
         await updatePaymentIntent();
         populateFinalSummary();
         updateBookingSummary();
