@@ -2866,7 +2866,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.bookingGlobals.appliedCertificates ??= [];
         window.bookingGlobals.appliedCertificates.push({
           code: upperCode,
-          uuid: cert.id,
+          uuid: cert.uuid,
           type: discount.type,
           amount: discount.amount,
           rules
