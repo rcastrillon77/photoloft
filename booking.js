@@ -2621,31 +2621,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         if (discount.type === "currency") {
             finalDiscount = discount.amount;
-            window.bookingGlobals.certificate_discount = finalDiscount;
         } else if (discount.type === "percent") {
             finalDiscount = (discount.amount / 100) * (rate * hours);
-            window.bookingGlobals.certificate_discount = finalDiscount;
         } else if (discount.type === "minutes") {
             finalDiscount = (discount.amount * rate) / 60;
-            window.bookingGlobals.certificate_discount = finalDiscount;
         } else if (discount.type === "rate") {
           if (window.bookingGlobals.final_rate > discount.amount) {
             finalDiscount = (hours * rate) - (hours * discount.amount);
-            window.bookingGlobals.certificate_discount = finalDiscount;
           } else {
             alert("Your current rate is lower than the coupon's rate");
           }
         }
-        
+
+        window.bookingGlobals.certificate_discount = roundDecimals(finalDiscount || 0);
         window.bookingGlobals.discountCode = code.toUpperCase();
         window.bookingGlobals.discountUUID = cert.id;
 
         await updatePaymentIntent();
         populateFinalSummary();
-      
-        alert(discount.type === "rate"
-          ? `Coupon applied: your hourly rate is now $${discount.amount}.`
-          : `Coupon applied: $${finalDiscount.toFixed(2)} off.`);
+        updateBookingSummary()
       });
       
 
