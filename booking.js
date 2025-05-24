@@ -2627,108 +2627,89 @@ document.addEventListener('DOMContentLoaded', async () => {
         const listingId = LISTING_UUID;
         const userId = window.supabaseUser?.id || window.bookingGlobals.user_uuid_override || null;
         const bookingDate = window.bookingGlobals.booking_date;
-        const today = luxon.DateTime.now().setZone(bookingDate.zone);
-      
-        console.log("🔍 Checking coupon:", code);
-        console.log("🧾 Listing UUID:", listingId);
-        console.log("👤 User ID:", userId);
+        const today = luxon.DateTime.now().setZone(window.TIMEZONE);
       
         const { data: certsRaw, error } = await window.supabase
           .from("certificates")
           .select("*")
-          .eq("code", code)
+          .eq("code", code);
       
-        console.log("📦 Raw certificates from Supabase:", certsRaw);
         if (error) {
           console.error("❌ Supabase error:", error);
           alert("Something went wrong checking the code.");
           return;
         }
-        
-        // Listings Check
+      
         const certs = (certsRaw || []).filter(c =>
-            !c.listings || (Array.isArray(c.listings) && c.listings.includes(listingId))
+          !c.listings || (Array.isArray(c.listings) && c.listings.includes(listingId))
         );
-        
+      
         if (!certs.length) {
-            alert("Invalid or expired coupon.");
-            return;
-        } else {
-            console.log("✅ Matching certificate(s):", certs);
+          alert("Invalid or expired coupon.");
+          return;
         }
-          
       
         const cert = certs[0];
         const rules = cert.rules || {};
-        console.log("📜 Rules:", rules);      
+        const discount = cert.discount || {};
       
-        //Avoid Duplicates
-        if (window.bookingGlobals.discountCodes?.includes(code.toUpperCase())) {
-            alert("You’ve already applied this coupon.");
-            return;
+        const upperCode = code.toUpperCase();
+        const existing = (window.bookingGlobals.appliedCertificates || []).find(c => c.code === upperCode);
+        if (existing) {
+          alert("You’ve already applied this coupon.");
+          return;
         }
-        
-        // Stackability check
-        if (!rules.stackable && (window.bookingGlobals.hasSpecialRate || window.bookingGlobals.discountCodes?.length > 0)) {
+      
+        if (!rules.stackable && (window.bookingGlobals.hasSpecialRate || (window.bookingGlobals.appliedCertificates?.length ?? 0) > 0)) {
           alert("This coupon cannot be used with other discounts.");
           return;
-        }          
+        }
       
-        // Date check
-        if (rules.date) {
-          const start = luxon.DateTime.fromISO(rules.date.start);
-          const end = luxon.DateTime.fromISO(rules.date.end);
-          const checkDate = rules.date.type === "use" ? luxon.DateTime.fromJSDate(bookingDate) : today;
-          console.log("📅 Date range:", start.toISODate(), "to", end.toISODate(), "→ Checking:", checkDate.toISODate());
+        // ✅ Date check
+        if (rules?.['date-limit']) {
+          const { type, start, end } = rules['date-limit'];
+          const checkDate = type === "use" ? luxon.DateTime.fromJSDate(bookingDate) : today;
+          const startDate = luxon.DateTime.fromISO(start);
+          const endDate = luxon.DateTime.fromISO(end);
       
-          if (checkDate < start || checkDate > end) {
+          if (checkDate < startDate || checkDate > endDate) {
             alert("This coupon is not valid for the selected booking date.");
             return;
           }
         }
       
-        // User restriction check
-        if (rules.users && Array.isArray(rules.users)) {
-          console.log("👥 Allowed users:", rules.users);
-          if (!userId || !rules.users.includes(userId)) {
-            alert("This coupon is not valid for your account.");
-            return;
-          }
+        // ✅ User check
+        if (Array.isArray(rules.users) && userId && !rules.users.includes(userId)) {
+          alert("This coupon is not valid for your account.");
+          return;
         }
       
-        // Apply discount
-        const discount = cert.discount || {};
-        const rate = window.bookingGlobals.final_rate || 0;
+        // ✅ Push full object
+        window.bookingGlobals.appliedCertificates ??= [];
+        window.bookingGlobals.appliedCertificates.push({
+          code: upperCode,
+          uuid: cert.id,
+          type: discount.type,
+          amount: discount.amount,
+          rules
+        });
+      
+        // ✅ Recalculate
         const hours = window.bookingGlobals.booking_duration / 60;
-        let finalDiscount = 0;
+        const finalRate = window.bookingGlobals.final_rate;
       
-        if (discount.type === "currency") {
-            finalDiscount = discount.amount;
-        } else if (discount.type === "percent") {
-            finalDiscount = (discount.amount / 100) * (rate * hours);
-        } else if (discount.type === "minutes") {
-            finalDiscount = (discount.amount * rate) / 60;
-        } else if (discount.type === "rate") {
-          if (window.bookingGlobals.final_rate > discount.amount) {
-            finalDiscount = (hours * rate) - (hours * discount.amount);
-          } else {
-            alert("Your current rate is lower than the coupon's rate");
-          }
-        }
-
-        window.bookingGlobals.discountTotals ??= [];
-        window.bookingGlobals.discountCodes ??= [];
-        window.bookingGlobals.discountUUIDs ??= [];
-
-        window.bookingGlobals.discountTotals.push(roundDecimals(finalDiscount || 0));
-        window.bookingGlobals.discountCodes.push(code.toUpperCase());
-        window.bookingGlobals.discountUUIDs.push(cert.id);
-
-
+        const result = applyStackedDiscounts(window.bookingGlobals.appliedCertificates, finalRate, hours);
+      
+        // ✅ Flatten results for UI and submission
+        window.bookingGlobals.discountTotals = result.map(r => r.amount);
+        window.bookingGlobals.discountCodes = result.map(r => r.code);
+        window.bookingGlobals.discountUUIDs = result.map(r => r.uuid);
+      
         await updatePaymentIntent();
         populateFinalSummary();
-        updateBookingSummary()
-      });
+        updateBookingSummary();
+    });
+      
       
 
   
