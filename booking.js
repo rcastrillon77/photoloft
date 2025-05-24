@@ -2657,8 +2657,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         // Refresh UI
         populateFinalSummary();
-      });
-      
+    });  
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
         e.preventDefault();
