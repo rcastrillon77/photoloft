@@ -1469,8 +1469,8 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
 
       if (!passes) {
         const reason = threshold.type === 'currency'
-          ? `Subtotal must be at least $${val} for ${code}` 
-          : `Duration must be at least ${val} minutes for ${code}`;
+          ? `Subtotal must be at least $${val} for this coupon` 
+          : `Duration must be at least ${val} minutes for this coupon`;
         console.log(`⏳ Skipping ${code} → ${reason}`);
         failures.push({ code, reason });
         continue;
@@ -1488,7 +1488,7 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
         rateUsed = true;
         console.log(`📉 Applying rate override (${code}): -$${discountAmount}`);
       } else {
-        failures.push({ code, reason: `Your current rate is already lower than this ${code} rate`});
+        failures.push({ code, reason: `Your current rate is already lower than this this coupon's rate`});
         continue;
       }
     } else if (type === 'minutes') {
