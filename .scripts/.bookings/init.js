@@ -582,13 +582,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           alert("Something went wrong checking the code.");
           return;
         }
-      
+        
+        // Listings Check
         const certs = (certsRaw || []).filter(c => !c.listings || c.listings === listingId);
-        console.log("✅ Matching certificate(s):", certs);
       
         if (!certs.length) {
-          alert("Invalid or expired coupon.");
-          return;
+            alert("Invalid or expired coupon.");
+            return;
+        } else {
+            console.log("✅ Matching certificate(s):", certs);
         }
       
         const cert = certs[0];
