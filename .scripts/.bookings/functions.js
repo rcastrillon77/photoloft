@@ -529,15 +529,35 @@ async function populateFinalSummary() {
   
     const discountAmount = globals.certificate_discount || 0;
     const creditsAmount = globals.creditsApplied || 0;
-    const couponCode = globals.discountCode || "";
+    const couponCode = globals.discountCodes || "";
     const taxRate = globals.taxRate || 8.25;
   
     const codeLine = document.getElementById("final-booking-summary-code");
-    codeLine?.classList.toggle("hide", !couponCode);
-    if (couponCode) {
-      codeLine.querySelector(".summary-line-item").textContent = couponCode;
-      codeLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
-    }
+    const codes = window.bookingGlobals.discountCodes || [];
+    const discounts = window.bookingGlobals.certificate_discount || [];
+
+    codeLine?.classList.toggle("hide", codes.length === 0);
+    codeLine.innerHTML = ""; // Clear previous content
+
+    codes.forEach((code, i) => {
+        const amount = roundDecimals(discounts[i] || 0);
+
+        const line = document.createElement("div");
+        line.className = "code-line-item";
+
+        const label = document.createElement("div");
+        label.className = "summary-line-item";
+        label.textContent = code;
+
+        const price = document.createElement("div");
+        price.className = "summary-line-item-price";
+        price.textContent = `- $${amount.toFixed(2)}`;
+
+        line.appendChild(label);
+        line.appendChild(price);
+        codeLine.appendChild(line);
+    });
+
   
     const creditsLine = document.getElementById("final-booking-summary-credits");
     creditsLine?.classList.toggle("hide", !creditsAmount);
@@ -593,8 +613,8 @@ async function submitFinalBooking() {
       final_rate: g.final_rate,
       final_rate_name: g.rate_label || null,
   
-      discount_code: g.discountCode || null,
-      discount_code_uuid: g.discountUUID || null,
+      discount_code: g.discountCodes || null,
+      discount_code_uuid: g.discountUUIDs || null,
       discount_code_total: g.certificate_discount || 0,
   
       user_credits_applied: g.creditsApplied || 0,
@@ -731,7 +751,7 @@ function updateBookingSummary() {
     window.bookingGlobals.final_rate = finalRate;
     window.bookingGlobals.subtotal = discountedTotal;
     window.bookingGlobals.rate_label = rateLabel;
-    window.bookingGlobals.discountTotal = discountAmount > 0 ? {
+    window.bookingGlobals.discountTotals = discountAmount > 0 ? {
         title: rateLabel,
         rate: finalRate,
         discount_amount: discountAmount.toFixed(2),
@@ -1322,8 +1342,8 @@ async function requestPaymentIntent() {
         attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
         source: bookingSource,
 
-        discount_code: window.bookingGlobals.discountCode || null,
-        discount_certificate_uuid: window.bookingGlobals.discountUUID || null,
+        discount_code: window.bookingGlobals.discountCodes || null,
+        discount_certificate_uuid: window.bookingGlobals.discountUUIDs || null,
         credits_applied: credits
     };
 
