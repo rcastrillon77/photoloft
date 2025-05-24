@@ -2636,8 +2636,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         window.bookingGlobals.certificate_discount = roundDecimals(finalDiscount || 0);
-        window.bookingGlobals.discountCode = code.toUpperCase();
-        window.bookingGlobals.discountUUID = cert.id;
+        window.bookingGlobals.discountCodes = code.toUpperCase();
+        window.bookingGlobals.discountUUIDs = cert.id;
 
         await updatePaymentIntent();
         populateFinalSummary();
