@@ -644,6 +644,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
       
+        const rate = window.bookingGlobals.final_rate;
+        const hours = window.bookingGlobals.booking_duration / 60;
+        const currentCredits = window.bookingGlobals.credits || 0;
+        const appliedCredits = window.bookingGlobals.creditsApplied || 0;
+        const currentDiscount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
+        const currentBalance = Math.max(0, (rate * hours) - currentDiscount - appliedCredits);
+      
+        // 🛑 Stop if balance is already zero and this is a money-based coupon
+        if (currentBalance <= 0 && ['currency', 'minutes', 'percent'].includes(discount.type)) {
+          alert("This coupon can't be applied because your current balance is already covered.");
+          return;
+        }
+      
         // ✅ Push full object
         window.bookingGlobals.appliedCertificates ??= [];
         window.bookingGlobals.appliedCertificates.push({
@@ -653,64 +666,67 @@ document.addEventListener('DOMContentLoaded', async () => {
           amount: discount.amount,
           rules
         });
-
-        console.log("🆕 Coupon added:", {
-            code: upperCode,
-            type: discount.type,
-            amount: discount.amount,
-            rules
-          });
-          
-        console.log("🧮 Recalculating all discounts from:", window.bookingGlobals.appliedCertificates);          
       
-        // ✅ Recalculate
-        const hours = window.bookingGlobals.booking_duration / 60;
-        const finalRate = window.bookingGlobals.final_rate;
-
-        const { results, failures, creditsToUser } = applyStackedDiscounts(
-            window.bookingGlobals.appliedCertificates,
-            finalRate,
-            hours
+        console.log("🆕 Coupon added:", {
+          code: upperCode,
+          type: discount.type,
+          amount: discount.amount,
+          rules
+        });
+      
+        console.log("🧮 Recalculating all discounts from:", window.bookingGlobals.appliedCertificates);
+      
+        const {
+          results,
+          failures,
+          creditsToUser,
+          subtotalAfterDiscounts
+        } = applyStackedDiscounts(
+          window.bookingGlobals.appliedCertificates,
+          rate,
+          hours
         );
-        
+      
         window.bookingGlobals.discountTotals = results.map(r => r.amount);
         window.bookingGlobals.discountCodes = results.map(r => r.code);
         window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
         window.bookingGlobals.creditsToUser = creditsToUser > 0 ? creditsToUser : 0;
-
+      
+        // 🧮 Adjust creditsApplied to avoid over-discounting
+        if (currentCredits > 0) {
+          const adjusted = Math.min(subtotalAfterDiscounts, currentCredits);
+          if (adjusted < appliedCredits) {
+            const diff = appliedCredits - adjusted;
+            alert(`Your applied credits were reduced by $${diff.toFixed(2)} to make room for coupon savings.`);
+          }
+          window.bookingGlobals.creditsApplied = adjusted;
+        }
+      
         if (creditsToUser > 0) {
-            alert(`Only part of "${upperCode}" was applied. $${creditsToUser.toFixed(2)} has been saved as account credit.`);
-        }  
-        
-        console.log("💳 Total credits to user:", window.bookingGlobals.creditsToUser);
-
+          alert(`Only part of "${upperCode}" was applied. $${creditsToUser.toFixed(2)} has been saved as account credit.`);
+        }
+      
         // Show alert for any failed coupons (only the last one just added)
         const failed = failures.find(f => f.code === upperCode);
         if (failed) {
-        alert(`Coupon ${upperCode} could not be applied: ${failed.reason}`);
-        // Also remove it from appliedCertificates since it wasn't used
-        window.bookingGlobals.appliedCertificates = window.bookingGlobals.appliedCertificates.filter(c => c.code !== upperCode);
-        return;
+          alert(`Coupon ${upperCode} could not be applied: ${failed.reason}`);
+          window.bookingGlobals.appliedCertificates = window.bookingGlobals.appliedCertificates.filter(c => c.code !== upperCode);
+          return;
         }
-
+      
         const total = window.bookingGlobals.payment_amount;
-
+      
         if (total === 0) {
-            // Just show the confirm button
-            document.getElementById("confirm-with-stripe")?.classList.add("hidden");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
-            populateFinalSummary();
-            updateBookingSummary();
-            return; // Do not proceed with Stripe call
+          document.getElementById("confirm-with-stripe")?.classList.add("hidden");
+          document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
+          populateFinalSummary();
+          updateBookingSummary();
+          return;
         }
-
-
+      
         await updatePaymentIntent();
         populateFinalSummary();
         updateBookingSummary();
     });
       
-      
-
-  
 });
