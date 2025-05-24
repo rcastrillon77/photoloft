@@ -45,9 +45,9 @@ window.bookingGlobals = {
     selected_start_time: minutesToTimeValue(OPEN_TIME),
     taxRate: TAX_RATE,
     taxTotal: null,
-    discountTotal: [], 
-    discountCode: [],
-    discountUUID: [],
+    discountTotals: [], 
+    discountCodes: [],
+    discountUUIDs: [],
     creditsApplied: 0
 };
 
