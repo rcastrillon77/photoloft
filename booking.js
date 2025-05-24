@@ -828,13 +828,6 @@ function updateBookingSummary() {
     window.bookingGlobals.final_rate = finalRate;
     window.bookingGlobals.subtotal = discountedTotal;
     window.bookingGlobals.rate_label = rateLabel;
-    window.bookingGlobals.discountTotals = discountAmount > 0 ? {
-        title: rateLabel,
-        rate: finalRate,
-        discount_amount: discountAmount.toFixed(2),
-        total_due: discountedTotal.toFixed(2),
-        original: baseTotal.toFixed(2)
-    } : null;
 
     const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
     const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
