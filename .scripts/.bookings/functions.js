@@ -1299,9 +1299,20 @@ async function requestPaymentIntent() {
     );
     const credits = roundDecimals(creditsApplied);
 
-    const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
-    const subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
-    const total = roundDecimals(subtotal + subtotalTaxes);
+    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
+    let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
+    let total = roundDecimals(subtotal + subtotalTaxes);
+
+    // ✅ Handle near-zero edge case
+    if (total > 0 && total < 0.5) {
+        const needed = roundDecimals(0.5 - total);
+        total = 0.5;
+
+        console.warn(`💸 Rounding up total to Stripe minimum ($0.50).`);
+        console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
+
+        window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+    }
 
     const activityPayload = {
         selected,
@@ -1396,9 +1407,21 @@ async function updatePaymentIntent() {
         (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
     );
 
-    const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
-    const subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
-    const total = roundDecimals(subtotal + subtotalTaxes);
+    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
+    let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
+    let total = roundDecimals(subtotal + subtotalTaxes);
+
+    // ✅ Handle near-zero edge case
+    if (total > 0 && total < 0.5) {
+        const needed = roundDecimals(0.5 - total);
+        total = 0.5;
+
+        console.warn(`💸 Rounding up total to Stripe minimum ($0.50).`);
+        console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
+
+        window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+    }
+
 
     // Update globals (optional but helps with fallback)
     window.bookingGlobals.booking_total = subtotal;
