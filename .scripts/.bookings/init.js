@@ -507,9 +507,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
       
           if (total === 0) {
-            document.querySelector(".form-button-container")?.classList.add("hide");
-            document.getElementById("confirm-button-container")?.classList.remove("hide");
-            document.getElementById("payment-request-button")?.classList.add("hide");
+            document.getElementById("confirm-with-stripe")?.classList.add("hidden");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
+
           } else {
             await updatePaymentIntent(baseSubtotal); // Total >= $0.50
           }
@@ -698,9 +698,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (total === 0) {
             // Just show the confirm button
-            document.getElementById("confirm-button-container")?.classList.remove("hide");
-            document.querySelector(".form-button-container")?.classList.add("hide");
-            document.getElementById("payment-request-button")?.classList.add("hide");
+            document.getElementById("confirm-with-stripe")?.classList.add("hidden");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
             populateFinalSummary();
             updateBookingSummary();
             return; // Do not proceed with Stripe call
