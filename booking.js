@@ -2537,89 +2537,89 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     document.getElementById("reservation-page-btn")?.addEventListener("click", () => {
-        const id = window.bookingGlobals.booking_uuid;
-        if (id) {
-          window.location.href = `https://photoloft.co/b?booking=${id}`;
+            const id = window.bookingGlobals.booking_uuid;
+            if (id) {
+            window.location.href = `https://photoloft.co/b?booking=${id}`;
+            }
+        });
+
+        const couponInput = document.getElementById("coupon-code");
+        const applyButton = document.getElementById("apply-coupon");
+
+        couponInput.addEventListener("input", () => {
+        applyButton.classList.toggle("disabled", !couponInput.value.trim());
+        });
+
+        applyButton.addEventListener("click", async () => {
+        if (applyButton.classList.contains("disabled")) return;
+
+        const code = couponInput.value.trim().toLowerCase();
+        const listingId = window.LISTING_UUID;
+        const userId = window.supabaseUser?.id || null;
+        const bookingDate = window.bookingGlobals.booking_date; // Luxon DateTime object
+        const today = luxon.DateTime.now().setZone(bookingDate.zone);
+
+        const { data: certs, error } = await window.supabase
+            .from("certificates")
+            .select("*")
+            .ilike("code", code)
+            .eq("status", "active")
+            .or(`listing.eq.${listingId},listing.is.null`);
+
+        if (error || !certs.length) {
+            alert("Invalid or expired coupon.");
+            return;
         }
-    });
 
-    const couponInput = document.getElementById("coupon-code");
-    const applyButton = document.getElementById("apply-coupon");
+        const cert = certs[0];
+        const rules = cert.rules || {};
 
-    couponInput.addEventListener("input", () => {
-    applyButton.classList.toggle("disabled", !couponInput.value.trim());
-    });
-
-    applyButton.addEventListener("click", async () => {
-    if (applyButton.classList.contains("disabled")) return;
-
-    const code = couponInput.value.trim().toLowerCase();
-    const listingId = window.LISTING_UUID;
-    const userId = window.supabaseUser?.id || null;
-    const bookingDate = window.bookingGlobals.booking_date; // Luxon DateTime object
-    const today = luxon.DateTime.now().setZone(bookingDate.zone);
-
-    const { data: certs, error } = await window.supabase
-        .from("certificates")
-        .select("*")
-        .ilike("code", code)
-        .eq("status", "active")
-        .or(`listing.eq.${listingId},listing.is.null`);
-
-    if (error || !certs.length) {
-        alert("Invalid or expired coupon.");
-        return;
-    }
-
-    const cert = certs[0];
-    const rules = cert.rules || {};
-
-    // Check stackability
-    if (!rules.stackable && window.bookingGlobals.hasSpecialRate) {
-        alert("This coupon cannot be used with other discounts.");
-        return;
-    }
-
-    // Check date restriction
-    if (rules.date) {
-        const start = luxon.DateTime.fromISO(rules.date.start);
-        const end = luxon.DateTime.fromISO(rules.date.end);
-        const checkDate = rules.date.type === "use" ? bookingDate : today;
-
-        if (checkDate < start || checkDate > end) {
-        alert("This coupon is not valid for the selected booking date.");
-        return;
+        // Check stackability
+        if (!rules.stackable && window.bookingGlobals.hasSpecialRate) {
+            alert("This coupon cannot be used with other discounts.");
+            return;
         }
-    }
 
-    // Check user restriction
-    if (rules.users && Array.isArray(rules.users) && !rules.users.includes(userId)) {
-        alert("This coupon is not valid for your account.");
-        return;
-    }
+        // Check date restriction
+        if (rules.date) {
+            const start = luxon.DateTime.fromISO(rules.date.start);
+            const end = luxon.DateTime.fromISO(rules.date.end);
+            const checkDate = rules.date.type === "use" ? bookingDate : today;
 
-    // Apply discount
-    const discount = cert.discount;
-    const subtotal = window.bookingGlobals.subtotal || 0;
-    const rate = window.bookingGlobals.rate || 0;
-    let finalDiscount = 0;
+            if (checkDate < start || checkDate > end) {
+            alert("This coupon is not valid for the selected booking date.");
+            return;
+            }
+        }
 
-    if (discount.type === "currency") {
-        window.bookingGlobals.certificate_discount = discount.amount;
-      } else if (discount.type === "percent") {
-        const subtotal = window.bookingGlobals.final_rate * (window.bookingGlobals.booking_duration / 60);
-        window.bookingGlobals.certificate_discount = (discount.amount / 100) * subtotal;
-      } else if (discount.type === "minutes") {
-        const rate = window.bookingGlobals.final_rate;
-        window.bookingGlobals.certificate_discount = (discount.amount * rate) / 60;
-      } else if (discount.type === "rate") {
-        window.bookingGlobals.final_rate = discount.amount;
-      }
-      
-    window.bookingGlobals.discountCode = code.toUpperCase();
-    window.bookingGlobals.discountUUID = cert.id;
-      
-    alert(`Coupon applied: $${finalDiscount.toFixed(2)} off.`);
+        // Check user restriction
+        if (rules.users && Array.isArray(rules.users) && !rules.users.includes(userId)) {
+            alert("This coupon is not valid for your account.");
+            return;
+        }
+
+        // Apply discount
+        const discount = cert.discount;
+        const subtotal = window.bookingGlobals.subtotal || 0;
+        const rate = window.bookingGlobals.rate || 0;
+        let finalDiscount = 0;
+
+        if (discount.type === "currency") {
+            window.bookingGlobals.certificate_discount = discount.amount;
+        } else if (discount.type === "percent") {
+            const subtotal = window.bookingGlobals.final_rate * (window.bookingGlobals.booking_duration / 60);
+            window.bookingGlobals.certificate_discount = (discount.amount / 100) * subtotal;
+        } else if (discount.type === "minutes") {
+            const rate = window.bookingGlobals.final_rate;
+            window.bookingGlobals.certificate_discount = (discount.amount * rate) / 60;
+        } else if (discount.type === "rate") {
+            window.bookingGlobals.final_rate = discount.amount;
+        }
+        
+        window.bookingGlobals.discountCode = code.toUpperCase();
+        window.bookingGlobals.discountUUID = cert.id;
+        
+        alert(`Coupon applied: $${finalDiscount.toFixed(2)} off.`);
     });
 
   
