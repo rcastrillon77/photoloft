@@ -1704,11 +1704,6 @@ function renderAppliedCoupons() {
         window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
         window.bookingGlobals.creditsToUser = creditsToUser || 0;
         const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
-
-        window.bookingGlobals.creditsApplied = creditsEnabled
-        ? Math.min(subtotalAfterDiscounts, currentCredits)
-        : 0;
-
   
         await updatePaymentIntent();
         renderAppliedCoupons();
