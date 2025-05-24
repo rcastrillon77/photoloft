@@ -2892,6 +2892,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
         window.bookingGlobals.creditsToUser = creditsToUser > 0 ? creditsToUser : 0;
       
+        renderAppliedCoupons();
+
         // 🧮 Adjust creditsApplied to avoid over-discounting
         if (currentCredits > 0) {
           const adjusted = Math.min(subtotalAfterDiscounts, currentCredits);
