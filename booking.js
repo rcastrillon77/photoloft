@@ -2708,6 +2708,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           amount: discount.amount,
           rules
         });
+
+        console.log("🆕 Coupon added:", {
+            code: upperCode,
+            type: discount.type,
+            amount: discount.amount,
+            rules
+          });
+          
+        console.log("🧮 Recalculating all discounts from:", window.bookingGlobals.appliedCertificates);          
       
         // ✅ Recalculate
         const hours = window.bookingGlobals.booking_duration / 60;
