@@ -1338,8 +1338,8 @@ async function requestPaymentIntent() {
         attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
         source: bookingSource,
 
-        discount_code: window.bookingGlobals.discountCodes || null,
-        discount_certificate_uuid: window.bookingGlobals.discountUUIDs || null,
+        discount_code: window.bookingGlobals.discountCodes || [],
+        discount_certificate_uuid: window.bookingGlobals.discountUUIDs || [],
         credits_applied: credits
     };
 
