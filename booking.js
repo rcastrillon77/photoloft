@@ -603,14 +603,14 @@ async function populateFinalSummary() {
       specialRateLine.querySelector(".summary-line-item-price").textContent = `- $${rateDiff.toFixed(2)}`;
     }
   
-    const discountAmount = globals.certificate_discount || 0;
+    const discountAmount = (globals.discountTotals || []).reduce((a, b) => a + b, 0);
     const creditsAmount = globals.creditsApplied || 0;
     const couponCode = globals.discountCodes || "";
     const taxRate = globals.taxRate || 8.25;
   
     const codeLine = document.getElementById("final-booking-summary-code");
     const codes = window.bookingGlobals.discountCodes || [];
-    const discounts = window.bookingGlobals.certificate_discount || [];
+    const discounts = window.bookingGlobals.discountTotals || [];
 
     codeLine?.classList.toggle("hide", codes.length === 0);
     codeLine.innerHTML = ""; // Clear previous content
@@ -668,38 +668,39 @@ async function submitFinalBooking() {
     };
   
     const payload = {
-      listing_uuid: LISTING_UUID,
-      user_uuid: window.supabaseUser?.id || g.user_uuid_override || null,
-      date: g.booking_date,
-      start: bookingStart.toISO(),
-      end: bookingEnd.toISO(),
-      duration: g.booking_duration,
-      attendees: g.attendees || 1,
-      activities,
-      first_name: document.getElementById('booking-first-name')?.value || "",
-      last_name: document.getElementById('booking-last-name')?.value || "",
-      email: document.getElementById('booking-email')?.value || "",
-      phone: document.getElementById('booking-phone')?.value || "",
-  
-      payment_intent_id: g.payment_intent_id || null,
-      transaction_uuid: g.transaction_uuid || null,
-      temp_hold_uuid: g.temp_hold_uuid || null,
-  
-      base_rate: g.base_rate || g.final_rate,
-      final_rate: g.final_rate,
-      final_rate_name: g.rate_label || null,
-  
-      discount_code: g.discountCodes || null,
-      discount_code_uuid: g.discountUUIDs || null,
-      discount_code_total: g.certificate_discount || 0,
-  
-      user_credits_applied: g.creditsApplied || 0,
-      subtotal: g.booking_total || 0,
-      tax_rate: g.taxRate || 0,
-      tax_total: roundDecimals((g.booking_total || 0) * ((g.taxRate || 0) / 100)),
-      total: g.payment_amount || 0,
-  
-      source: new URLSearchParams(window.location.search).get('source') || null
+        listing_uuid: LISTING_UUID,
+        user_uuid: window.supabaseUser?.id || g.user_uuid_override || null,
+        date: g.booking_date,
+        start: bookingStart.toISO(),
+        end: bookingEnd.toISO(),
+        duration: g.booking_duration,
+        attendees: g.attendees || 1,
+        activities,
+        first_name: document.getElementById('booking-first-name')?.value || "",
+        last_name: document.getElementById('booking-last-name')?.value || "",
+        email: document.getElementById('booking-email')?.value || "",
+        phone: document.getElementById('booking-phone')?.value || "",
+    
+        payment_intent_id: g.payment_intent_id || null,
+        transaction_uuid: g.transaction_uuid || null,
+        temp_hold_uuid: g.temp_hold_uuid || null,
+    
+        base_rate: g.base_rate || g.final_rate,
+        final_rate: g.final_rate,
+        final_rate_name: g.rate_label || null,
+    
+        discount_code: g.discountCodes || [],
+        discount_code_uuid: g.discountUUIDs || [],
+        discount_code_total: (g.discountTotals || []).reduce((a, b) => a + b, 0),
+
+    
+        user_credits_applied: g.creditsApplied || 0,
+        subtotal: g.booking_total || 0,
+        tax_rate: g.taxRate || 0,
+        tax_total: roundDecimals((g.booking_total || 0) * ((g.taxRate || 0) / 100)),
+        total: g.payment_amount || 0,
+    
+        source: new URLSearchParams(window.location.search).get('source') || null
     };
   
     try {
@@ -1380,7 +1381,9 @@ async function requestPaymentIntent() {
     } = window.bookingGlobals;
 
     const hours = roundDecimals(booking_duration / 60);
-    const certificateDiscount = roundDecimals(window.bookingGlobals.certificate_discount || 0);
+    const certificateDiscount = roundDecimals(
+        (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
+    );
     const credits = roundDecimals(creditsApplied);
 
     const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
@@ -1475,7 +1478,7 @@ async function updatePaymentIntent() {
     } = window.bookingGlobals;
 
     const hours = roundDecimals(booking_duration / 60);
-    const certificateDiscount = roundDecimals(window.bookingGlobals.certificate_discount || 0);
+    const certificateDiscount = roundDecimals(window.bookingGlobals.discountTotals || 0);
     const credits = roundDecimals(creditsApplied);
 
     const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
