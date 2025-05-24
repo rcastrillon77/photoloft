@@ -470,16 +470,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = button.querySelector("div:nth-child(2)");
         const active = button.classList.contains("active");
       
-        const subtotal = window.bookingGlobals.subtotal || 0;
+        const rate = window.bookingGlobals.final_rate;
+        const hours = window.bookingGlobals.booking_duration / 60;
+        const discount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
+      
+        const rawSubtotal = rate * hours;
+        const adjustedSubtotal = Math.max(0, rawSubtotal - discount);
+      
         const credits = window.bookingGlobals.credits || 0;
-
-        if (!subtotal || !credits) return;
+        const applied = Math.min(adjustedSubtotal, credits);
       
         if (active) {
           // ❌ Removing credits
           label.textContent = "Removing credits...";
           window.bookingGlobals.creditsApplied = 0;
-          await updatePaymentIntent(subtotal);
+      
+          await updatePaymentIntent();
       
           button.classList.remove("active");
           icon.classList.add("hide");
@@ -487,14 +493,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
           // ✅ Applying credits
           label.textContent = "Applying credits...";
-          const applied = Math.min(subtotal, credits);
           window.bookingGlobals.creditsApplied = applied;
       
-          const rate = window.bookingGlobals.final_rate;
-          const hours = window.bookingGlobals.booking_duration / 60;
-          const certificateDiscount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
-      
-          let baseSubtotal = (rate * hours) - certificateDiscount - applied;
+          let baseSubtotal = rawSubtotal - discount - applied;
           let taxRate = window.bookingGlobals.taxRate || 0;
           let baseTaxes = roundDecimals(baseSubtotal * (taxRate / 100));
           let total = roundDecimals(baseSubtotal + baseTaxes);
@@ -509,9 +510,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (total === 0) {
             document.getElementById("confirm-with-stripe")?.classList.add("hidden");
             document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
-
           } else {
-            await updatePaymentIntent(baseSubtotal); // Total >= $0.50
+            await updatePaymentIntent();
           }
       
           button.classList.add("active");
@@ -519,7 +519,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
         }
       
-        // Refresh UI
         populateFinalSummary();
     });  
 
