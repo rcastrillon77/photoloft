@@ -2634,6 +2634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.bookingGlobals.old_rate_label = window.bookingGlobals.rate_label;
             window.bookingGlobals.final_rate = discount.amount;
             window.bookingGlobals.rate_label = code.toUpperCase();
+            window.bookingGlobals.certificate_discount = 0;
           } else {
             alert("Your current rate is lower than the coupon's rate");
           }
