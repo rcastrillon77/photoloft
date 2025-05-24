@@ -1394,83 +1394,86 @@ async function requestPaymentIntent() {
 
 async function updatePaymentIntent() {
     const {
-        final_rate = window.bookingGlobals.final_rate,
-        taxRate = window.bookingGlobals.taxRate,
-        payment_intent_id,
-        transaction_uuid
+      final_rate = window.bookingGlobals.final_rate,
+      taxRate = window.bookingGlobals.taxRate,
+      payment_intent_id,
+      transaction_uuid
     } = window.bookingGlobals;
-
-    const credits = roundDecimals(window.bookingGlobals.creditsApplied);
+  
+    const credits = roundDecimals(window.bookingGlobals.creditsApplied || 0);
     const hours = roundDecimals(window.bookingGlobals.booking_duration / 60);
     const certificateDiscount = roundDecimals(
-        (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
+      (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
     );
-
+  
     let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
     let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
     let total = roundDecimals(subtotal + subtotalTaxes);
-
-    // ✅ Handle near-zero edge case
+  
+    // 💸 Stripe $0.50 minimum charge
     if (total > 0 && total < 0.5) {
-        const needed = roundDecimals(0.5 - total);
-        total = 0.5;
-
-        console.warn(`💸 Rounding up total to Stripe minimum ($0.50).`);
-        console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
-
-        window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
-        alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
+      const needed = roundDecimals(0.5 - total);
+      total = 0.5;
+  
+      window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+      alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
     }
-
-    // Update globals (optional but helps with fallback)
+  
+    // ✅ Store values in bookingGlobals
     window.bookingGlobals.booking_total = subtotal;
     window.bookingGlobals.taxTotal = subtotalTaxes;
     window.bookingGlobals.payment_amount = total;
-
+  
+    // ✅ Button visibility logic
+    const stripeBtns = document.getElementById("confirm-with-stripe");
+    const confirmBtn = document.getElementById("confirm-without-stripe");
+  
     if (total === 0) {
-        document.getElementById("confirm-button-container")?.classList.remove("hide");
-        document.querySelector(".form-button-container")?.classList.add("hide");
-        document.getElementById("payment-request-button")?.classList.add("hide");
-    
-        console.log("✅ Total is $0 — skipping Stripe. Showing Confirm button.");
-        return;
+      stripeBtns?.classList.add("hidden");
+      confirmBtn?.classList.remove("hidden");
+      console.log("✅ Total is $0 — showing confirm-only button.");
+      return; // Don't update Stripe
+    } else {
+      stripeBtns?.classList.remove("hidden");
+      confirmBtn?.classList.add("hidden");
     }
-     
-
+  
+    // ✅ Send to Make.com
     const payload = {
-        final_rate: final_rate,
-        hours,
-        certificate_discount: certificateDiscount,
-        user_credits: credits,
-        subtotal,
-        tax_rate: taxRate,
-        subtotal_taxes: subtotalTaxes,
-        total,
-        payment_intent_id: payment_intent_id || null,
-        transaction_uuid: transaction_uuid || null,
+      final_rate,
+      hours,
+      certificate_discount: certificateDiscount,
+      user_credits: credits,
+      subtotal,
+      tax_rate: taxRate,
+      subtotal_taxes: subtotalTaxes,
+      total,
+      payment_intent_id: payment_intent_id || null,
+      transaction_uuid: transaction_uuid || null,
     };
-
+  
     try {
-        const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+      const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  
+      console.log("✅ updatePaymentIntent sent:", payload);
+  
+      if (window.paymentRequest && typeof window.paymentRequest.update === "function") {
+        window.paymentRequest.update({
+          total: {
+            label: "Total",
+            amount: Math.round(total * 100)
+          }
         });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        console.log("✅ updatePaymentIntent sent:", payload);
-
-        if (window.paymentRequest && typeof window.paymentRequest.update === "function") {
-            window.paymentRequest.update({
-              total: {
-                label: "Total",
-                amount: Math.round(total * 100)
-              }
-            });
-        }
-
+      }
+  
     } catch (err) {
-        console.error("❌ Failed to update payment intent:", err);
+      console.error("❌ Failed to update payment intent:", err);
     }
 }
 
