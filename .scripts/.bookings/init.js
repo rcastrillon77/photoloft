@@ -647,6 +647,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rate = window.bookingGlobals.final_rate;
         const hours = window.bookingGlobals.booking_duration / 60;
         const currentCredits = window.bookingGlobals.credits || 0;
+
+        const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
+
+        if (creditsEnabled) {
+            window.bookingGlobals.creditsApplied = Math.min(subtotalAfterDiscounts, currentCredits);
+        } else {
+            window.bookingGlobals.creditsApplied = 0;
+        }
+
         const appliedCredits = window.bookingGlobals.creditsApplied || 0;
         const currentDiscount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
         const currentBalance = Math.max(0, (rate * hours) - currentDiscount - appliedCredits);
