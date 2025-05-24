@@ -583,7 +583,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
       
-        const certs = (certsRaw || []).filter(c => !c.listing || c.listing === listingId);
+        const certs = (certsRaw || []).filter(c => !c.listings || c.listings === listingId);
         console.log("✅ Matching certificate(s):", certs);
       
         if (!certs.length) {
@@ -593,7 +593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const cert = certs[0];
         const rules = cert.rules || {};
-        console.log("📜 Rules:", rules);
+        console.log("📜 Rules:", rules);      
       
         // Stackability check
         if (!rules.stackable && window.bookingGlobals.hasSpecialRate) {
