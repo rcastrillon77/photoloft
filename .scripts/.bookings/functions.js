@@ -540,25 +540,23 @@ async function populateFinalSummary() {
     codeLine.innerHTML = ""; // Clear previous content
 
     codes.forEach((code, i) => {
-        const amount = roundDecimals(discounts[i] || 0);
+    const amount = roundDecimals(discounts[i] || 0);
+    const line = document.createElement("div");
+    line.className = "code-line-item";
 
-        const line = document.createElement("div");
-        line.className = "code-line-item";
+    const label = document.createElement("div");
+    label.className = "summary-line-item";
+    label.textContent = code;
 
-        const label = document.createElement("div");
-        label.className = "summary-line-item";
-        label.textContent = code;
+    const price = document.createElement("div");
+    price.className = "summary-line-item-price";
+    price.textContent = `- $${amount.toFixed(2)}`;
 
-        const price = document.createElement("div");
-        price.className = "summary-line-item-price";
-        price.textContent = `- $${amount.toFixed(2)}`;
-
-        line.appendChild(label);
-        line.appendChild(price);
-        codeLine.appendChild(line);
+    line.appendChild(label);
+    line.appendChild(price);
+    codeLine.appendChild(line);
     });
 
-  
     const creditsLine = document.getElementById("final-booking-summary-credits");
     creditsLine?.classList.toggle("hide", !creditsAmount);
     if (creditsAmount) {
