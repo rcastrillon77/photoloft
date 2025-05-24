@@ -2608,7 +2608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const subtotal = window.bookingGlobals.subtotal || 0;
         const credits = window.bookingGlobals.credits || 0;
-      
+
         if (!subtotal || !credits) return;
       
         if (active) {
