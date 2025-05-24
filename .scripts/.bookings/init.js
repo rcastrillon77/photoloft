@@ -562,8 +562,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (applyButton.classList.contains("disabled")) return;
       
         const code = couponInput.value.trim().toLowerCase();
-        const listingId = window.LISTING_UUID;
-        const userId = window.supabaseUser?.id || null;
+        const listingId = LISTING_UUID;
+        const userId = window.supabaseUser?.id || window.bookingGlobals.user_uuid_override || null;
         const bookingDate = window.bookingGlobals.booking_date;
         const today = luxon.DateTime.now().setZone(bookingDate.zone);
       
