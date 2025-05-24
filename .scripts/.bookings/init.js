@@ -575,7 +575,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           .from("certificates")
           .select("*")
           .ilike("code", code)
-          .eq("status", "active");
       
         console.log("📦 Raw certificates from Supabase:", certsRaw);
         if (error) {
