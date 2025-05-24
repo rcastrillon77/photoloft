@@ -631,18 +631,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         if (discount.type === "currency") {
           finalDiscount = discount.amount;
+          window.bookingGlobals.certificate_discount = finalDiscount;
         } else if (discount.type === "percent") {
           finalDiscount = (discount.amount / 100) * (rate * hours);
+          window.bookingGlobals.certificate_discount = finalDiscount;
         } else if (discount.type === "minutes") {
           finalDiscount = (discount.amount * rate) / 60;
+          window.bookingGlobals.certificate_discount = finalDiscount;
         } else if (discount.type === "rate") {
-          window.bookingGlobals.final_rate = discount.amount;
-          finalDiscount = 0; // Rate override, discount shown in rate diff
+          if (window.bookingGlobals.final_rate > discount.amount) {
+            window.bookingGlobals.old_rate = window.bookingGlobals.final_rate;
+            window.bookingGlobals.old_rate_label = window.bookingGlobals.rate_label;
+            window.bookingGlobals.final_rate = discount.amount;
+            window.bookingGlobals.rate_label = code.toUpperCase();
+          } else {
+            alert("Your current rate is lower than the coupon's rate");
+          }
         }
       
         console.log("💸 Final discount:", finalDiscount);
       
-        window.bookingGlobals.certificate_discount = finalDiscount;
         window.bookingGlobals.discountCode = code.toUpperCase();
         window.bookingGlobals.discountUUID = cert.id;
       
