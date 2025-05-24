@@ -2622,32 +2622,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (discount.type === "currency") {
             finalDiscount = discount.amount;
             window.bookingGlobals.certificate_discount = finalDiscount;
-            window.bookingGlobals.discountCode = code.toUpperCase();
-            window.bookingGlobals.discountUUID = cert.id;
         } else if (discount.type === "percent") {
             finalDiscount = (discount.amount / 100) * (rate * hours);
             window.bookingGlobals.certificate_discount = finalDiscount;
-            window.bookingGlobals.discountCode = code.toUpperCase();
-            window.bookingGlobals.discountUUID = cert.id;
         } else if (discount.type === "minutes") {
             finalDiscount = (discount.amount * rate) / 60;
             window.bookingGlobals.certificate_discount = finalDiscount;
-            window.bookingGlobals.discountCode = code.toUpperCase();
-            window.bookingGlobals.discountUUID = cert.id;
         } else if (discount.type === "rate") {
-          if (window.bookingGlobals.final_rate > discount.amount) 
-
+          if (window.bookingGlobals.final_rate > discount.amount) {
             finalDiscount = (hours * rate) - (hours * discount.amount);
             window.bookingGlobals.certificate_discount = finalDiscount;
-            window.bookingGlobals.discountCode = code.toUpperCase();
-            window.bookingGlobals.discountUUID = cert.id;
           } else {
             alert("Your current rate is lower than the coupon's rate");
           }
         }
-      
+        
+        window.bookingGlobals.discountCode = code.toUpperCase();
+        window.bookingGlobals.discountUUID = cert.id;
+
+        await updatePaymentIntent();
         populateFinalSummary();
-        updatePaymentIntent();
       
         alert(discount.type === "rate"
           ? `Coupon applied: your hourly rate is now $${discount.amount}.`
