@@ -2564,7 +2564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: certsRaw, error } = await window.supabase
           .from("certificates")
           .select("*")
-          .ilike("code", code)
+          .eq("code", code)
       
         console.log("📦 Raw certificates from Supabase:", certsRaw);
         if (error) {
