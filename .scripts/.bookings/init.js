@@ -560,84 +560,101 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     applyButton.addEventListener("click", async () => {
         if (applyButton.classList.contains("disabled")) return;
-
+      
         const code = couponInput.value.trim().toLowerCase();
         const listingId = window.LISTING_UUID;
         const userId = window.supabaseUser?.id || null;
-        const bookingDate = window.bookingGlobals.booking_date; // Luxon DateTime object
+        const bookingDate = window.bookingGlobals.booking_date;
         const today = luxon.DateTime.now().setZone(bookingDate.zone);
-
+      
+        console.log("🔍 Checking coupon:", code);
+        console.log("🧾 Listing UUID:", listingId);
+        console.log("👤 User ID:", userId);
+      
         const { data: certsRaw, error } = await window.supabase
-            .from("certificates")
-            .select("*")
-            .ilike("code", code)
-            .eq("status", "active");
-
-        const certs = (certsRaw || []).filter(c =>
-            !c.listing || c.listing === LISTING_UUID
-        );
-
-        if (error || !certs.length) {
-            alert("Invalid or expired coupon.");
-            return;
+          .from("certificates")
+          .select("*")
+          .ilike("code", code)
+          .eq("status", "active");
+      
+        console.log("📦 Raw certificates from Supabase:", certsRaw);
+        if (error) {
+          console.error("❌ Supabase error:", error);
+          alert("Something went wrong checking the code.");
+          return;
         }
-
+      
+        const certs = (certsRaw || []).filter(c => !c.listing || c.listing === listingId);
+        console.log("✅ Matching certificate(s):", certs);
+      
+        if (!certs.length) {
+          alert("Invalid or expired coupon.");
+          return;
+        }
+      
         const cert = certs[0];
         const rules = cert.rules || {};
-
-        // Check stackability
+        console.log("📜 Rules:", rules);
+      
+        // Stackability check
         if (!rules.stackable && window.bookingGlobals.hasSpecialRate) {
-            alert("This coupon cannot be used with other discounts.");
-            return;
+          alert("This coupon cannot be used with other discounts.");
+          return;
         }
-
-        // Check date restriction
+      
+        // Date check
         if (rules.date) {
-            const start = luxon.DateTime.fromISO(rules.date.start);
-            const end = luxon.DateTime.fromISO(rules.date.end);
-            const checkDate = rules.date.type === "use" ? bookingDate : today;
-
-            if (checkDate < start || checkDate > end) {
+          const start = luxon.DateTime.fromISO(rules.date.start);
+          const end = luxon.DateTime.fromISO(rules.date.end);
+          const checkDate = rules.date.type === "use" ? luxon.DateTime.fromJSDate(bookingDate) : today;
+          console.log("📅 Date range:", start.toISODate(), "to", end.toISODate(), "→ Checking:", checkDate.toISODate());
+      
+          if (checkDate < start || checkDate > end) {
             alert("This coupon is not valid for the selected booking date.");
             return;
-            }
+          }
         }
-
-        // Check user restriction
-        if (rules.users && Array.isArray(rules.users) && !rules.users.includes(userId)) {
+      
+        // User restriction check
+        if (rules.users && Array.isArray(rules.users)) {
+          console.log("👥 Allowed users:", rules.users);
+          if (!userId || !rules.users.includes(userId)) {
             alert("This coupon is not valid for your account.");
             return;
+          }
         }
-
+      
         // Apply discount
-        const discount = cert.discount;
-        const subtotal = window.bookingGlobals.subtotal || 0;
+        const discount = cert.discount || {};
         const rate = window.bookingGlobals.final_rate || 0;
+        const hours = window.bookingGlobals.booking_duration / 60;
         let finalDiscount = 0;
-
+      
         if (discount.type === "currency") {
-            finalDiscount = discount.amount;
-            window.bookingGlobals.certificate_discount = discount.amount;
+          finalDiscount = discount.amount;
         } else if (discount.type === "percent") {
-            finalDiscount = discount.amount;
-            const subtotal = window.bookingGlobals.final_rate * (window.bookingGlobals.booking_duration / 60);
-            window.bookingGlobals.certificate_discount = (discount.amount / 100) * subtotal;
+          finalDiscount = (discount.amount / 100) * (rate * hours);
         } else if (discount.type === "minutes") {
-            finalDiscount = discount.amount;
-            const rate = window.bookingGlobals.final_rate;
-            window.bookingGlobals.certificate_discount = (discount.amount * rate) / 60;
+          finalDiscount = (discount.amount * rate) / 60;
         } else if (discount.type === "rate") {
-            finalDiscount = discount.amount;
-            window.bookingGlobals.final_rate = discount.amount;
+          window.bookingGlobals.final_rate = discount.amount;
+          finalDiscount = 0; // Rate override, discount shown in rate diff
         }
-        
+      
+        console.log("💸 Final discount:", finalDiscount);
+      
+        window.bookingGlobals.certificate_discount = finalDiscount;
         window.bookingGlobals.discountCode = code.toUpperCase();
         window.bookingGlobals.discountUUID = cert.id;
-        
-        alert(`Coupon applied: $${finalDiscount.toFixed(2)} off.`);
+      
         populateFinalSummary();
         updateBookingSummary();
-    });
+      
+        alert(discount.type === "rate"
+          ? `Coupon applied: your hourly rate is now $${discount.amount}.`
+          : `Coupon applied: $${finalDiscount.toFixed(2)} off.`);
+      });
+      
 
   
 });
