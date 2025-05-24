@@ -1470,90 +1470,86 @@ async function requestPaymentIntent() {
 }
 
 async function updatePaymentIntent() {
-    console.log("🔁 Running updatePaymentIntent...");
-  
-    const rate = window.bookingGlobals.final_rate;
-    const hours = window.bookingGlobals.booking_duration / 60;
-    const taxRate = window.bookingGlobals.taxRate || 0;
-  
-    const credits = window.bookingGlobals.creditsApplied || 0;
-    const discount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
-  
-    let subtotal = roundDecimals(Math.max(0, (rate * hours) - discount - credits));
+    const {
+        final_rate = window.bookingGlobals.final_rate,
+        taxRate = window.bookingGlobals.taxRate,
+        payment_intent_id,
+        transaction_uuid
+    } = window.bookingGlobals;
+
+    const credits = roundDecimals(window.bookingGlobals.creditsApplied);
+    const hours = roundDecimals(window.bookingGlobals.booking_duration / 60);
+    const certificateDiscount = roundDecimals(
+        (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
+    );
+
+    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
     let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
     let total = roundDecimals(subtotal + subtotalTaxes);
-  
-    // 🟡 Reset prior over-credit (if re-running)
-    window.bookingGlobals.creditsToUser = 0;
-  
-    // ✅ Stripe minimum logic
+
+    // ✅ Handle near-zero edge case
     if (total > 0 && total < 0.5) {
-      const needed = roundDecimals(0.5 - total);
-      total = 0.5;
-      window.bookingGlobals.creditsToUser = needed;
-      alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
+        const needed = roundDecimals(0.5 - total);
+        total = 0.5;
+
+        console.warn(`💸 Rounding up total to Stripe minimum ($0.50).`);
+        console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
+
+        window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+        alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
     }
-  
-    // ✅ Update globals
-    window.bookingGlobals.subtotal = subtotal;
-    window.bookingGlobals.subtotalTaxes = subtotalTaxes;
+
+    // Update globals (optional but helps with fallback)
+    window.bookingGlobals.booking_total = subtotal;
+    window.bookingGlobals.taxTotal = subtotalTaxes;
     window.bookingGlobals.payment_amount = total;
-  
-    // ✅ Handle 0-total bookings
+
     if (total === 0) {
-      document.getElementById("confirm-button-container")?.classList.remove("hide");
-      document.querySelector(".form-button-container")?.classList.add("hide");
-      document.getElementById("payment-request-button")?.classList.add("hide");
-  
-      console.log("✅ Total is $0 — skipping Stripe. Showing Confirm button.");
-      return;
+        document.getElementById("confirm-button-container")?.classList.remove("hide");
+        document.querySelector(".form-button-container")?.classList.add("hide");
+        document.getElementById("payment-request-button")?.classList.add("hide");
+    
+        console.log("✅ Total is $0 — skipping Stripe. Showing Confirm button.");
+        return;
     }
-  
-    // ✅ If total is valid, continue Stripe intent update
-    const payment_intent_id = window.bookingGlobals.payment_intent_id || null;
-    const transaction_uuid = window.bookingGlobals.transaction_uuid || null;
-  
+     
+
     const payload = {
-      final_rate: rate,
-      hours,
-      certificate_discount: discount,
-      user_credits: credits,
-      subtotal,
-      tax_rate: taxRate,
-      subtotal_taxes: subtotalTaxes,
-      total,
-      payment_intent_id,
-      transaction_uuid
+        final_rate: final_rate,
+        hours,
+        certificate_discount: certificateDiscount,
+        user_credits: credits,
+        subtotal,
+        tax_rate: taxRate,
+        subtotal_taxes: subtotalTaxes,
+        total,
+        payment_intent_id: payment_intent_id || null,
+        transaction_uuid: transaction_uuid || null,
     };
-  
-    console.log("📦 Sending payload to update intent:", payload);
-  
-    const res = await fetch("https://hook.us1.make.com/[your-stripe-update-webhook]", {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers: { "Content-Type": "application/json" }
-    });
-  
-    const data = await res.json();
-  
-    if (data.payment_intent_id && data.client_secret) {
-      window.bookingGlobals.payment_intent_id = data.payment_intent_id;
-      window.bookingGlobals.client_secret = data.client_secret;
-  
-      if (window.stripe && window.stripeElements) {
-        await window.stripeElements.confirmSetup({
-          elements: window.stripeElementsInstance,
-          confirmParams: {
-            return_url: "https://your-site.com/booking-confirmation"
-          }
+
+    try {
+        const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
         });
-      }
-  
-      console.log("✅ Payment intent updated successfully.");
-    } else {
-      console.error("❌ Failed to update payment intent:", data);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        console.log("✅ updatePaymentIntent sent:", payload);
+
+        if (window.paymentRequest && typeof window.paymentRequest.update === "function") {
+            window.paymentRequest.update({
+              total: {
+                label: "Total",
+                amount: Math.round(total * 100)
+              }
+            });
+        }
+
+    } catch (err) {
+        console.error("❌ Failed to update payment intent:", err);
     }
-}  
+}
 
 function applyStackedDiscounts(certs = [], finalRate, hours) {
     const totalBase = finalRate * hours;
@@ -1644,7 +1640,7 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
     }
   
     return { results, failures, creditsToUser: roundDecimals(creditsToUser) };
-  }  
+}  
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
