@@ -2900,14 +2900,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderAppliedCoupons();
 
         // 🧮 Adjust creditsApplied to avoid over-discounting
-        if (currentCredits > 0) {
-          const adjusted = Math.min(subtotalAfterDiscounts, currentCredits);
-          if (adjusted < appliedCredits) {
-            const diff = appliedCredits - adjusted;
-            alert(`Your applied credits were reduced by $${diff.toFixed(2)} to make room for coupon savings.`);
+        if (creditsEnabled && currentCredits > 0) {
+            const adjusted = Math.min(subtotalAfterDiscounts, currentCredits);
+            if (adjusted < appliedCredits) {
+              const diff = appliedCredits - adjusted;
+              alert(`Your applied credits were reduced by $${diff.toFixed(2)} to make room for coupon savings.`);
+            }
+            window.bookingGlobals.creditsApplied = adjusted;
           }
-          window.bookingGlobals.creditsApplied = adjusted;
-        }
+          
       
         if (creditsToUser > 0) {
           alert(`Only part of "${upperCode}" was applied. $${creditsToUser.toFixed(2)} has been saved as account credit.`);
