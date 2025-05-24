@@ -2607,11 +2607,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rules = cert.rules || {};
         console.log("📜 Rules:", rules);      
       
+        //Avoid Duplicates
+        if (window.bookingGlobals.discountCodes?.includes(code.toUpperCase())) {
+            alert("You’ve already applied this coupon.");
+            return;
+        }
+        
         // Stackability check
-        if (!rules.stackable && window.bookingGlobals.hasSpecialRate) {
+        if (!rules.stackable && (window.bookingGlobals.hasSpecialRate || window.bookingGlobals.discountCodes?.length > 0)) {
           alert("This coupon cannot be used with other discounts.");
           return;
-        }
+        }          
       
         // Date check
         if (rules.date) {
@@ -2655,9 +2661,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
 
-        window.bookingGlobals.certificate_discount = roundDecimals(finalDiscount || 0);
-        window.bookingGlobals.discountCodes = code.toUpperCase();
-        window.bookingGlobals.discountUUIDs = cert.id;
+        window.bookingGlobals.discountTotals ??= [];
+        window.bookingGlobals.discountCodes ??= [];
+        window.bookingGlobals.discountUUIDs ??= [];
+
+        window.bookingGlobals.discountTotals.push(roundDecimals(finalDiscount || 0));
+        window.bookingGlobals.discountCodes.push(code.toUpperCase());
+        window.bookingGlobals.discountUUIDs.push(cert.id);
+
 
         await updatePaymentIntent();
         populateFinalSummary();
