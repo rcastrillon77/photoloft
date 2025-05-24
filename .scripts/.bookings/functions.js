@@ -1622,7 +1622,12 @@ function renderAppliedCoupons() {
         window.bookingGlobals.discountCodes = results.map(r => r.code);
         window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
         window.bookingGlobals.creditsToUser = creditsToUser || 0;
-        window.bookingGlobals.creditsApplied = Math.min(subtotalAfterDiscounts, currentCredits);
+        const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
+
+        window.bookingGlobals.creditsApplied = creditsEnabled
+        ? Math.min(subtotalAfterDiscounts, currentCredits)
+        : 0;
+
   
         await updatePaymentIntent();
         renderAppliedCoupons();
