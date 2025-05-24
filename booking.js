@@ -1446,18 +1446,12 @@ async function requestPaymentIntent() {
 
         const total = window.bookingGlobals.payment_amount;
 
-        const stripeContainer = document.querySelector(".form-button-container");
-        const confirmContainer = document.getElementById("confirm-button-container");
-        const prButton = document.getElementById("payment-request-button");
-
         if (total === 0) {
-        stripeContainer?.classList.add("hide");
-        confirmContainer?.classList.remove("hide");
-        prButton?.classList.add("hide");
+            document.getElementById("confirm-with-stripe")?.classList.add("hidden");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
         } else {
-        stripeContainer?.classList.remove("hide");
-        confirmContainer?.classList.add("hide");
-        prButton?.classList.remove("hide");
+            document.getElementById("confirm-with-stripe")?.classList.remove("hidden");
+            document.getElementById("confirm-without-stripe")?.classList.add("hidden");
         }
 
 
