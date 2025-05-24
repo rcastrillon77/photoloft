@@ -48,7 +48,8 @@ window.bookingGlobals = {
     discountTotals: [], 
     discountCodes: [],
     discountUUIDs: [],
-    creditsApplied: 0
+    creditsApplied: 0,
+    creditsToUser: 0,
 };
 
 // === Event & Rate Storage
