@@ -2571,36 +2571,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         const icon = button.querySelector(".btn-check-icon");
         const label = button.querySelector("div:nth-child(2)");
         const active = button.classList.contains("active");
-    
+      
         const subtotal = window.bookingGlobals.subtotal || 0;
         const credits = window.bookingGlobals.credits || 0;
-    
+      
         if (!subtotal || !credits) return;
-    
+      
         if (active) {
-            // Removing credits
-            label.textContent = "Removing credits...";
-            window.bookingGlobals.creditsApplied = 0;
-            await updatePaymentIntent(subtotal);
-    
-            button.classList.remove("active");
-            icon.classList.add("hide");
-            label.textContent = "Use your credits for this booking";
+          // ❌ Removing credits
+          label.textContent = "Removing credits...";
+          window.bookingGlobals.creditsApplied = 0;
+          await updatePaymentIntent(subtotal);
+      
+          button.classList.remove("active");
+          icon.classList.add("hide");
+          label.textContent = "Use your credits for this booking";
         } else {
-            // Applying credits
-            label.textContent = "Applying credits...";
-            const applied = Math.min(subtotal, credits);
-            window.bookingGlobals.creditsApplied = applied;
-            await updatePaymentIntent(subtotal - applied);
-    
-            button.classList.add("active");
-            icon.classList.remove("hide");
-            label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
+          // ✅ Applying credits
+          label.textContent = "Applying credits...";
+          const applied = Math.min(subtotal, credits);
+          window.bookingGlobals.creditsApplied = applied;
+      
+          const rate = window.bookingGlobals.final_rate;
+          const hours = window.bookingGlobals.booking_duration / 60;
+          const certificateDiscount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
+      
+          let baseSubtotal = (rate * hours) - certificateDiscount - applied;
+          let taxRate = window.bookingGlobals.taxRate || 0;
+          let baseTaxes = roundDecimals(baseSubtotal * (taxRate / 100));
+          let total = roundDecimals(baseSubtotal + baseTaxes);
+      
+          if (total > 0 && total < 0.5) {
+            const overage = roundDecimals(0.5 - total);
+            total = 0.5;
+            window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + overage;
+            alert(`A small remaining balance has been rounded up to $0.50. The extra $${overage.toFixed(2)} has been saved as account credit.`);
+          }
+      
+          if (total === 0) {
+            document.querySelector(".form-button-container")?.classList.add("hide");
+            document.getElementById("confirm-button-container")?.classList.remove("hide");
+            document.getElementById("payment-request-button")?.classList.add("hide");
+          } else {
+            await updatePaymentIntent(baseSubtotal); // Total >= $0.50
+          }
+      
+          button.classList.add("active");
+          icon.classList.remove("hide");
+          label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
         }
-    
-        // Refresh UI total (optional)
+      
+        // Refresh UI
         populateFinalSummary();
-    });
+      });
+      
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -2772,6 +2796,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.bookingGlobals.appliedCertificates = window.bookingGlobals.appliedCertificates.filter(c => c.code !== upperCode);
         return;
         }
+
+        const total = window.bookingGlobals.payment_amount;
+
+        if (total === 0) {
+            // Just show the confirm button
+            document.getElementById("confirm-button-container")?.classList.remove("hide");
+            document.querySelector(".form-button-container")?.classList.add("hide");
+            document.getElementById("payment-request-button")?.classList.add("hide");
+            populateFinalSummary();
+            updateBookingSummary();
+            return; // Do not proceed with Stripe call
+        }
+
 
         await updatePaymentIntent();
         populateFinalSummary();
