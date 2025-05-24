@@ -804,9 +804,9 @@ function updateBookingSummary() {
     // 💾 Store in bookingGlobals
     window.bookingGlobals.base_rate = baseRate;
     window.bookingGlobals.booking_rate = finalRate;
-    window.bookingGlobals.booking_total = discountedTotal;
+    window.bookingGlobals.subtotal = discountedTotal;
     window.bookingGlobals.rate_label = rateLabel;
-    window.bookingGlobals.booking_discount = discountAmount > 0 ? {
+    window.bookingGlobals.discountTotal = discountAmount > 0 ? {
         title: rateLabel,
         rate: finalRate,
         discount_amount: discountAmount.toFixed(2),
@@ -1730,9 +1730,7 @@ async function initBookingConfig(listingId, locationId) {
         window.bookingGlobals.booking_start = OPEN_TIME;
         window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
         window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
-        window.bookingGlobals.booking_rate = FULL_RATE;
-        window.bookingGlobals.booking_total = (DEFAULT_DURATION * FULL_RATE);
-        window.bookingGlobals.booking_discount = null;
+        window.bookingGlobals.final_rate = FULL_RATE;
 
         // --- Pull Activities ---
         const { data: activitiesData, error: activitiesError } = await window.supabase
