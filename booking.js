@@ -2366,8 +2366,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateAttendeeButtons();
         }
     });
-    
-    
 
     document.addEventListener("DOMContentLoaded", () => {
         countDisplay.textContent = attendeeCount;
@@ -2541,16 +2539,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (id) {
             window.location.href = `https://photoloft.co/b?booking=${id}`;
             }
-        });
+    });
 
-        const couponInput = document.getElementById("coupon-code");
-        const applyButton = document.getElementById("apply-coupon");
+    const couponInput = document.getElementById("coupon-code");
+    const applyButton = document.getElementById("apply-coupon");
 
-        couponInput.addEventListener("input", () => {
-        applyButton.classList.toggle("disabled", !couponInput.value.trim());
-        });
+    couponInput.addEventListener("input", () => {
+    applyButton.classList.toggle("disabled", !couponInput.value.trim());
+    });
 
-        applyButton.addEventListener("click", async () => {
+    applyButton.addEventListener("click", async () => {
         if (applyButton.classList.contains("disabled")) return;
 
         const code = couponInput.value.trim().toLowerCase();
