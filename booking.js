@@ -2557,12 +2557,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bookingDate = window.bookingGlobals.booking_date; // Luxon DateTime object
         const today = luxon.DateTime.now().setZone(bookingDate.zone);
 
-        const { data: certs, error } = await window.supabase
+        const { data: certsRaw, error } = await window.supabase
             .from("certificates")
             .select("*")
             .ilike("code", code)
-            .eq("status", "active")
-            .or(`listing.eq.${listingId},listing.is.null`);
+            .eq("status", "active");
+
+        const certs = (certsRaw || []).filter(c =>
+            !c.listing || c.listing === LISTING_UUID
+        );
 
         if (error || !certs.length) {
             alert("Invalid or expired coupon.");
@@ -2599,18 +2602,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Apply discount
         const discount = cert.discount;
         const subtotal = window.bookingGlobals.subtotal || 0;
-        const rate = window.bookingGlobals.rate || 0;
+        const rate = window.bookingGlobals.final_rate || 0;
         let finalDiscount = 0;
 
         if (discount.type === "currency") {
+            finalDiscount = discount.amount;
             window.bookingGlobals.certificate_discount = discount.amount;
         } else if (discount.type === "percent") {
+            finalDiscount = discount.amount;
             const subtotal = window.bookingGlobals.final_rate * (window.bookingGlobals.booking_duration / 60);
             window.bookingGlobals.certificate_discount = (discount.amount / 100) * subtotal;
         } else if (discount.type === "minutes") {
+            finalDiscount = discount.amount;
             const rate = window.bookingGlobals.final_rate;
             window.bookingGlobals.certificate_discount = (discount.amount * rate) / 60;
         } else if (discount.type === "rate") {
+            finalDiscount = discount.amount;
             window.bookingGlobals.final_rate = discount.amount;
         }
         
@@ -2618,6 +2625,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.bookingGlobals.discountUUID = cert.id;
         
         alert(`Coupon applied: $${finalDiscount.toFixed(2)} off.`);
+        populateFinalSummary();
+        updateBookingSummary();
     });
 
   
