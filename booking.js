@@ -583,8 +583,8 @@ async function populateFinalSummary() {
     document.getElementById("final-summary-activities-label").textContent = selectedLabels.length === 1 ? "Activity" : "Activities";
   
     // 💵 Rate Calculations
-    const baseRate = globals.base_rate || globals.booking_rate; // fallback
-    const finalRate = globals.booking_rate;
+    const baseRate = globals.base_rate || globals.final_rate; // fallback
+    const finalRate = globals.final_rate;
     const hours = (globals.booking_duration / 60);
     const hoursText = hours === 1 ? "hr" : "hrs";
   
@@ -665,8 +665,8 @@ async function submitFinalBooking() {
       transaction_uuid: g.transaction_uuid || null,
       temp_hold_uuid: g.temp_hold_uuid || null,
   
-      base_rate: g.base_rate || g.booking_rate,
-      final_rate: g.booking_rate,
+      base_rate: g.base_rate || g.final_rate,
+      final_rate: g.final_rate,
       final_rate_name: g.rate_label || null,
   
       discount_code: g.discountCode || null,
@@ -804,7 +804,7 @@ function updateBookingSummary() {
 
     // 💾 Store in bookingGlobals
     window.bookingGlobals.base_rate = baseRate;
-    window.bookingGlobals.booking_rate = finalRate;
+    window.bookingGlobals.final_rate = finalRate;
     window.bookingGlobals.subtotal = discountedTotal;
     window.bookingGlobals.rate_label = rateLabel;
     window.bookingGlobals.discountTotal = discountAmount > 0 ? {
@@ -1353,7 +1353,7 @@ async function requestPaymentIntent() {
     });
 
     const {
-        booking_rate = 0,
+        final_rate = 0,
         booking_duration = 0,
         creditsApplied = 0,
         taxRate = 0,
@@ -1363,7 +1363,7 @@ async function requestPaymentIntent() {
     const certificateDiscount = roundDecimals(window.bookingGlobals.certificate_discount || 0);
     const credits = roundDecimals(creditsApplied);
 
-    const subtotal = roundDecimals(Math.max(0, (booking_rate * hours) - certificateDiscount - credits));
+    const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
     const subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
     const total = roundDecimals(subtotal + subtotalTaxes);
 
@@ -1373,7 +1373,7 @@ async function requestPaymentIntent() {
     };
 
     const payload = {
-        rate: booking_rate,
+        rate: final_rate,
         hours,
         certificate_discount: certificateDiscount,
         user_credits: credits,
@@ -1446,7 +1446,7 @@ async function requestPaymentIntent() {
 
 async function updatePaymentIntent() {
     const {
-        booking_rate = 0,
+        final_rate = 0,
         booking_duration = 0,
         creditsApplied = 0,
         taxRate = window.bookingGlobals.taxRate,
@@ -1458,12 +1458,12 @@ async function updatePaymentIntent() {
     const certificateDiscount = roundDecimals(window.bookingGlobals.certificate_discount || 0);
     const credits = roundDecimals(creditsApplied);
 
-    const subtotal = roundDecimals(Math.max(0, (booking_rate * hours) - certificateDiscount - credits));
+    const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
     const subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
     const total = roundDecimals(subtotal + subtotalTaxes);          
 
     const payload = {
-        final_rate: booking_rate,
+        final_rate: final_rate,
         hours,
         certificate_discount: certificateDiscount,
         user_credits: credits,
