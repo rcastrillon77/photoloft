@@ -1389,6 +1389,7 @@ async function requestPaymentIntent() {
         console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
 
         window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+        alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
     }
 
     const activityPayload = {
@@ -1497,6 +1498,7 @@ async function updatePaymentIntent() {
         console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
 
         window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+        alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
     }
 
 
