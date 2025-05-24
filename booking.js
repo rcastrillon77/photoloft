@@ -2590,14 +2590,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Listings Check
-        const certs = (certsRaw || []).filter(c => !c.listings || c.listings === listingId);
-      
+        const certs = (certsRaw || []).filter(c =>
+            !c.listings || (Array.isArray(c.listings) && c.listings.includes(listingId))
+        );
+        
         if (!certs.length) {
             alert("Invalid or expired coupon.");
             return;
         } else {
             console.log("✅ Matching certificate(s):", certs);
         }
+          
       
         const cert = certs[0];
         const rules = cert.rules || {};
