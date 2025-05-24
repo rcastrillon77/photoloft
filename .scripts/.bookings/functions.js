@@ -1436,77 +1436,83 @@ async function updatePaymentIntent() {
 }
 
 function applyStackedDiscounts(certs = [], finalRate, hours) {
-    const totalBase = finalRate * hours;
-    let newRate = finalRate;
-    let total = totalBase;
-    let rateUsed = false;
-  
-    console.log("📦 Starting discount stacking...");
-    console.log("💰 Base total:", totalBase, "| Hours:", hours, "| Final rate:", finalRate);
-  
-    const typePriority = { rate: 0, minutes: 1, currency: 2, percent: 3 };
-    const sorted = [...certs].sort((a, b) => {
-      const p1 = typePriority[a.type] ?? 99;
-      const p2 = typePriority[b.type] ?? 99;
-      if (p1 === p2 && a.type === 'percent') return a.amount - b.amount;
-      return p1 - p2;
-    });
-  
-    const results = [];
-  
-    for (const cert of sorted) {
-      const { code, uuid, type, amount, rules } = cert;
-      let discountAmount = 0;
-  
-      const threshold = rules?.threshold;
-      if (threshold) {
-        const val = threshold.amount ?? 0;
-        const passes = threshold.type === 'currency'
-          ? totalBase >= val
-          : (hours * 60) >= val;
-        if (!passes) {
-          console.log(`⏳ Skipping ${code} (fails threshold of ${val} ${threshold.type})`);
-          continue;
-        }
+  const totalBase = finalRate * hours;
+  let newRate = finalRate;
+  let total = totalBase;
+  let rateUsed = false;
+
+  console.log("📦 Starting discount stacking...");
+  console.log("💰 Base total:", totalBase, "| Hours:", hours, "| Final rate:", finalRate);
+
+  const typePriority = { rate: 0, minutes: 1, currency: 2, percent: 3 };
+  const sorted = [...certs].sort((a, b) => {
+    const p1 = typePriority[a.type] ?? 99;
+    const p2 = typePriority[b.type] ?? 99;
+    if (p1 === p2 && a.type === 'percent') return a.amount - b.amount;
+    return p1 - p2;
+  });
+
+  const results = [];
+  const failures = [];
+
+  for (const cert of sorted) {
+    const { code, uuid, type, amount, rules } = cert;
+    let discountAmount = 0;
+
+    // Threshold check
+    const threshold = rules?.threshold;
+    if (threshold) {
+      const val = threshold.amount ?? 0;
+      const passes = threshold.type === 'currency'
+        ? totalBase >= val
+        : (hours * 60) >= val;
+
+      if (!passes) {
+        const reason = threshold.type === 'currency'
+          ? `Subtotal must be at least $${val} for ${code}` 
+          : `Duration must be at least ${val} minutes for ${code}`;
+        console.log(`⏳ Skipping ${code} → ${reason}`);
+        failures.push({ code, reason });
+        continue;
       }
-  
-      if (type === 'rate') {
-        if (rateUsed) {
-          console.log(`⚠️ Skipping ${code} (already used rate coupon)`);
-          continue;
-        }
-        if (newRate > amount) {
-          discountAmount = roundDecimals((newRate - amount) * hours);
-          newRate = amount;
-          rateUsed = true;
-          console.log(`📉 Applying rate override (${code}): -$${discountAmount}`);
-        } else {
-          console.log(`🔕 Skipping ${code} (rate already lower)`);
-          continue;
-        }
-      } else if (type === 'minutes') {
-        discountAmount = roundDecimals((amount * newRate) / 60);
-        console.log(`⏱️ Minutes (${code}): -$${discountAmount}`);
-      } else if (type === 'currency') {
-        discountAmount = roundDecimals(amount);
-        console.log(`💵 Currency (${code}): -$${discountAmount}`);
-      } else if (type === 'percent') {
-        discountAmount = roundDecimals(total * (amount / 100));
-        console.log(`📊 Percent (${code}): -$${discountAmount}`);
-      }
-  
-      if (rules?.limit && discountAmount > rules.limit) {
-        console.log(`🔒 Applying limit for ${code}: was $${discountAmount}, capped to $${rules.limit}`);
-        discountAmount = rules.limit;
-      }
-  
-      total -= discountAmount;
-      results.push({ code, uuid, amount: discountAmount });
     }
-  
-    console.log("✅ Final stacked discounts:", results);
-    return results;
-}  
+
+    if (type === 'rate') {
+      if (rateUsed) {
+        failures.push({ code, reason: "Only one rate-based coupon can be applied at a time" });
+        continue;
+      }
+      if (newRate > amount) {
+        discountAmount = roundDecimals((newRate - amount) * hours);
+        newRate = amount;
+        rateUsed = true;
+        console.log(`📉 Applying rate override (${code}): -$${discountAmount}`);
+      } else {
+        failures.push({ code, reason: `Your current rate is already lower than this ${code} rate`});
+        continue;
+      }
+    } else if (type === 'minutes') {
+      discountAmount = roundDecimals((amount * newRate) / 60);
+      console.log(`⏱️ Minutes (${code}): -$${discountAmount}`);
+    } else if (type === 'currency') {
+      discountAmount = roundDecimals(amount);
+      console.log(`💵 Currency (${code}): -$${discountAmount}`);
+    } else if (type === 'percent') {
+      discountAmount = roundDecimals(total * (amount / 100));
+      console.log(`📊 Percent (${code}): -$${discountAmount}`);
+    }
+
+    if (rules?.limit && discountAmount > rules.limit) {
+      console.log(`🔒 Applying limit for ${code}: was $${discountAmount}, capped to $${rules.limit}`);
+      discountAmount = rules.limit;
+    }
+
+    total -= discountAmount;
+    results.push({ code, uuid, amount: discountAmount });
+  }
+
+  return { results, failures };
+}
 
 // ** CALENDAR SYNC ** //
 function highlightSelectedDate() {
