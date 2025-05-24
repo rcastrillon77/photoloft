@@ -1471,7 +1471,10 @@ async function updatePaymentIntent() {
       transaction_uuid
     } = window.bookingGlobals;
   
-    const credits = roundDecimals(window.bookingGlobals.creditsApplied || 0);
+    const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
+    const appliedCredits = window.bookingGlobals.creditsApplied || 0;
+    const credits = creditsEnabled ? roundDecimals(appliedCredits) : 0;
+  
     const hours = roundDecimals(window.bookingGlobals.booking_duration / 60);
     const certificateDiscount = roundDecimals(
       (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
@@ -1495,7 +1498,7 @@ async function updatePaymentIntent() {
     window.bookingGlobals.taxTotal = subtotalTaxes;
     window.bookingGlobals.payment_amount = total;
   
-    // ✅ Button visibility logic
+    // ✅ Show confirm-only if total is 0, else show Stripe UI
     const stripeBtns = document.getElementById("confirm-with-stripe");
     const confirmBtn = document.getElementById("confirm-without-stripe");
   
@@ -1503,13 +1506,13 @@ async function updatePaymentIntent() {
       stripeBtns?.classList.add("hidden");
       confirmBtn?.classList.remove("hidden");
       console.log("✅ Total is $0 — showing confirm-only button.");
-      return; // Don't update Stripe
+      return;
     } else {
       stripeBtns?.classList.remove("hidden");
       confirmBtn?.classList.add("hidden");
     }
   
-    // ✅ Send to Make.com
+    // ✅ Send updated values to Make.com
     const payload = {
       final_rate,
       hours,
@@ -1534,6 +1537,7 @@ async function updatePaymentIntent() {
   
       console.log("✅ updatePaymentIntent sent:", payload);
   
+      // Optional: update Stripe PaymentRequest if live
       if (window.paymentRequest && typeof window.paymentRequest.update === "function") {
         window.paymentRequest.update({
           total: {
@@ -1546,7 +1550,7 @@ async function updatePaymentIntent() {
     } catch (err) {
       console.error("❌ Failed to update payment intent:", err);
     }
-}
+  }  
 
 function applyStackedDiscounts(certs = [], finalRate, hours) {
     const totalBase = finalRate * hours;
