@@ -1558,8 +1558,78 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
       total -= discountAmount;
       results.push({ code, uuid, amount: discountAmount });
     }
+
+    const subtotalAfterDiscounts = total;
+
+    return {
+        results,
+        failures,
+        creditsToUser: roundDecimals(creditsToUser),
+        subtotalAfterDiscounts
+    };
+}  
+
+function renderAppliedCoupons() {
+    const container = document.getElementById("applied-coupons-container");
+    container.innerHTML = "";
   
-    return { results, failures, creditsToUser: roundDecimals(creditsToUser) };
+    const codes = window.bookingGlobals.discountCodes || [];
+  
+    if (codes.length === 0) {
+      container.classList.add("hide");
+      return;
+    }
+  
+    container.classList.remove("hide");
+  
+    codes.forEach(code => {
+      const option = document.createElement("div");
+      option.className = "selected-option";
+      option.innerHTML = `
+        <div>${code}</div>
+        <div class="select-option-close-out" data-code="${code}">
+          <div class="x-icon-container">
+            <div class="x-icon-line-vertical"></div>
+            <div class="x-icon-line-horizontal"></div>
+          </div>
+        </div>
+      `;
+      container.appendChild(option);
+    });
+  
+    // ✅ Attach click handlers after rendering
+    container.querySelectorAll(".select-option-close-out").forEach(el => {
+      el.addEventListener("click", async () => {
+        const code = el.getAttribute("data-code");
+        if (!code) return;
+  
+        // Remove the coupon from appliedCertificates
+        window.bookingGlobals.appliedCertificates = (window.bookingGlobals.appliedCertificates || []).filter(c => c.code !== code);
+  
+        // Recalculate discounts & credits
+        const rate = window.bookingGlobals.final_rate;
+        const hours = window.bookingGlobals.booking_duration / 60;
+  
+        const {
+          results,
+          failures,
+          creditsToUser,
+          subtotalAfterDiscounts
+        } = applyStackedDiscounts(window.bookingGlobals.appliedCertificates, rate, hours);
+  
+        const currentCredits = window.bookingGlobals.credits || 0;
+        window.bookingGlobals.discountTotals = results.map(r => r.amount);
+        window.bookingGlobals.discountCodes = results.map(r => r.code);
+        window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
+        window.bookingGlobals.creditsToUser = creditsToUser || 0;
+        window.bookingGlobals.creditsApplied = Math.min(subtotalAfterDiscounts, currentCredits);
+  
+        await updatePaymentIntent();
+        renderAppliedCoupons();
+        populateFinalSummary();
+        updateBookingSummary();
+      });
+    });
 }  
 
 // ** CALENDAR SYNC ** //
