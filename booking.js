@@ -1467,13 +1467,21 @@ async function updatePaymentIntent() {
         transaction_uuid
     } = window.bookingGlobals;
 
-    const hours = roundDecimals(booking_duration / 60);
-    const certificateDiscount = roundDecimals(window.bookingGlobals.discountTotals || 0);
     const credits = roundDecimals(creditsApplied);
+    const hours = roundDecimals(booking_duration / 60);
+    const certificateDiscount = roundDecimals(
+        (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
+    );
 
     const subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
     const subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
-    const total = roundDecimals(subtotal + subtotalTaxes);          
+    const total = roundDecimals(subtotal + subtotalTaxes);
+
+    // Update globals (optional but helps with fallback)
+    window.bookingGlobals.booking_total = subtotal;
+    window.bookingGlobals.taxTotal = subtotalTaxes;
+    window.bookingGlobals.payment_amount = total;
+     
 
     const payload = {
         final_rate: final_rate,
