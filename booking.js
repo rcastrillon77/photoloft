@@ -689,6 +689,7 @@ async function submitFinalBooking() {
     
         discount_code: g.discountCodes || [],
         discount_code_uuid: g.discountUUIDs || [],
+        discount_code_amounts: g.discountTotals || [],
         discount_code_total: (g.discountTotals || []).reduce((a, b) => a + b, 0),
 
         credits_to_user: window.bookingGlobals.creditsToUser,
