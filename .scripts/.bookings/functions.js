@@ -1321,6 +1321,7 @@ async function requestPaymentIntent() {
     };
 
     const payload = {
+        base_rate: window.bookingGlobals.base_rate,
         rate: final_rate,
         hours,
         certificate_discount: certificateDiscount,
@@ -1348,6 +1349,7 @@ async function requestPaymentIntent() {
 
         discount_code: window.bookingGlobals.discountCodes || [],
         discount_certificate_uuid: window.bookingGlobals.discountUUIDs || [],
+        discount_total: window.bookingGlobals.discountTotals || [],
         credits_applied: credits
     };
 
