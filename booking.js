@@ -2766,7 +2766,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           
     }); 
     
-    document.getElementById("confirm-booking")?.addEventListener("click", async () => {
+    document.getElementById("confirm-booking")?.addEventListener("click", async (e) => {
         if (e.currentTarget.classList.contains("processing")) return;
         setButtonText("#confirm-booking", "Creating Booking...", true);
         await submitFinalBooking();
