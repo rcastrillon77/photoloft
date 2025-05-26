@@ -653,12 +653,10 @@ async function submitFinalBooking() {
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
   
     const activities = {
-        selected: (g.activities?.selected || []).map(a => ({
-          ...a,
-          count: (a.count || 0) + 1
-        })),
+        selected: g.activities?.selected || [],
         other: g.activities?.other || []
-    };      
+    };
+      
   
     const payload = {
         listing_uuid: LISTING_UUID,
@@ -669,6 +667,8 @@ async function submitFinalBooking() {
         duration: g.booking_duration,
         attendees: g.attendees || 1,
         activities,
+        activities_uuid: g.activitiesUUID || [],
+        activities_payload: g.activitiesPayload || {},
         first_name: document.getElementById('booking-first-name')?.value || "",
         last_name: document.getElementById('booking-last-name')?.value || "",
         email: document.getElementById('booking-email')?.value || "",
@@ -2199,24 +2199,39 @@ function renderSelectedOptions() {
   
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
-    window.bookingGlobals.activities = {
-        selected: selectedActivities
-          .map(title => {
-            const obj = bookingTypes[title];
-            if (!obj) return null;
-            return {
-              ...obj,
-              count: (obj.count || 0) + 1
-            };
-          })
-          .filter(Boolean),
-        other: selectedActivities
-          .filter(title => title.startsWith("Other:"))
-          .map(val => val.replace(/^Other:\s*/i, "").trim())
-      };
-      
+    const selected = selectedActivities
+    .map(title => {
+        const data = bookingTypes[title];
+        if (!data) return null;
+        return {
+        id: data.id,
+        ...data,
+        count: (data.count || 0) + 1
+        };
+    })
+    .filter(Boolean);
 
-}
+    const other = selectedActivities
+    .filter(title => title.startsWith("Other:"))
+    .map(val => val.replace(/^Other:\s*/i, "").trim());
+
+    const activitiesUUID = selected.map(a => a.id);
+
+    const activitiesPayload = selected.reduce((acc, activity) => {
+    acc[activity.id] = {
+        ...activity
+    };
+    delete acc[activity.id].id; // optional: remove ID from value if Make expects only key
+    return acc;
+    }, {});
+
+    window.bookingGlobals.activities = {
+    selected,
+    other
+    };
+    window.bookingGlobals.activitiesUUID = activitiesUUID;
+    window.bookingGlobals.activitiesPayload = activitiesPayload;
+};
 
 function updatePurposeHiddenField() {
     updateFormField('purpose', selectedActivities.join(', '));
