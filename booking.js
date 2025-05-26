@@ -2224,9 +2224,6 @@ function updatePurposeHiddenField() {
         other
     };
 }
-  
-  
-  
 
 
 // ================================== //

@@ -2147,6 +2147,3 @@ function updatePurposeHiddenField() {
         other
     };
 }
-  
-  
-  
