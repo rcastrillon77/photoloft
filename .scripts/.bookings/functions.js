@@ -2073,19 +2073,20 @@ function updateOptionsList(input = "") {
   }
   
   
-function updateBookingTypeMessageBox() {
+  function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
     if (!box) return;
-
+  
     const messages = new Set();
-    selectedActivities.forEach(title => {
-        const match = Object.values(bookingTypes).find(bt => bt.title === title);
-        if (match?.message) messages.add(match.message);
+    selectedActivities.forEach(id => {
+      const match = bookingTypes[id];
+      if (match?.message) messages.add(match.message);
     });
-
+  
     box.classList.toggle('hidden', messages.size === 0);
     box.innerHTML = [...messages].map(msg => `<div>${msg}</div>`).join('');
-}
+  }
+  
   
 function renderSelectedOptions() {
     const container = selectedContainer;
