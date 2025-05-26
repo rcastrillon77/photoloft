@@ -2043,12 +2043,13 @@ window.releaseTempHold = async function () {
     }
 };
 
+// Booking Types
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
       .map(([id, val]) => ({ id, ...val }))
       .filter(bt => typeof bt.title === 'string') // 💥 prevents error
       .sort((a, b) => (b.count || 0) - (a.count || 0));
-  }  
+}  
   
 function highlightMatch(text, match) {
     if (!match) return text;
@@ -2083,7 +2084,6 @@ function updateOptionsList(input = "") {
 
   suggestionBox.classList.toggle("hide", matches.length === 0);
 }
-
   
 function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
@@ -2098,7 +2098,6 @@ function updateBookingTypeMessageBox() {
     box.classList.toggle('hidden', messages.size === 0);
     box.innerHTML = [...messages].map(msg => `<div>${msg}</div>`).join('');
 }
-  
   
 function renderSelectedOptions() {
     const container = selectedContainer;
