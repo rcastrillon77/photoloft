@@ -1228,6 +1228,10 @@ async function fetchEventsForRange(start, end) {
 }
 
 // ** PAYMENT ** //
+function roundDecimals(n) {
+    return Math.round(n * 100) / 100;
+}
+
 function setupStripeElements() {
     const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
     const elements = stripe.elements();
@@ -1348,10 +1352,6 @@ function setupStripeElements() {
     });
 }
 
-function roundDecimals(n) {
-    return Math.round(n * 100) / 100;
-}
-
 async function requestPaymentIntent() {
     const urlParams = new URLSearchParams(window.location.search);
     const bookingSource = urlParams.get('source') || null;
@@ -1463,7 +1463,7 @@ async function requestPaymentIntent() {
         } else {
             document.getElementById("confirm-with-stripe")?.classList.remove("hidden");
             document.getElementById("confirm-without-stripe")?.classList.add("hidden");
-            setButtonText("#pay-now-btn", `Pay ${window.bookingGlobals.total} with Card`, false); 
+            setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
         }
 
         console.log("✅ PaymentIntent created:", data);
@@ -1556,7 +1556,7 @@ async function updatePaymentIntent() {
     window.bookingGlobals.subtotal = subtotal;
     window.bookingGlobals.taxTotal = subtotalTaxes;
     window.bookingGlobals.total = (data.amount / 100);
-    setButtonText("#pay-now-btn", `Pay ${window.bookingGlobals.total} with Card`, false);
+    setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
   
     } catch (err) {
       console.error("❌ Failed to update payment intent:", err);
