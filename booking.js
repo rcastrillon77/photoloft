@@ -1963,6 +1963,7 @@ async function initBookingConfig(listingId, locationId) {
             }
             window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
             bookingTypes = flat;
+            window.bookingGlobals.activitiesConfig = flat;
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
                 min: capacityConfig.min ?? 1,
