@@ -2246,34 +2246,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initSliderSection();
         initCalendar();
     }
-
-   // ✅ Log and build bookingTypes from UUID-based activity config
-  console.log("✅ bookingGlobals.activitiesConfig:", window.bookingGlobals.activitiesConfig);
-
-  // Make bookingTypes globally accessible (not scoped inside DOMContentLoaded)
-  window.bookingTypes = {};
-  Object.entries(window.bookingGlobals.activitiesConfig || {}).forEach(([uuid, data]) => {
-    if (data?.title) {
-      window.bookingTypes[uuid] = { id: uuid, ...data };
-    }
-  });
-  console.log("✅ bookingTypes built from UUIDs:", window.bookingTypes);
-
-  // Optional debug: flatten listing-level activity data (current activity field for this listing)
-  const activitiesObj = window.bookingGlobals.activities || {};
-  const all = [];
-
-  Object.entries(activitiesObj).forEach(([id, data]) => {
-    all.push({ id, ...data });
-  });
-
-  console.log("📦 listing.activities flattened:", all);
-
-  // 👇 you might also want to initialize your activity selector here:
-  updateOptionsList();     // shows top 3 if nothing typed
-  renderSelectedOptions(); // rerender if pre-selections exist
-
-    
   
     // Everything after this point is UI event listeners:
     document.getElementById('duration-slider')?.addEventListener('input', (e) => {
