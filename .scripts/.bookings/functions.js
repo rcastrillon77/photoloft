@@ -572,9 +572,10 @@ async function populateFinalSummary() {
     document.getElementById("final-booking-summary-subtotal")?.classList.toggle("hide", shouldHideSubtotal);
     document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
   
-    const subtotal = (finalRate * hours) - discountAmount - creditsAmount;
-    const tax = subtotal * (taxRate / 100);
-    const total = subtotal + tax;
+    const subtotal = globals.subtotal || 0;
+    const tax = globals.taxTotal || 0;
+    const total = globals.total || 0;
+
   
     document.querySelector("#final-booking-summary-subtotal .summary-line-item-price").textContent = `$${subtotal.toFixed(2)}`;
     document.querySelector("#final-booking-summary-taxes .summary-line-item").textContent = `Tax Rate (${taxRate.toFixed(2)}%)`;
@@ -1370,7 +1371,7 @@ async function requestPaymentIntent() {
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);
+        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);        
 
         const data = await response.json();
 
@@ -1387,6 +1388,7 @@ async function requestPaymentIntent() {
         } else {
             document.getElementById("confirm-with-stripe")?.classList.remove("hidden");
             document.getElementById("confirm-without-stripe")?.classList.add("hidden");
+            setButtonText("#pay-now-btn", `Pay ${total} with Card`, false);
         }
 
 
@@ -1445,6 +1447,7 @@ async function updatePaymentIntent() {
     } else {
       stripeBtns?.classList.remove("hidden");
       confirmBtn?.classList.add("hidden");
+      setButtonText("#pay-now-btn", `Pay ${total} with Card`, false);
     }
   
     // ✅ Send updated values to Make.com
@@ -1481,6 +1484,13 @@ async function updatePaymentIntent() {
           }
         });
       }
+
+      window.paymentRequest?.update?.({
+        total: {
+          label: "Total",
+          amount: Math.round(data.amount) // amount in cents
+        }
+      });      
   
     } catch (err) {
       console.error("❌ Failed to update payment intent:", err);
