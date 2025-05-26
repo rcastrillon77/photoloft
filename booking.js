@@ -2925,7 +2925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
       
-        const total = window.bookingGlobals.payment_amount;
+        const total = window.bookingGlobals.total;
       
         if (total === 0) {
           document.getElementById("confirm-with-stripe")?.classList.add("hidden");
