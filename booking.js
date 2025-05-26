@@ -2218,6 +2218,27 @@ function renderSelectedOptions() {
 
 }
 
+function updatePurposeHiddenField() {
+    updateFormField('purpose', selectedActivities.join(', '));
+  
+    const selected = selectedActivities
+      .map(title => {
+        const data = bookingTypes[title];
+        if (!data) return null;
+        return { id: data.id, ...data, count: (data.count || 0) + 1 };
+      })
+      .filter(Boolean);
+  
+    const other = selectedActivities
+      .filter(title => title.startsWith("Other:"))
+      .map(val => val.replace(/^Other:\s*/i, "").trim());
+  
+    window.bookingGlobals.activities = {
+      selected,
+      other
+    };
+}  
+
 
 // ================================== //
 // ========  INITIALIZATION  ======== //
