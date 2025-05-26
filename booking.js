@@ -2827,9 +2827,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
       
-        if (!rules.stackable && (window.bookingGlobals.hasSpecialRate || (window.bookingGlobals.appliedCertificates?.length ?? 0) > 0)) {
-          alert("This coupon cannot be used with other discounts.");
-          return;
+        if (!rules.stackable && (bookingGlobals.base_rate !== bookingGlobals.final_rate || appliedCertificates.length > 0)) {
+            alert("This coupon cannot be used with other discounts.");
+            return;
         }
       
         // ✅ Date check
