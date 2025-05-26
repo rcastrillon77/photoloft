@@ -2169,7 +2169,9 @@ function renderSelectedOptions() {
     const box = document.querySelector(".message-box");
     container.innerHTML = "";
   
-    selectedActivities.forEach(title => {
+    selectedActivities.forEach(id => {
+      const title = bookingTypes[id]?.title || id;
+  
       const el = document.createElement("div");
       el.className = "selected-option";
       el.innerHTML = `
@@ -2183,7 +2185,7 @@ function renderSelectedOptions() {
       `;
   
       el.querySelector(".x-icon-container")?.addEventListener("click", () => {
-        selectedActivities = selectedActivities.filter(a => a !== title);
+        selectedActivities = selectedActivities.filter(a => a !== id);
         renderSelectedOptions();
         updateOptionsList(activityInput.value);
         activityInput.classList.remove("hide");
@@ -2198,7 +2200,8 @@ function renderSelectedOptions() {
   
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
-}
+  }
+  
 
 function updatePurposeHiddenField() {
     updateFormField('purpose', selectedActivities.map(id => bookingTypes[id]?.title || id).join(', '));
