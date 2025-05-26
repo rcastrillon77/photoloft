@@ -1955,23 +1955,18 @@ async function initBookingConfig(listingId, locationId) {
         if (activitiesError || !activitiesData) {
         console.error("❌ Failed to fetch booking types:", activitiesError);
         } else {
-            const flat = {};
-            for (const group of Object.values(activitiesData.activities || {})) {
-                for (const [key, obj] of Object.entries(group)) {
-                    flat[key] = obj;
-                }
-            }
+            const flat = activitiesData.activities || {};
+
             window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
 
             bookingTypes = {};
             for (const [uuid, obj] of Object.entries(flat)) {
-                if (obj?.title) {
-                    bookingTypes[obj.title] = { id: uuid, ...obj };
-                }
+            if (obj?.title) {
+                bookingTypes[obj.title] = { id: uuid, ...obj };
             }
+            }
+            console.log("✅ bookingTypes:", bookingTypes);
 
-            console.log("📦 bookingTypes (title → full activity object):", bookingTypes);
-            
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
                 min: capacityConfig.min ?? 1,
