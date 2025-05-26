@@ -576,14 +576,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
     });
 
+    const couponInput = document.getElementById("coupon-code");
+    const applyButton = document.getElementById("apply-coupon");
+
     couponInput.addEventListener("input", () => {
     applyButton.classList.toggle("disabled", !couponInput.value.trim());
     });
 
-    const couponInput = document.getElementById("coupon-code");
-    const applyButton = document.getElementById("apply-coupon");
-
-    document.getElementById("apply-coupon").addEventListener("click", async () => {
+    applyButton.addEventListener("click", async () => {
         if (applyButton.classList.contains("disabled")) return;
       
         const code = couponInput.value.trim().toLowerCase();
