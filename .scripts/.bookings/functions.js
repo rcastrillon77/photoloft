@@ -2036,9 +2036,9 @@ window.releaseTempHold = async function () {
 
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
-      .sort((a, b) => b[1].count - a[1].count)
-      .map(([id, val]) => ({ id, ...val }));
-}
+      .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
+      .map(([_, val]) => val);
+}  
   
 function highlightMatch(text, match) {
     if (!match) return text;
@@ -2047,17 +2047,14 @@ function highlightMatch(text, match) {
   
 function updateOptionsList(inputValue = "") {
     const rawInput = inputValue.trim();
-    const input = rawInput.toLowerCase(); // for matching
+    const input = rawInput.toLowerCase();
     suggestionBox.innerHTML = "";
-  
-    if (bookingTypeInstructions) {
-      bookingTypeInstructions.classList.toggle('hide', rawInput || selectedActivities.length > 0);
-    }
   
     const matches = sortBookingTypes()
       .filter(bt => !selectedActivities.includes(bt.title))
-      .filter(bt => bt.title.toLowerCase().includes(input))
+      .filter(bt => !input || bt.title.toLowerCase().includes(input))
       .slice(0, 3);
+  
   
     if (!matches.length && rawInput) {
       const el = document.createElement('div');
