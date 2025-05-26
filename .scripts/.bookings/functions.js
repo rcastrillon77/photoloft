@@ -487,7 +487,7 @@ async function populateFinalSummary() {
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
   
     // 🏷️ Activities
-    const selectedLabels = globals.activities || [];
+    const selectedLabels = (window.bookingGlobals.activities?.selected || []).map(a => a.title);
     const activityList = document.getElementById("final-summary-activities");
     activityList.innerHTML = "";
     selectedLabels.forEach(label => {
