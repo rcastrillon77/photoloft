@@ -1465,7 +1465,7 @@ async function requestPaymentIntent() {
         } else {
             document.getElementById("confirm-with-stripe")?.classList.remove("hidden");
             document.getElementById("confirm-without-stripe")?.classList.add("hidden");
-            setButtonText("#pay-now-btn", `Pay ${total} with Card`, false);
+            setButtonText("#pay-now-btn", `Pay ${total} with Card`, false); 
         }
 
 
