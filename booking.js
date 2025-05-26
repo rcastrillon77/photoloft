@@ -2243,9 +2243,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     const bookingTypes = {};
-        all.forEach(obj => {
-        bookingTypes[obj.title] = obj;
+    Object.entries(window.bookingGlobals.activities || {}).forEach(([id, data]) => {
+    if (data?.title) {
+        bookingTypes[id] = { id, ...data };
+    }
     });
+
+    
 
   
     // Everything after this point is UI event listeners:
