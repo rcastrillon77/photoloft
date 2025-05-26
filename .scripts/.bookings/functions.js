@@ -2118,10 +2118,7 @@ function renderSelectedOptions() {
     const box = document.querySelector(".message-box");
     container.innerHTML = "";
   
-    const activities = window.bookingGlobals.activities?.selected || [];
-  
-    activities.forEach(activity => {
-      const title = activity.title || activity; // fallback if somehow a raw string got in
+    selectedActivities.forEach(title => {
       const el = document.createElement("div");
       el.className = "selected-option";
       el.innerHTML = `
@@ -2135,13 +2132,11 @@ function renderSelectedOptions() {
       `;
   
       el.querySelector(".x-icon-container")?.addEventListener("click", () => {
-        window.bookingGlobals.activities.selected = activities.filter(a =>
-          (a.title || a) !== title
-        );
+        selectedActivities = selectedActivities.filter(a => a !== title);
         renderSelectedOptions();
         updateOptionsList(activityInput.value);
         activityInput.classList.remove("hide");
-        if (activities.length === 0) {
+        if (selectedActivities.length === 0) {
           container.classList.add("hide");
           box?.classList.add("hidden");
         }
@@ -2150,8 +2145,25 @@ function renderSelectedOptions() {
       container.appendChild(el);
     });
   
-    const selected = activities.map(a => a.title || a);
-    container.classList.toggle('hide', selected.length === 0);
-    updateFormField('purpose', selected.join(', '));
-    window.bookingGlobals.activities.other ??= [];
-}  
+    container.classList.toggle('hide', selectedActivities.length === 0);
+    updatePurposeHiddenField();
+  }
+
+  function updatePurposeHiddenField() {
+    updateFormField('purpose', selectedActivities.join(', '));
+  
+    const full = selectedActivities
+      .map(title => Object.entries(bookingTypes).find(([id, data]) => data.title === title))
+      .filter(Boolean)
+      .map(([id, data]) => ({ id, ...data }));
+  
+    const other = selectedActivities
+      .filter(a => a.startsWith("Other:"))
+      .map(a => a.replace(/^Other:\s*/i, "").trim());
+  
+    window.bookingGlobals.activities = {
+      selected: full,
+      other
+    };
+  }
+  
