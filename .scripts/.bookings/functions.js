@@ -1868,7 +1868,7 @@ async function initBookingConfig(listingId, locationId) {
         window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
         window.bookingGlobals.final_rate = FULL_RATE;
 
-        // --- Pull Activities ---
+        // OLD PULL ACTIVITIES
         const { data: activitiesData, error: activitiesError } = await window.supabase
         .from("listings")
         .select("activities, details")
@@ -1880,21 +1880,17 @@ async function initBookingConfig(listingId, locationId) {
         } else {
             const flat = {};
             for (const group of Object.values(activitiesData.activities || {})) {
-            for (const [key, obj] of Object.entries(group)) {
-                flat[key] = obj;
+                for (const [key, obj] of Object.entries(group)) {
+                    flat[key] = obj;
+                }
             }
+            window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
+            bookingTypes = {};
+            for (const [uuid, obj] of Object.entries(flat)) {
+                if (obj?.title) {
+                    bookingTypes[obj.title] = { id: uuid, ...obj };
+                }
             }
-
-            window.bookingGlobals.activitiesConfig = flat;
-
-            // Rebuild bookingTypes (used for suggestions)
-            window.bookingTypes = {};
-            Object.entries(flat).forEach(([uuid, data]) => {
-            if (data?.title) {
-                window.bookingTypes[data.title] = { id: uuid, ...data };
-            }
-            });
-
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
                 min: capacityConfig.min ?? 1,
@@ -1912,13 +1908,11 @@ async function initBookingConfig(listingId, locationId) {
             console.log("👥 Loaded capacity:", window.listingCapacity);
         }
 
-
-
-            console.log("🧩 Booking Config:", {
-                MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
-                BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
-                minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
-            });
+        console.log("🧩 Booking Config:", {
+            MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
+            BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
+            minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
+        });
 
         // --- Pull Events ---
         const eventsData = await fetchEventsForRange(minDate, maxDate);
@@ -2043,46 +2037,50 @@ window.releaseTempHold = async function () {
     }
 };
 
-// Booking Types
+// OLD FUNCTIONS
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
-      .map(([id, val]) => ({ id, ...val }))
-      .filter(bt => typeof bt.title === 'string') // 💥 prevents error
-      .sort((a, b) => (b.count || 0) - (a.count || 0));
-}  
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([id, val]) => ({ id, ...val }));
+}
   
 function highlightMatch(text, match) {
     if (!match) return text;
     return text.replace(new RegExp(`(${match})`, 'ig'), '<span class="matched-string">$1</span>');
 }
   
-function updateOptionsList(input = "") {
-  const term = input.toLowerCase().trim();
-  suggestionBox.innerHTML = "";
-
-  const matches = Object.entries(window.bookingTypes)
-    .filter(([title]) => !selectedActivities.includes(title))
-    .filter(([title]) => !term || title.toLowerCase().includes(term))
-    .sort(([, a], [, b]) => (b.count || 0) - (a.count || 0))
-    .slice(0, 3);
-
-  matches.forEach(([title, data]) => {
-    const el = document.createElement("div");
-    el.className = "select-option";
-    el.innerHTML = `<div>${title}</div><div class="add-option">+ Add Activity</div>`;
-    el.dataset.value = title;
-    el.addEventListener("click", () => {
-      if (selectedActivities.length >= 5) return;
-      selectedActivities.push(title);
-      renderSelectedOptions();
-      updateOptionsList("");
-      activityInput.value = "";
-      if (selectedActivities.length >= 5) activityInput.classList.add("hide");
-    });
-    suggestionBox.appendChild(el);
-  });
-
-  suggestionBox.classList.toggle("hide", matches.length === 0);
+function updateOptionsList(inputValue = "") {
+    const rawInput = inputValue.trim();
+    const input = rawInput.toLowerCase(); // for matching
+    suggestionBox.innerHTML = "";
+  
+    if (bookingTypeInstructions) {
+      bookingTypeInstructions.classList.toggle('hide', rawInput || selectedActivities.length > 0);
+    }
+  
+    const matches = sortBookingTypes()
+      .filter(bt => !selectedActivities.includes(bt.title))
+      .filter(bt => bt.title.toLowerCase().includes(input))
+      .slice(0, 3);
+  
+    if (!matches.length && rawInput) {
+      const el = document.createElement('div');
+      el.className = "select-option highlighted";
+      el.innerHTML = `<div>Other: <span class="matched-string">${rawInput}</span></div><div class="add-option">+ Add Option</div>`;
+      el.dataset.value = `Other: ${rawInput}`; // ✅ preserve original casing
+      suggestionBox.appendChild(el);
+    } else {
+      matches.forEach((bt, i) => {
+        const el = document.createElement('div');
+        el.className = `select-option ${i === 0 ? 'highlighted' : ''}`;
+        el.innerHTML = `<div>${highlightMatch(bt.title, input)}</div><div class="add-option">+ Add Option</div>`;
+        el.dataset.value = bt.title;
+        suggestionBox.appendChild(el);
+      });
+    }
+  
+    suggestionBox.classList.remove('hide');
+    updateBookingTypeMessageBox();
 }
   
 function updateBookingTypeMessageBox() {
@@ -2091,7 +2089,7 @@ function updateBookingTypeMessageBox() {
 
     const messages = new Set();
     selectedActivities.forEach(title => {
-        const match = Object.values(bookingTypes).find(data => data.title === title);
+        const match = Object.values(bookingTypes).find(bt => bt.title === title);
         if (match?.message) messages.add(match.message);
     });
 
@@ -2103,55 +2101,28 @@ function renderSelectedOptions() {
     const container = selectedContainer;
     const box = document.querySelector(".message-box");
     container.innerHTML = "";
-
-    selectedActivities.forEach(title => {
-        const el = document.createElement("div");
-        el.className = "selected-option";
-        el.innerHTML = `
-        <div>${title}</div>
-        <div class="select-option-close-out">
-            <div class="x-icon-container">
-            <div class="x-icon-line-vertical"></div>
-            <div class="x-icon-line-horizontal"></div>
-            </div>
-        </div>
-        `;
-
-        el.querySelector(".x-icon-container")?.addEventListener("click", () => {
-        selectedActivities = selectedActivities.filter(a => a !== title);
+  
+    selectedActivities.forEach(activity => {
+      const el = document.createElement("div");
+      el.className = "selected-option";
+      el.innerHTML = `<div>${activity}</div><div class="select-option-close-out"><div class="x-icon-container"><div class="x-icon-line-vertical"></div><div class="x-icon-line-horizontal"></div></div></div>`;
+  
+      el.querySelector(".x-icon-container")?.addEventListener("click", () => {
+        selectedActivities = selectedActivities.filter(a => a !== activity);
         renderSelectedOptions();
         updateOptionsList(activityInput.value);
         activityInput.classList.remove("hide");
         if (selectedActivities.length === 0) {
-            container.classList.add("hide");
-            box?.classList.add("hidden");
+          container.classList.add("hide");
+          box?.classList.add("hidden");
         }
-        });
-
-        container.appendChild(el);
+      });
+  
+      container.appendChild(el);
     });
-
+  
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
-}
+    window.bookingGlobals.activities = [...selectedActivities];
 
-function updatePurposeHiddenField() {
-    updateFormField('purpose', selectedActivities.join(', '));
-  
-    const selected = selectedActivities
-      .map(title => {
-        const data = window.bookingTypes[title];
-        if (!data) return null;
-        return { id: data.id, ...data, count: (data.count || 0) + 1 };
-      })
-      .filter(Boolean);
-  
-    const other = selectedActivities
-      .filter(title => typeof title === "string" && title.startsWith("Other:"))
-      .map(val => val.replace(/^Other:\s*/i, "").trim());
-  
-    window.bookingGlobals.activities = {
-      selected,
-      other
-    };
-}  
+}
