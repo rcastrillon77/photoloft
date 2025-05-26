@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.bookingGlobals.booking_duration = duration;
         window.bookingGlobals.booking_end = end;
         window.bookingGlobals.subtotal = (duration / 60) * window.bookingGlobals.final_rate;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via duration-slider`);
     
         updateDurationDisplay(duration);
         updateBookingSummary();
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.bookingGlobals.booking_duration = duration;
         window.bookingGlobals.booking_end = end;
         window.bookingGlobals.subtotal = (duration / 60) * window.bookingGlobals.final_rate;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via extended-time`);
     
         updateDurationDisplay(duration);
         updateBookingSummary();
