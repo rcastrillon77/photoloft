@@ -1135,7 +1135,6 @@ async function fetchEventsForRange(start, end) {
   
     return fetchEventsForRange(dayStart.toJSDate(), dayEnd.toJSDate());
 }
-  
 
 // ** PAYMENT ** //
 function setupStripeElements() {
