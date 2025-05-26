@@ -2131,9 +2131,7 @@ function updateOptionsList(inputValue = "") {
     const matches = sortBookingTypes()
         .filter(bt => !selectedActivities.includes(bt.title))
         .filter(bt => !input || (bt.title?.toLowerCase().includes(input)))
-        .slice(0, 3);
-
-  
+        .slice(0, 3);  
   
     if (!matches.length && rawInput) {
       const el = document.createElement('div');
