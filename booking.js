@@ -1723,7 +1723,6 @@ function renderAppliedCoupons() {
         await updatePaymentIntent();
         renderAppliedCoupons();
         populateFinalSummary();
-        updateBookingSummary();
       });
     });
 }  
