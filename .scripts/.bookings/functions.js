@@ -53,8 +53,20 @@ function updatePurposeHiddenField() {
     const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
       .map(el => el.textContent.trim())
       .filter(Boolean);
-    updateFormField('purpose', selected.join(', '));
-    window.bookingGlobals.activities = selected;
+      updateFormField('purpose', selected.join(', '));
+
+      // Set both titles and UUIDs
+      window.bookingGlobals.activities = {
+        selected: selected
+          .map(title => Object.entries(bookingTypes).find(([id, data]) => data.title === title))
+          .filter(Boolean)
+          .map(([id, data]) => ({ id, ...data })),
+      
+        other: selected
+          .filter(a => a.startsWith("Other:"))
+          .map(a => a.replace(/^Other:\s*/i, "").trim())
+      };
+      
 }
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
@@ -584,9 +596,12 @@ async function submitFinalBooking() {
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
   
     const activities = {
-      selected: g.activities?.filter(a => !a.startsWith("Other:")) || [],
-      other: g.activities?.filter(a => a.startsWith("Other:")).map(a => a.replace(/^Other:\s*/, "").trim()) || []
-    };
+        selected: (g.activities?.selected || []).map(a => ({
+          ...a,
+          count: (a.count || 0) + 1
+        })),
+        other: g.activities?.other || []
+    };      
   
     const payload = {
         listing_uuid: LISTING_UUID,
@@ -2103,17 +2118,30 @@ function renderSelectedOptions() {
     const box = document.querySelector(".message-box");
     container.innerHTML = "";
   
-    selectedActivities.forEach(activity => {
+    const activities = window.bookingGlobals.activities?.selected || [];
+  
+    activities.forEach(activity => {
+      const title = activity.title || activity; // fallback if somehow a raw string got in
       const el = document.createElement("div");
       el.className = "selected-option";
-      el.innerHTML = `<div>${activity}</div><div class="select-option-close-out"><div class="x-icon-container"><div class="x-icon-line-vertical"></div><div class="x-icon-line-horizontal"></div></div></div>`;
+      el.innerHTML = `
+        <div>${title}</div>
+        <div class="select-option-close-out">
+          <div class="x-icon-container">
+            <div class="x-icon-line-vertical"></div>
+            <div class="x-icon-line-horizontal"></div>
+          </div>
+        </div>
+      `;
   
       el.querySelector(".x-icon-container")?.addEventListener("click", () => {
-        selectedActivities = selectedActivities.filter(a => a !== activity);
+        window.bookingGlobals.activities.selected = activities.filter(a =>
+          (a.title || a) !== title
+        );
         renderSelectedOptions();
         updateOptionsList(activityInput.value);
         activityInput.classList.remove("hide");
-        if (selectedActivities.length === 0) {
+        if (activities.length === 0) {
           container.classList.add("hide");
           box?.classList.add("hidden");
         }
@@ -2122,8 +2150,8 @@ function renderSelectedOptions() {
       container.appendChild(el);
     });
   
-    container.classList.toggle('hide', selectedActivities.length === 0);
-    updatePurposeHiddenField();
-    window.bookingGlobals.activities = [...selectedActivities];
-
-}
+    const selected = activities.map(a => a.title || a);
+    container.classList.toggle('hide', selected.length === 0);
+    updateFormField('purpose', selected.join(', '));
+    window.bookingGlobals.activities.other ??= [];
+}  
