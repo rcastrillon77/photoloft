@@ -650,6 +650,7 @@ async function populateFinalSummary() {
     document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
   
     const subtotal = globals.subtotal || 0;
+    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via populateFinalSummary`);
     const tax = globals.taxTotal || 0;
     const total = globals.total || 0;
 
@@ -710,6 +711,7 @@ async function submitFinalBooking() {
     
         source: new URLSearchParams(window.location.search).get('source') || null
     };
+    console.log(`SUBTOTAL CALLED: ${window.bookingGlobals.subtotal} via submitFinalBooking`);
   
     try {
       const res = await fetch("https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4", {
@@ -835,6 +837,7 @@ function updateBookingSummary() {
     window.bookingGlobals.base_rate = baseRate;
     window.bookingGlobals.final_rate = finalRate;
     window.bookingGlobals.subtotal = discountedTotal;
+    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updateBookingSummary`);
     window.bookingGlobals.rate_label = rateLabel;
 
     const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
@@ -1554,6 +1557,7 @@ async function updatePaymentIntent() {
 
     // ✅ Store values in bookingGlobals
     window.bookingGlobals.subtotal = subtotal;
+    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
     window.bookingGlobals.taxTotal = subtotalTaxes;
     window.bookingGlobals.total = (data.amount / 100);
     setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
