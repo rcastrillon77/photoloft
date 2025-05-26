@@ -2128,20 +2128,23 @@ function updateOptionsList(input = "") {
     suggestionBox.innerHTML = "";
   
     const matches = Object.entries(bookingTypes)
-      .filter(([id, data]) => !selectedActivities.includes(id))
-      .filter(([id, data]) => !term || data.title.toLowerCase().includes(term))
+      .filter(([, data]) => !selectedActivities.includes(data.title))
+      .filter(([, data]) => !term || data.title.toLowerCase().includes(term))
       .sort(([, a], [, b]) => (b.count || 0) - (a.count || 0))
       .slice(0, 3);
   
-    matches.forEach(([id, data]) => {
+    matches.forEach(([, data]) => {
       const el = document.createElement("div");
       el.className = "select-option";
       el.innerHTML = `<div>${data.title}</div><div class="add-option">+ Add Activity</div>`;
+      el.dataset.value = data.title;
       el.addEventListener("click", () => {
-        selectedActivities.push(id);
+        if (selectedActivities.length >= 5) return;
+        selectedActivities.push(data.title);
         renderSelectedOptions();
         updateOptionsList("");
         activityInput.value = "";
+        if (selectedActivities.length >= 5) activityInput.classList.add("hide");
       });
       suggestionBox.appendChild(el);
     });
@@ -2150,13 +2153,14 @@ function updateOptionsList(input = "") {
   }
   
   
+  
   function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
     if (!box) return;
   
     const messages = new Set();
-    selectedActivities.forEach(id => {
-      const match = bookingTypes[id];
+    selectedActivities.forEach(title => {
+      const match = Object.values(bookingTypes).find(data => data.title === title);
       if (match?.message) messages.add(match.message);
     });
   
@@ -2166,62 +2170,63 @@ function updateOptionsList(input = "") {
   
   
 function renderSelectedOptions() {
-    const container = selectedContainer;
-    const box = document.querySelector(".message-box");
-    container.innerHTML = "";
-  
-    selectedActivities.forEach(id => {
-      const title = bookingTypes[id]?.title || id;
-  
-      const el = document.createElement("div");
-      el.className = "selected-option";
-      el.innerHTML = `
-        <div>${title}</div>
-        <div class="select-option-close-out">
-          <div class="x-icon-container">
-            <div class="x-icon-line-vertical"></div>
-            <div class="x-icon-line-horizontal"></div>
-          </div>
+const container = selectedContainer;
+const box = document.querySelector(".message-box");
+container.innerHTML = "";
+
+selectedActivities.forEach(title => {
+    const el = document.createElement("div");
+    el.className = "selected-option";
+    el.innerHTML = `
+    <div>${title}</div>
+    <div class="select-option-close-out">
+        <div class="x-icon-container">
+        <div class="x-icon-line-vertical"></div>
+        <div class="x-icon-line-horizontal"></div>
         </div>
-      `;
-  
-      el.querySelector(".x-icon-container")?.addEventListener("click", () => {
-        selectedActivities = selectedActivities.filter(a => a !== id);
-        renderSelectedOptions();
-        updateOptionsList(activityInput.value);
-        activityInput.classList.remove("hide");
-        if (selectedActivities.length === 0) {
-          container.classList.add("hide");
-          box?.classList.add("hidden");
-        }
-      });
-  
-      container.appendChild(el);
+    </div>
+    `;
+
+    el.querySelector(".x-icon-container")?.addEventListener("click", () => {
+    selectedActivities = selectedActivities.filter(a => a !== title);
+    renderSelectedOptions();
+    updateOptionsList(activityInput.value);
+    activityInput.classList.remove("hide");
+    if (selectedActivities.length === 0) {
+        container.classList.add("hide");
+        box?.classList.add("hidden");
+    }
     });
-  
-    container.classList.toggle('hide', selectedActivities.length === 0);
-    updatePurposeHiddenField();
-  }
-  
+
+    container.appendChild(el);
+});
+
+container.classList.toggle('hide', selectedActivities.length === 0);
+updatePurposeHiddenField();
+}
 
 function updatePurposeHiddenField() {
-    updateFormField('purpose', selectedActivities.map(id => bookingTypes[id]?.title || id).join(', '));
+updateFormField('purpose', selectedActivities.join(', '));
 
-    const selected = selectedActivities
-        .map(id => bookingTypes[id])
-        .filter(Boolean)
-        .map(data => ({
-        ...data,
-        count: (data.count || 0) + 1
-        }));
+const selected = selectedActivities
+    .map(title => {
+    const entry = Object.entries(bookingTypes).find(([, data]) => data.title === title);
+    if (!entry) return null;
+    const [uuid, data] = entry;
+    return { id: uuid, ...data, count: (data.count || 0) + 1 };
+    })
+    .filter(Boolean);
 
-    window.bookingGlobals.activities = {
-        selected,
-        other: selectedActivities
-        .filter(id => id.startsWith("other:"))
-        .map(val => val.replace(/^other:/i, "").trim())
-    };
+const other = selectedActivities
+    .filter(title => title.startsWith("Other:"))
+    .map(val => val.replace(/^Other:\s*/i, "").trim());
+
+window.bookingGlobals.activities = {
+    selected,
+    other
+};
 }
+  
   
   
 
