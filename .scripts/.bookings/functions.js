@@ -1880,13 +1880,21 @@ async function initBookingConfig(listingId, locationId) {
         } else {
             const flat = {};
             for (const group of Object.values(activitiesData.activities || {})) {
-                for (const [key, obj] of Object.entries(group)) {
-                    flat[key] = obj;
-                }
+            for (const [key, obj] of Object.entries(group)) {
+                flat[key] = obj;
             }
-            window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
-            bookingTypes = flat;
+            }
+
             window.bookingGlobals.activitiesConfig = flat;
+
+            // Rebuild bookingTypes (used for suggestions)
+            window.bookingTypes = {};
+            Object.entries(flat).forEach(([uuid, data]) => {
+            if (data?.title) {
+                window.bookingTypes[data.title] = { id: uuid, ...data };
+            }
+            });
+
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
                 min: capacityConfig.min ?? 1,
@@ -2048,33 +2056,34 @@ function highlightMatch(text, match) {
 }
   
 function updateOptionsList(input = "") {
-    const term = input.toLowerCase().trim();
-    suggestionBox.innerHTML = "";
-  
-    const matches = Object.entries(bookingTypes)
-      .filter(([, data]) => !selectedActivities.includes(data.title))
-      .filter(([, data]) => !term || data.title.toLowerCase().includes(term))
-      .sort(([, a], [, b]) => (b.count || 0) - (a.count || 0))
-      .slice(0, 3);
-  
-    matches.forEach(([, data]) => {
-      const el = document.createElement("div");
-      el.className = "select-option";
-      el.innerHTML = `<div>${data.title}</div><div class="add-option">+ Add Activity</div>`;
-      el.dataset.value = data.title;
-      el.addEventListener("click", () => {
-        if (selectedActivities.length >= 5) return;
-        selectedActivities.push(data.title);
-        renderSelectedOptions();
-        updateOptionsList("");
-        activityInput.value = "";
-        if (selectedActivities.length >= 5) activityInput.classList.add("hide");
-      });
-      suggestionBox.appendChild(el);
+  const term = input.toLowerCase().trim();
+  suggestionBox.innerHTML = "";
+
+  const matches = Object.entries(window.bookingTypes)
+    .filter(([title]) => !selectedActivities.includes(title))
+    .filter(([title]) => !term || title.toLowerCase().includes(term))
+    .sort(([, a], [, b]) => (b.count || 0) - (a.count || 0))
+    .slice(0, 3);
+
+  matches.forEach(([title, data]) => {
+    const el = document.createElement("div");
+    el.className = "select-option";
+    el.innerHTML = `<div>${title}</div><div class="add-option">+ Add Activity</div>`;
+    el.dataset.value = title;
+    el.addEventListener("click", () => {
+      if (selectedActivities.length >= 5) return;
+      selectedActivities.push(title);
+      renderSelectedOptions();
+      updateOptionsList("");
+      activityInput.value = "";
+      if (selectedActivities.length >= 5) activityInput.classList.add("hide");
     });
-  
-    suggestionBox.classList.toggle("hide", matches.length === 0);
+    suggestionBox.appendChild(el);
+  });
+
+  suggestionBox.classList.toggle("hide", matches.length === 0);
 }
+
   
 function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
@@ -2129,22 +2138,21 @@ function renderSelectedOptions() {
 
 function updatePurposeHiddenField() {
     updateFormField('purpose', selectedActivities.join(', '));
-
+  
     const selected = selectedActivities
-        .map(title => {
-        const entry = Object.entries(bookingTypes).find(([, data]) => data.title === title);
-        if (!entry) return null;
-        const [uuid, data] = entry;
-        return { id: uuid, ...data, count: (data.count || 0) + 1 };
-        })
-        .filter(Boolean);
-
+      .map(title => {
+        const data = window.bookingTypes[title];
+        if (!data) return null;
+        return { id: data.id, ...data, count: (data.count || 0) + 1 };
+      })
+      .filter(Boolean);
+  
     const other = selectedActivities
-        .filter(a => typeof a === "string" && a.startsWith("Other:"))
-        .map(val => val.replace(/^Other:\s*/i, "").trim());
-
+      .filter(title => typeof title === "string" && title.startsWith("Other:"))
+      .map(val => val.replace(/^Other:\s*/i, "").trim());
+  
     window.bookingGlobals.activities = {
-        selected,
-        other
+      selected,
+      other
     };
-}
+}  
