@@ -487,17 +487,30 @@ async function populateFinalSummary() {
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
   
     // 🏷️ Activities
-    const selectedLabels = (window.bookingGlobals.activities?.selected || []).map(a => a.title);
+    const selected = window.bookingGlobals.activities?.selected || [];
+    const other = window.bookingGlobals.activities?.other || [];
+
     const activityList = document.getElementById("final-summary-activities");
     activityList.innerHTML = "";
-    selectedLabels.forEach(label => {
-      const pill = document.createElement("div");
-      pill.className = "booking-summary-value pill";
-      pill.textContent = label.replace(/^Other:\s*/i, "").trim();
-      activityList.appendChild(pill);
+
+    selected.forEach(({ title }) => {
+    const pill = document.createElement("div");
+    pill.className = "booking-summary-value pill";
+    pill.textContent = title;
+    activityList.appendChild(pill);
     });
-    document.getElementById("final-summary-activities-label").textContent = selectedLabels.length === 1 ? "Activity" : "Activities";
-  
+
+    other.forEach(label => {
+    const pill = document.createElement("div");
+    pill.className = "booking-summary-value pill";
+    pill.textContent = label;
+    activityList.appendChild(pill);
+    });
+
+    const totalActivities = selected.length + other.length;
+    document.getElementById("final-summary-activities-label").textContent =
+    totalActivities === 1 ? "Activity" : "Activities";
+
     // 💵 Rate Calculations
     const baseRate = globals.base_rate || globals.final_rate; // fallback
     const finalRate = globals.final_rate;
