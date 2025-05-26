@@ -2216,7 +2216,7 @@ function updatePurposeHiddenField() {
         .filter(Boolean);
 
     const other = selectedActivities
-        .filter(title => title.startsWith("Other:"))
+        .filter(a => typeof a === "string" && a.startsWith("Other:"))
         .map(val => val.replace(/^Other:\s*/i, "").trim());
 
     window.bookingGlobals.activities = {
