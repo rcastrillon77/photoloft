@@ -1225,7 +1225,7 @@ function setupStripeElements() {
       currency: 'usd',
       total: {
         label: 'Total',
-        amount: amount
+        amount: amount * 100
       },
       requestPayerName: true,
       requestPayerEmail: true
