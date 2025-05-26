@@ -2046,35 +2046,32 @@ function highlightMatch(text, match) {
     return text.replace(new RegExp(`(${match})`, 'ig'), '<span class="matched-string">$1</span>');
 }
   
-function updateOptionsList(inputValue = "") {
-    const rawInput = inputValue.trim();
-    const input = rawInput.toLowerCase();
+function updateOptionsList(input = "") {
+    const term = input.toLowerCase().trim();
     suggestionBox.innerHTML = "";
   
-    const matches = sortBookingTypes()
-        .filter(bt => !selectedActivities.includes(bt.title))
-        .filter(bt => !input || (bt.title?.toLowerCase().includes(input)))
-        .slice(0, 3);  
+    const matches = Object.entries(bookingTypes)
+      .filter(([id, data]) => !selectedActivities.includes(id))
+      .filter(([id, data]) => !term || data.title.toLowerCase().includes(term))
+      .sort(([, a], [, b]) => (b.count || 0) - (a.count || 0))
+      .slice(0, 3);
   
-    if (!matches.length && rawInput) {
-      const el = document.createElement('div');
-      el.className = "select-option highlighted";
-      el.innerHTML = `<div>Other: <span class="matched-string">${rawInput}</span></div><div class="add-option">+ Add Option</div>`;
-      el.dataset.value = `Other: ${rawInput}`; // ✅ preserve original casing
-      suggestionBox.appendChild(el);
-    } else {
-      matches.forEach((bt, i) => {
-        const el = document.createElement('div');
-        el.className = `select-option ${i === 0 ? 'highlighted' : ''}`;
-        el.innerHTML = `<div>${highlightMatch(bt.title, input)}</div><div class="add-option">+ Add Option</div>`;
-        el.dataset.value = bt.title;
-        suggestionBox.appendChild(el);
+    matches.forEach(([id, data]) => {
+      const el = document.createElement("div");
+      el.className = "select-option";
+      el.innerHTML = `<div>${data.title}</div><div class="add-option">+ Add Activity</div>`;
+      el.addEventListener("click", () => {
+        selectedActivities.push(id);
+        renderSelectedOptions();
+        updateOptionsList("");
+        activityInput.value = "";
       });
-    }
+      suggestionBox.appendChild(el);
+    });
   
-    suggestionBox.classList.remove('hide');
-    updateBookingTypeMessageBox();
-}
+    suggestionBox.classList.toggle("hide", matches.length === 0);
+  }
+  
   
 function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
@@ -2124,23 +2121,25 @@ function renderSelectedOptions() {
   
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
-  }
+}
 
-  function updatePurposeHiddenField() {
-    updateFormField('purpose', selectedActivities.join(', '));
-  
-    const full = selectedActivities
-      .map(title => Object.entries(bookingTypes).find(([id, data]) => data.title === title))
-      .filter(Boolean)
-      .map(([id, data]) => ({ id, ...data }));
-  
-    const other = selectedActivities
-      .filter(a => a.startsWith("Other:"))
-      .map(a => a.replace(/^Other:\s*/i, "").trim());
-  
+function updatePurposeHiddenField() {
+    updateFormField('purpose', selectedActivities.map(id => bookingTypes[id]?.title || id).join(', '));
+
+    const selected = selectedActivities
+        .map(id => bookingTypes[id])
+        .filter(Boolean)
+        .map(data => ({
+        ...data,
+        count: (data.count || 0) + 1
+        }));
+
     window.bookingGlobals.activities = {
-      selected: full,
-      other
+        selected,
+        other: selectedActivities
+        .filter(id => id.startsWith("other:"))
+        .map(val => val.replace(/^other:/i, "").trim())
     };
-  }
+}
+  
   
