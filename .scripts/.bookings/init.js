@@ -12,23 +12,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         initCalendar();
     }
 
-    console.log("✅ bookingGlobals.activitiesConfig:", window.bookingGlobals.activitiesConfig);
+   // ✅ Log and build bookingTypes from UUID-based activity config
+  console.log("✅ bookingGlobals.activitiesConfig:", window.bookingGlobals.activitiesConfig);
 
-    const bookingTypes = {};
-    Object.entries(window.bookingGlobals.activitiesConfig || {}).forEach(([uuid, data]) => {
-      if (data?.title) {
-        bookingTypes[uuid] = { id: uuid, ...data };
-      }
-    });
-    console.log("✅ bookingTypes built from UUIDs:", bookingTypes);
+  // Make bookingTypes globally accessible (not scoped inside DOMContentLoaded)
+  window.bookingTypes = {};
+  Object.entries(window.bookingGlobals.activitiesConfig || {}).forEach(([uuid, data]) => {
+    if (data?.title) {
+      window.bookingTypes[uuid] = { id: uuid, ...data };
+    }
+  });
+  console.log("✅ bookingTypes built from UUIDs:", window.bookingTypes);
 
+  // Optional debug: flatten listing-level activity data (current activity field for this listing)
+  const activitiesObj = window.bookingGlobals.activities || {};
+  const all = [];
 
-    const activitiesObj = window.bookingGlobals.activities || {};
-    const all = [];
+  Object.entries(activitiesObj).forEach(([id, data]) => {
+    all.push({ id, ...data });
+  });
 
-    Object.entries(activitiesObj).forEach(([id, data]) => {
-        all.push({ id, ...data });
-    });
+  console.log("📦 listing.activities flattened:", all);
+
+  // 👇 you might also want to initialize your activity selector here:
+  updateOptionsList();     // shows top 3 if nothing typed
+  renderSelectedOptions(); // rerender if pre-selections exist
 
     
   
