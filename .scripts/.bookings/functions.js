@@ -2073,81 +2073,79 @@ function updateOptionsList(input = "") {
     });
   
     suggestionBox.classList.toggle("hide", matches.length === 0);
-  }
+}
   
-  
-  
-  function updateBookingTypeMessageBox() {
+function updateBookingTypeMessageBox() {
     const box = document.getElementById("activity-message");
     if (!box) return;
-  
+
     const messages = new Set();
     selectedActivities.forEach(title => {
-      const match = Object.values(bookingTypes).find(data => data.title === title);
-      if (match?.message) messages.add(match.message);
+        const match = Object.values(bookingTypes).find(data => data.title === title);
+        if (match?.message) messages.add(match.message);
     });
-  
+
     box.classList.toggle('hidden', messages.size === 0);
     box.innerHTML = [...messages].map(msg => `<div>${msg}</div>`).join('');
-  }
+}
   
   
 function renderSelectedOptions() {
-const container = selectedContainer;
-const box = document.querySelector(".message-box");
-container.innerHTML = "";
+    const container = selectedContainer;
+    const box = document.querySelector(".message-box");
+    container.innerHTML = "";
 
-selectedActivities.forEach(title => {
-    const el = document.createElement("div");
-    el.className = "selected-option";
-    el.innerHTML = `
-    <div>${title}</div>
-    <div class="select-option-close-out">
-        <div class="x-icon-container">
-        <div class="x-icon-line-vertical"></div>
-        <div class="x-icon-line-horizontal"></div>
+    selectedActivities.forEach(title => {
+        const el = document.createElement("div");
+        el.className = "selected-option";
+        el.innerHTML = `
+        <div>${title}</div>
+        <div class="select-option-close-out">
+            <div class="x-icon-container">
+            <div class="x-icon-line-vertical"></div>
+            <div class="x-icon-line-horizontal"></div>
+            </div>
         </div>
-    </div>
-    `;
+        `;
 
-    el.querySelector(".x-icon-container")?.addEventListener("click", () => {
-    selectedActivities = selectedActivities.filter(a => a !== title);
-    renderSelectedOptions();
-    updateOptionsList(activityInput.value);
-    activityInput.classList.remove("hide");
-    if (selectedActivities.length === 0) {
-        container.classList.add("hide");
-        box?.classList.add("hidden");
-    }
+        el.querySelector(".x-icon-container")?.addEventListener("click", () => {
+        selectedActivities = selectedActivities.filter(a => a !== title);
+        renderSelectedOptions();
+        updateOptionsList(activityInput.value);
+        activityInput.classList.remove("hide");
+        if (selectedActivities.length === 0) {
+            container.classList.add("hide");
+            box?.classList.add("hidden");
+        }
+        });
+
+        container.appendChild(el);
     });
 
-    container.appendChild(el);
-});
-
-container.classList.toggle('hide', selectedActivities.length === 0);
-updatePurposeHiddenField();
+    container.classList.toggle('hide', selectedActivities.length === 0);
+    updatePurposeHiddenField();
 }
 
 function updatePurposeHiddenField() {
-updateFormField('purpose', selectedActivities.join(', '));
+    updateFormField('purpose', selectedActivities.join(', '));
 
-const selected = selectedActivities
-    .map(title => {
-    const entry = Object.entries(bookingTypes).find(([, data]) => data.title === title);
-    if (!entry) return null;
-    const [uuid, data] = entry;
-    return { id: uuid, ...data, count: (data.count || 0) + 1 };
-    })
-    .filter(Boolean);
+    const selected = selectedActivities
+        .map(title => {
+        const entry = Object.entries(bookingTypes).find(([, data]) => data.title === title);
+        if (!entry) return null;
+        const [uuid, data] = entry;
+        return { id: uuid, ...data, count: (data.count || 0) + 1 };
+        })
+        .filter(Boolean);
 
-const other = selectedActivities
-    .filter(title => title.startsWith("Other:"))
-    .map(val => val.replace(/^Other:\s*/i, "").trim());
+    const other = selectedActivities
+        .filter(title => title.startsWith("Other:"))
+        .map(val => val.replace(/^Other:\s*/i, "").trim());
 
-window.bookingGlobals.activities = {
-    selected,
-    other
-};
+    window.bookingGlobals.activities = {
+        selected,
+        other
+    };
 }
   
   
