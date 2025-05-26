@@ -12,6 +12,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         initCalendar();
     }
 
+    console.log("✅ bookingGlobals.activitiesConfig:", window.bookingGlobals.activitiesConfig);
+
+    const bookingTypes = {};
+    Object.entries(window.bookingGlobals.activitiesConfig || {}).forEach(([uuid, data]) => {
+      if (data?.title) {
+        bookingTypes[uuid] = { id: uuid, ...data };
+      }
+    });
+    console.log("✅ bookingTypes built from UUIDs:", bookingTypes);
+
+
     const activitiesObj = window.bookingGlobals.activities || {};
     const all = [];
 
@@ -19,12 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         all.push({ id, ...data });
     });
 
-    const bookingTypes = {};
-    Object.entries(window.bookingGlobals.activities || {}).forEach(([id, data]) => {
-    if (data?.title) {
-        bookingTypes[id] = { id, ...data };
-    }
-    });
+    
   
     // Everything after this point is UI event listeners:
     document.getElementById('duration-slider')?.addEventListener('input', (e) => {
