@@ -491,6 +491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           icon.classList.add("hide");
           label.textContent = "Use your credits for this booking";
         } else {
+
           // ✅ Applying credits
           label.textContent = "Applying credits...";
           window.bookingGlobals.creditsApplied = applied;
@@ -511,12 +512,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById("confirm-with-stripe")?.classList.add("hidden");
             document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
           } else {
+            window.bookingGlobals.creditsApplied = applied;
             await updatePaymentIntent();
           }
       
           button.classList.add("active");
           icon.classList.remove("hide");
           label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
+          //document.getElementById("use-credits").button.querySelector("div:nth-child(2)").textContent = `$${g.creditsApplied} in credits have been applied`;
         }
       
         populateFinalSummary();
@@ -573,14 +576,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
     });
 
-    const couponInput = document.getElementById("coupon-code");
-    const applyButton = document.getElementById("apply-coupon");
-
     couponInput.addEventListener("input", () => {
     applyButton.classList.toggle("disabled", !couponInput.value.trim());
     });
 
-    applyButton.addEventListener("click", async () => {
+    const couponInput = document.getElementById("coupon-code");
+    const applyButton = document.getElementById("apply-coupon");
+
+    document.getElementById("apply-coupon").addEventListener("click", async () => {
         if (applyButton.classList.contains("disabled")) return;
       
         const code = couponInput.value.trim().toLowerCase();
