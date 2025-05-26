@@ -2235,6 +2235,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initSliderSection();
         initCalendar();
     }
+
+    const activitiesObj = window.bookingGlobals.activities || {};
+    const all = [];
+
+    Object.entries(activitiesObj).forEach(([id, data]) => {
+        all.push({ id, ...data });
+    });
+
+    const bookingTypes = {};
+        all.forEach(obj => {
+        bookingTypes[obj.title] = obj;
+    });
+
   
     // Everything after this point is UI event listeners:
     document.getElementById('duration-slider')?.addEventListener('input', (e) => {
