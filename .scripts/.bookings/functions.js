@@ -1267,19 +1267,21 @@ async function requestPaymentIntent() {
     const urlParams = new URLSearchParams(window.location.search);
     const bookingSource = urlParams.get('source') || null;
 
-    const selectedLabels = window.bookingGlobals.activities || [];
+    const activityData = window.bookingGlobals.activities || {};
+    const selectedLabels = activityData.selected?.map(a => a.title) || [];
 
     const selected = [];
     const other = [];
 
     selectedLabels.forEach(label => {
-        const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
-        if (match) {
-            selected.push(match[0]);
-        } else {
-            other.push(label.replace(/^Other:\s*/i, "").trim());
-        }
+    const match = Object.entries(bookingTypes).find(([_, data]) => data.title === label);
+    if (match) {
+        selected.push(match[0]); // UUID
+    } else {
+        other.push(label.replace(/^Other:\s*/i, "").trim());
+    }
     });
+
 
     const {
         final_rate = 0,
