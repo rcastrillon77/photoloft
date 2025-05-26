@@ -1885,6 +1885,7 @@ async function initBookingConfig(listingId, locationId) {
                 }
             }
             window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
+
             bookingTypes = {};
             for (const [uuid, obj] of Object.entries(flat)) {
                 if (obj?.title) {
