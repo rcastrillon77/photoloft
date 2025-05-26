@@ -2112,7 +2112,7 @@ window.releaseTempHold = async function () {
     }
 };
 
-// OLD FUNCTIONS
+// Booking Activities
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
       .sort((a, b) => b[1].count - a[1].count)
