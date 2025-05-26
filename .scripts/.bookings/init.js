@@ -729,13 +729,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           document.getElementById("confirm-with-stripe")?.classList.add("hidden");
           document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
           populateFinalSummary();
-          updateBookingSummary();
           return;
         }
       
         await updatePaymentIntent();
         populateFinalSummary();
-        updateBookingSummary();
     });
       
 });
