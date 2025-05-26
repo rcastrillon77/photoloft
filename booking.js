@@ -126,26 +126,6 @@ function updateAttendeesHiddenField(newValue) {
     window.bookingGlobals.attendees = parseInt(newValue, 10);
 }
 
-function updatePurposeHiddenField() {
-    const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
-      .map(el => el.textContent.trim())
-      .filter(Boolean);
-      updateFormField('purpose', selected.join(', '));
-
-      // Set both titles and UUIDs
-      window.bookingGlobals.activities = {
-        selected: selected
-          .map(title => Object.entries(bookingTypes).find(([id, data]) => data.title === title))
-          .filter(Boolean)
-          .map(([id, data]) => ({ id, ...data })),
-      
-        other: selected
-          .filter(a => a.startsWith("Other:"))
-          .map(a => a.replace(/^Other:\s*/i, "").trim())
-      };
-      
-}
-
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
     const endTime = startTime + duration;
     const bufferBefore = window.BUFFER_BEFORE ?? 0;
