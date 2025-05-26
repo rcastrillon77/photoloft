@@ -615,12 +615,12 @@ async function submitFinalBooking() {
         discount_code_amounts: g.discountTotals || [],
         discount_code_total: (g.discountTotals || []).reduce((a, b) => a + b, 0),
 
-        credits_to_user: window.bookingGlobals.creditsToUser,
+        credits_to_user: g.creditsToUser,
         user_credits_applied: g.creditsApplied || 0,
-        subtotal: g.booking_total || 0,
+        subtotal: g.subtotal || 0,
         tax_rate: g.taxRate || 0,
-        tax_total: roundDecimals((g.booking_total || 0) * ((g.taxRate || 0) / 100)),
-        total: g.payment_amount || 0,
+        tax_total: g.taxTotal || 0,
+        total: g.total || 0,
     
         source: new URLSearchParams(window.location.search).get('source') || null
     };
@@ -1203,7 +1203,7 @@ function setupStripeElements() {
       
     // 🔥 Use real values passed in after Make.com response
     const clientSecret = window.bookingGlobals?.client_secret;
-    const amount = window.bookingGlobals?.payment_amount;
+    const amount = window.bookingGlobals?.total;
   
     if (!clientSecret || !amount) {
       console.warn("Stripe setup skipped: Missing client secret or amount.");
@@ -1368,9 +1368,9 @@ async function requestPaymentIntent() {
         window.bookingGlobals.client_secret = data.client_secret;
         window.bookingGlobals.payment_intent_id = data.payment_intent_id;
         window.bookingGlobals.transaction_uuid = data.transaction_uuid;
-        window.bookingGlobals.payment_amount = data.amount;
+        window.bookingGlobals.total = data.amount;
 
-        const total = window.bookingGlobals.payment_amount;
+        const total = window.bookingGlobals.total;
 
         if (total === 0) {
             document.getElementById("confirm-with-stripe")?.classList.add("hidden");
@@ -1420,9 +1420,9 @@ async function updatePaymentIntent() {
     }
   
     // ✅ Store values in bookingGlobals
-    window.bookingGlobals.booking_total = subtotal;
+    window.bookingGlobals.subtotal = subtotal;
     window.bookingGlobals.taxTotal = subtotalTaxes;
-    window.bookingGlobals.payment_amount = total;
+    window.bookingGlobals.total = total;
   
     // ✅ Show confirm-only if total is 0, else show Stripe UI
     const stripeBtns = document.getElementById("confirm-with-stripe");
