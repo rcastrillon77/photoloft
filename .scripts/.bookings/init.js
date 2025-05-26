@@ -25,9 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookingTypes[id] = { id, ...data };
     }
     });
-
-    
-
   
     // Everything after this point is UI event listeners:
     document.getElementById('duration-slider')?.addEventListener('input', (e) => {
