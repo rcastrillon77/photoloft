@@ -1206,8 +1206,6 @@ function setupStripeElements() {
           });
         });
       });
-          
-      
       
     // 🔥 Use real values passed in after Make.com response
     const clientSecret = window.bookingGlobals?.client_secret;
@@ -1378,7 +1376,7 @@ async function requestPaymentIntent() {
         window.bookingGlobals.client_secret = data.client_secret;
         window.bookingGlobals.payment_intent_id = data.payment_intent_id;
         window.bookingGlobals.transaction_uuid = data.transaction_uuid;
-        window.bookingGlobals.total = data.amount;
+        window.bookingGlobals.total = (data.amount / 100);
 
         const total = window.bookingGlobals.total;
 
@@ -1388,9 +1386,8 @@ async function requestPaymentIntent() {
         } else {
             document.getElementById("confirm-with-stripe")?.classList.remove("hidden");
             document.getElementById("confirm-without-stripe")?.classList.add("hidden");
-            setButtonText("#pay-now-btn", `Pay ${total} with Card`, false); 
+            setButtonText("#pay-now-btn", `Pay ${window.bookingGlobals.total} with Card`, false); 
         }
-
 
         console.log("✅ PaymentIntent created:", data);
         setupStripeElements();
@@ -1410,14 +1407,14 @@ async function updatePaymentIntent() {
   
     const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
     const appliedCredits = window.bookingGlobals.creditsApplied || 0;
-    const credits = creditsEnabled ? roundDecimals(appliedCredits) : 0;
+    const credits = creditsEnabled ? appliedCredits : 0;
   
-    const hours = roundDecimals(window.bookingGlobals.booking_duration / 60);
+    const hours = (window.bookingGlobals.booking_duration / 60);
     const certificateDiscount = roundDecimals(
       (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
     );
   
-    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
+    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - appliedCredits - certificateDiscount));
     let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
     let total = roundDecimals(subtotal + subtotalTaxes);
   
@@ -1429,11 +1426,6 @@ async function updatePaymentIntent() {
       window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
       alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
     }
-  
-    // ✅ Store values in bookingGlobals
-    window.bookingGlobals.subtotal = subtotal;
-    window.bookingGlobals.taxTotal = subtotalTaxes;
-    window.bookingGlobals.total = total;
   
     // ✅ Show confirm-only if total is 0, else show Stripe UI
     const stripeBtns = document.getElementById("confirm-with-stripe");
@@ -1447,7 +1439,6 @@ async function updatePaymentIntent() {
     } else {
       stripeBtns?.classList.remove("hidden");
       confirmBtn?.classList.add("hidden");
-      setButtonText("#pay-now-btn", `Pay ${total} with Card`, false);
     }
   
     // ✅ Send updated values to Make.com
@@ -1474,28 +1465,26 @@ async function updatePaymentIntent() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
   
       console.log("✅ updatePaymentIntent sent:", payload);
-  
-      // Optional: update Stripe PaymentRequest if live
-      if (window.paymentRequest && typeof window.paymentRequest.update === "function") {
-        window.paymentRequest.update({
-          total: {
-            label: "Total",
-            amount: Math.round(total * 100)
-          }
-        });
-      }
+
+      const data = await res.json();
 
       window.paymentRequest?.update?.({
         total: {
           label: "Total",
-          amount: Math.round(data.amount) // amount in cents
+          amount: data.amount
         }
-      });      
+    });
+
+    // ✅ Store values in bookingGlobals
+    window.bookingGlobals.subtotal = subtotal;
+    window.bookingGlobals.taxTotal = subtotalTaxes;
+    window.bookingGlobals.total = (data.amount / 100);
+    setButtonText("#pay-now-btn", `Pay ${window.bookingGlobals.total} with Card`, false);
   
     } catch (err) {
       console.error("❌ Failed to update payment intent:", err);
     }
-  }  
+}  
 
 function applyStackedDiscounts(certs = [], finalRate, hours) {
     const totalBase = finalRate * hours;
