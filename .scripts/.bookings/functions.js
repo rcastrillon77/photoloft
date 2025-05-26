@@ -1892,6 +1892,9 @@ async function initBookingConfig(listingId, locationId) {
                     bookingTypes[obj.title] = { id: uuid, ...obj };
                 }
             }
+
+            console.log("📦 bookingTypes (title → full activity object):", bookingTypes);
+            
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
                 min: capacityConfig.min ?? 1,
@@ -2124,6 +2127,21 @@ function renderSelectedOptions() {
   
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
-    window.bookingGlobals.activities = [...selectedActivities];
+    window.bookingGlobals.activities = {
+        selected: selectedActivities
+          .map(title => {
+            const obj = bookingTypes[title];
+            if (!obj) return null;
+            return {
+              ...obj,
+              count: (obj.count || 0) + 1
+            };
+          })
+          .filter(Boolean),
+        other: selectedActivities
+          .filter(title => title.startsWith("Other:"))
+          .map(val => val.replace(/^Other:\s*/i, "").trim())
+      };
+      
 
 }
