@@ -1997,6 +1997,8 @@ function prefillContactInfoIfLoggedIn() {
     setField("booking-last-name", last_name);
   
     window.bookingGlobals.user_uuid_override = window.supabaseUser.id;
+    window.bookingGlobals.customer_id = window.supabaseUser?.customer_id || null;
+    window.bookingGlobals.credits = window.supabaseUser?.credits || 0;
 }
 
 // ================================== //
