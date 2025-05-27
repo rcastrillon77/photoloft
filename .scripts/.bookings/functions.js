@@ -1354,6 +1354,7 @@ async function requestPaymentIntent() {
         email: document.getElementById('booking-email')?.value,
         phone: document.getElementById('booking-phone')?.value,
         user_uuid: window.supabaseUser?.id || window.bookingGlobals.user_uuid_override || null,
+        customer_id: window.bookingGlobals.customer_id || null,
 
         activities: activityPayload,
         attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
