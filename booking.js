@@ -2706,9 +2706,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
-      
-        // ✅ Proceed with payment intent
-        await requestPaymentIntent();
 
         // 🔍 Check if user exists by email (if not logged in)
         if (!window.supabaseUser?.id) {
@@ -2716,7 +2713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (email) {
             const { data, error } = await window.supabase
                 .from("users")
-                .select("uuid, credits")
+                .select("uuid, credits, customer_id")
                 .ilike("email", email) // case-insensitive match
                 .maybeSingle();
         
@@ -2725,6 +2722,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (data?.uuid) {
                 console.log("👤 Matched existing user:", data);
                 window.bookingGlobals.user_uuid_override = data.uuid;
+                window.bookingGlobals.customer_id = data.customer_id;
                 window.bookingGlobals.credits = data.credits || 0;
         
                 if (data.credits > 0) {
@@ -2734,7 +2732,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             }
         }
-  
+
+        // ✅ Proceed with payment intent
+        await requestPaymentIntent();
+
         goToStep3();
     });
 
