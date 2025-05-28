@@ -433,18 +433,50 @@ function updateAttendeeButtons() {
     countDisplay.textContent = showPlus ? `${attendeeCount}+` : attendeeCount;
 }
 
-async function goToStep3() {
-    document.getElementById("attendees-and-type")?.classList.add("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
-    document.querySelector(".booking-bg-col")?.classList.add("right");
-    document.getElementById("date-cal")?.classList.add("hidden");
-    document.getElementById("final-summary")?.classList.remove("hidden");
-    document.getElementById("stripe-payment")?.classList.remove("hide");
-    document.querySelector(".summary-clicker")?.classList.add("hidden");
-  
-    // New summary layout
-    document.getElementById("initial-booking-summary")?.classList.add("hide");
-    document.querySelector(".booking-summary-section.final")?.classList.remove("hide");
+async function goToDateTime() {
+    // Section
+    document.getElementById("date-time-section")?.classList.remove(hidden);
+    document.getElementById("details-section")?.classList.add(hidden);
+    document.getElementById("payment-section")?.classList.add(hidden);
+
+    // Summary - Timer & Buttons
+    document.getElementById("reserve-timer")?.classList.add("hide"); // Hold Timer
+    document.getElementById("date-time-button-container")?.classList.remove("hide"); // Date Time Continue Btn
+    document.getElementById("details-button-container")?.classList.add("hide"); // Details Continue Btn
+
+    // Summary - Sections
+    document.getElementById("reservation-summary")?.classList.remove("hide");
+    document.getElementById("payment-summary")?.classList.add("hide");
+}
+
+async function goToDetails() {
+    // Section
+    document.getElementById("date-time-section")?.classList.add(hidden);
+    document.getElementById("details-section")?.classList.remove(hidden);
+    document.getElementById("payment-section")?.classList.add(hidden);
+
+    // Summary - Timer & Buttons
+    document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
+    document.getElementById("date-time-button-container")?.classList.add("hide"); // Date Time Continue Btn
+    document.getElementById("details-button-container")?.classList.remove("hide"); // Details Continue Btn
+
+    // Summary - Sections
+    document.getElementById("reservation-summary")?.classList.remove("hide");
+    document.getElementById("payment-summary")?.classList.add("hide");
+}
+
+async function goToPayment() {
+    // Section
+    document.getElementById("date-time-section")?.classList.add(hidden);
+    document.getElementById("details-section")?.classList.add(hidden);
+    document.getElementById("payment-section")?.classList.remove(hidden);
+
+    // Summary - Timer & Buttons
+    document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
+
+    // Summary - Sections
+    document.getElementById("reservation-summary")?.classList.add("hide");
+    document.getElementById("payment-summary")?.classList.remove("hide");
   
     await populateFinalSummary();
     setupStripeElements();
