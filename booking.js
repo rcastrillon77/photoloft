@@ -2793,8 +2793,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
       
           if (total === 0) {
-            document.getElementById("confirm-with-stripe")?.classList.add("hidden");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
+            document.getElementById("confirm-with-stripe")?.classList.add("hide");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
           } else {
             window.bookingGlobals.creditsApplied = applied;
             await updatePaymentIntent();
@@ -3008,8 +3008,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const total = window.bookingGlobals.total;
       
         if (total === 0) {
-          document.getElementById("confirm-with-stripe")?.classList.add("hidden");
-          document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
+          document.getElementById("confirm-with-stripe")?.classList.add("hide");
+          document.getElementById("confirm-without-stripe")?.classList.remove("hide");
           populateFinalSummary();
           return;
         }
