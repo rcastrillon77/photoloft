@@ -1833,42 +1833,7 @@ function initCalendar() {
             updateCustomHeader(instance);
             setTimeout(() => highlightSelectedDate(), 0);
             setTimeout(() => disableUnavailableDates(), 0);
-        
-            // Inject weekday labels and hide past days
-            setTimeout(() => {
-                const today = new Date().toDateString();
-        
-                const dayElems = instance.calendarContainer.querySelectorAll(".flatpickr-day");
-        
-                dayElems.forEach((dayElem) => {
-                    const dateAttr = dayElem.dateObj;
-                    if (!dateAttr || !(dateAttr instanceof Date)) return;
-        
-                    // Inject weekday label once
-                    if (!dayElem.querySelector(".weekday-label")) {
-                        const label = document.createElement("div");
-                        label.className = "weekday-label";
-                        label.textContent = dateAttr.toLocaleDateString("en-US", { weekday: "short" });
-                        dayElem.prepend(label);
-                    }
-        
-                    // Hide any past date before today (visual only)
-                    const todayMidnight = new Date();
-                    todayMidnight.setHours(0, 0, 0, 0);
-        
-                    if (dateAttr < todayMidnight) {
-                        dayElem.classList.add("hide-past");
-                    }
-        
-                    // Scroll to today
-                    if (dateAttr.toDateString() === today) {
-                        setTimeout(() => {
-                            dayElem.scrollIntoView({ inline: "center", behavior: "smooth" });
-                        }, 10);
-                    }
-                });
-            }, 10);
-        },        
+        },       
 
         onMonthChange(selectedDates, dateStr, instance) {
             updateCustomHeader(instance);
