@@ -512,9 +512,9 @@ function updateAttendeeButtons() {
 
 async function goToDateTime() {
     // Section
-    document.getElementById("date-time-section")?.classList.remove("hidden");
-    document.getElementById("details-section")?.classList.add("hidden");
-    document.getElementById("payment-section")?.classList.add("hidden");
+    document.getElementById("date-time-section")?.classList.remove(hidden);
+    document.getElementById("details-section")?.classList.add(hidden);
+    document.getElementById("payment-section")?.classList.add(hidden);
 
     // Summary - Timer & Buttons
     document.getElementById("reserve-timer")?.classList.add("hide"); // Hold Timer
@@ -528,9 +528,9 @@ async function goToDateTime() {
 
 async function goToDetails() {
     // Section
-    document.getElementById("date-time-section")?.classList.add("hidden");
-    document.getElementById("details-section")?.classList.remove("hidden");
-    document.getElementById("payment-section")?.classList.add("hidden");
+    document.getElementById("date-time-section")?.classList.add(hidden);
+    document.getElementById("details-section")?.classList.remove(hidden);
+    document.getElementById("payment-section")?.classList.add(hidden);
 
     // Summary - Timer & Buttons
     document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
@@ -544,9 +544,9 @@ async function goToDetails() {
 
 async function goToPayment() {
     // Section
-    document.getElementById("date-time-section")?.classList.add("hidden");
-    document.getElementById("details-section")?.classList.add("hidden");
-    document.getElementById("payment-section")?.classList.remove("hidden");
+    document.getElementById("date-time-section")?.classList.add(hidden);
+    document.getElementById("details-section")?.classList.add(hidden);
+    document.getElementById("payment-section")?.classList.remove(hidden);
 
     // Summary - Timer & Buttons
     document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
@@ -3033,4 +3033,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateFinalSummary();
     });
       
+
+    // BOOKING SUMMARY AFFECTS EXPANDED PADDING
+    function updateExpandedPadding() {
+      const nav = document.querySelector(".booking-summary-container");
+      if (!nav) return;
+  
+      const navHeight = nav.offsetHeight;
+  
+      document.querySelectorAll(".expanded").forEach(el => {
+        el.style.paddingBottom = `${navHeight}px`;
+      });
+    }
+  
+    const bookingNav = document.querySelector(".booking-summary-container");
+
+    if (bookingNav) {
+      const resizeObserver = new ResizeObserver(updateExpandedPadding);
+      resizeObserver.observe(bookingNav);
+  
+      // On hover: show line items
+      bookingNav.addEventListener("mouseenter", () => {
+        const paymentSummary = document.getElementById("payment-summary");
+        if (paymentSummary && !paymentSummary.classList.contains("hide")) {
+          document.querySelectorAll(".line-items").forEach(el => el.classList.remove("hide"));
+        }
+      });
+  
+      // On mouse leave: hide line items
+      bookingNav.addEventListener("mouseleave", () => {
+        const paymentSummary = document.getElementById("payment-summary");
+        if (paymentSummary && !paymentSummary.classList.contains("hide")) {
+          document.querySelectorAll(".line-items").forEach(el => el.classList.add("hide"));
+        }
+      });
+    }  
+  
+    updateExpandedPadding(); // Initial run
+});
+
+window.addEventListener("resize", () => {
+    const nav = document.querySelector(".booking-summary-container");
+    if (!nav) return;
+  
+    const navHeight = nav.offsetHeight;
+  
+    document.querySelectorAll(".expanded").forEach(el => {
+      el.style.paddingBottom = `${navHeight}px`;
+    });
 });

@@ -726,4 +726,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateFinalSummary();
     });
       
+
+    // BOOKING SUMMARY AFFECTS EXPANDED PADDING
+    function updateExpandedPadding() {
+      const nav = document.querySelector(".booking-summary-container");
+      if (!nav) return;
+  
+      const navHeight = nav.offsetHeight;
+  
+      document.querySelectorAll(".expanded").forEach(el => {
+        el.style.paddingBottom = `${navHeight}px`;
+      });
+    }
+  
+    const bookingNav = document.querySelector(".booking-summary-container");
+
+    if (bookingNav) {
+      const resizeObserver = new ResizeObserver(updateExpandedPadding);
+      resizeObserver.observe(bookingNav);
+  
+      // On hover: show line items
+      bookingNav.addEventListener("mouseenter", () => {
+        const paymentSummary = document.getElementById("payment-summary");
+        if (paymentSummary && !paymentSummary.classList.contains("hide")) {
+          document.querySelectorAll(".line-items").forEach(el => el.classList.remove("hide"));
+        }
+      });
+  
+      // On mouse leave: hide line items
+      bookingNav.addEventListener("mouseleave", () => {
+        const paymentSummary = document.getElementById("payment-summary");
+        if (paymentSummary && !paymentSummary.classList.contains("hide")) {
+          document.querySelectorAll(".line-items").forEach(el => el.classList.add("hide"));
+        }
+      });
+    }  
+  
+    updateExpandedPadding(); // Initial run
+});
+
+window.addEventListener("resize", () => {
+    const nav = document.querySelector(".booking-summary-container");
+    if (!nav) return;
+  
+    const navHeight = nav.offsetHeight;
+  
+    document.querySelectorAll(".expanded").forEach(el => {
+      el.style.paddingBottom = `${navHeight}px`;
+    });
 });
