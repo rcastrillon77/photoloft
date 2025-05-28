@@ -3064,6 +3064,6 @@ window.addEventListener("resize", () => {
     const navHeight = nav.offsetHeight;
   
     document.querySelectorAll(".expanded").forEach(el => {
-      el.style.paddingBottom = `${navHeight}px`;
+      el.style.marginBottom = `${navHeight}px`;
     });
 });
