@@ -2589,8 +2589,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Countdown logic
-    let countdownInterval = null;
-
     function startCountdownTimer(durationSeconds = 600) {
     const display = document.getElementById('booking-total-countdown');
     const reserveWrapper = document.querySelector('.booking-reserve-container');
