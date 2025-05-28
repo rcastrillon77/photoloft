@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('beforeunload', window.releaseTempHold);
 
     // Step 1 "Continue" → place temporary hold
-    document.getElementById('step-1-continue')?.addEventListener('click', async () => {
+    document.getElementById('continue-to-details')?.addEventListener('click', async () => {
         console.log("🟢 Step 1 Continue clicked");
         clearInterval(countdownInterval);
         await releaseTempHold();
@@ -248,19 +248,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     
         // 🟢 6. Transition to Step 2
-        console.log("✅ Slot confirmed. Proceeding to Step 2.");
-        document.getElementById("date-cal")?.classList.add("hide");
-        document.querySelector(".booking-bg-col")?.classList.remove("right");
-        document.getElementById("duration-and-time")?.classList.add("hide");
-        document.getElementById("attendees-and-type")?.classList.remove("hide");
-        document.getElementById("booking-summary-wrapper")?.classList.add("dark");
-        document.querySelector(".booking-summary-button-container")?.classList.add("hide");
-        document.getElementById("reserve-timer")?.classList.remove("hide");
-        document.getElementById("contact-info")?.classList.remove("hide");
-        document.getElementById("summary-clicker")?.classList.remove("hidden");
-        
         prefillContactInfoIfLoggedIn();
         startCountdownTimer();
+        goToDetails();
     });
     
     // Step 2 "Back" → release hold
@@ -385,7 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updatePurposeHiddenField();
     });
 
-    document.getElementById("confirm-and-pay")?.addEventListener("click", async (e) => {
+    document.getElementById("continue-to-payment")?.addEventListener("click", async (e) => {
         e.preventDefault();
       
         const button = e.currentTarget;
@@ -463,8 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // ✅ Proceed with payment intent
         await requestPaymentIntent();
-
-        goToStep3();
+        goToPayment();
     });
 
     document.getElementById("use-credits")?.addEventListener("click", async () => {
