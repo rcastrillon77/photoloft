@@ -72,5 +72,5 @@ const selectedContainer = document.querySelector('.selected-options-container');
 const bookingTypeInstructions = document.getElementById('booking-type-instructions');
 
 let bookingTypes = {};
-
 let selectedActivities = [];
+let countdownInterval = null;
