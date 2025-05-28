@@ -3019,22 +3019,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
       
 
-    // BOOKING SUMMARY AFFECTS EXPANDED PADDING
-    function updateExpandedPadding() {
+    // BOOKING SUMMARY AFFECTS EXPANDED MARGIN
+    function updateExpandedMargin() {
       const nav = document.getElementById("booking-summary-wrapper");
       if (!nav) return;
   
       const navHeight = nav.offsetHeight;
   
       document.querySelectorAll(".expanded").forEach(el => {
-        el.style.paddingBottom = `${navHeight}px`;
+        el.style.marginBottom = `${navHeight}px`;
       });
     }
   
     const bookingNav = document.getElementById("booking-summary-wrapper");
 
     if (bookingNav) {
-      const resizeObserver = new ResizeObserver(updateExpandedPadding);
+      const resizeObserver = new ResizeObserver(updateExpandedMargin);
       resizeObserver.observe(bookingNav);
   
       // On hover: show line items
@@ -3054,7 +3054,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }  
   
-    updateExpandedPadding(); // Initial run
+    updateExpandedMargin(); // Initial run
 });
 
 window.addEventListener("resize", () => {
