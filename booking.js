@@ -2562,15 +2562,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         startCountdownTimer();
         goToDetails();
     });
-    
-    // Step 2 "Back" → release hold
-    document.getElementById('summary-clicker')?.addEventListener('click', async () => {
-    if (!document.getElementById("booking-summary-wrapper")?.classList.contains("dark")) return;
-
-    clearInterval(countdownInterval);
-    await releaseTempHold();
-    goToDateTime();
-    });
 
     // Countdown logic
     let countdownInterval = null;
