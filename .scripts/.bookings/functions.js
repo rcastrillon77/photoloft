@@ -435,9 +435,9 @@ function updateAttendeeButtons() {
 
 async function goToDateTime() {
     // Section
-    document.getElementById("date-time-section")?.classList.remove(hidden);
-    document.getElementById("details-section")?.classList.add(hidden);
-    document.getElementById("payment-section")?.classList.add(hidden);
+    document.getElementById("date-time-section")?.classList.remove("hidden");
+    document.getElementById("details-section")?.classList.add("hidden");
+    document.getElementById("payment-section")?.classList.add("hidden");
 
     // Summary - Timer & Buttons
     document.getElementById("reserve-timer")?.classList.add("hide"); // Hold Timer
@@ -451,9 +451,9 @@ async function goToDateTime() {
 
 async function goToDetails() {
     // Section
-    document.getElementById("date-time-section")?.classList.add(hidden);
-    document.getElementById("details-section")?.classList.remove(hidden);
-    document.getElementById("payment-section")?.classList.add(hidden);
+    document.getElementById("date-time-section")?.classList.add("hidden");
+    document.getElementById("details-section")?.classList.remove("hidden");
+    document.getElementById("payment-section")?.classList.add("hidden");
 
     // Summary - Timer & Buttons
     document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
@@ -467,9 +467,9 @@ async function goToDetails() {
 
 async function goToPayment() {
     // Section
-    document.getElementById("date-time-section")?.classList.add(hidden);
-    document.getElementById("details-section")?.classList.add(hidden);
-    document.getElementById("payment-section")?.classList.remove(hidden);
+    document.getElementById("date-time-section")?.classList.add("hidden");
+    document.getElementById("details-section")?.classList.add("hidden");
+    document.getElementById("payment-section")?.classList.remove("hidden");
 
     // Summary - Timer & Buttons
     document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
