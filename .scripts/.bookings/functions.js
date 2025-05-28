@@ -1420,11 +1420,11 @@ async function requestPaymentIntent() {
         const total = window.bookingGlobals.total;
 
         if (total === 0) {
-            document.getElementById("confirm-with-stripe")?.classList.add("hidden");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hidden");
+            document.getElementById("confirm-with-stripe")?.classList.add("hide");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
         } else {
-            document.getElementById("confirm-with-stripe")?.classList.remove("hidden");
-            document.getElementById("confirm-without-stripe")?.classList.add("hidden");
+            document.getElementById("confirm-with-stripe")?.classList.remove("hide");
+            document.getElementById("confirm-without-stripe")?.classList.add("hide");
             setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
         }
 
