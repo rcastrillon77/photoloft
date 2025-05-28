@@ -1756,7 +1756,7 @@ function initCalendar() {
             updateCustomHeader(instance);
             setTimeout(() => highlightSelectedDate(), 0);
             setTimeout(() => disableUnavailableDates(), 0);
-        },       
+        },
 
         onMonthChange(selectedDates, dateStr, instance) {
             updateCustomHeader(instance);
