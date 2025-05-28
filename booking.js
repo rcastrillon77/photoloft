@@ -439,7 +439,7 @@ function updateDurationDisplay(duration) {
     document.getElementById('duration-hours').textContent = hours;
     document.getElementById('duration-minutes').textContent = minutes.toString().padStart(2, '0');
 
-    const unit = hours === 1 ? 'Hour' : 'Hours';
+    const unit = hours === 1 ? 'Hr' : 'Hrs';
     document.getElementById('duration-unit').textContent = unit;
 }
 
@@ -631,7 +631,7 @@ async function populateFinalSummary() {
   
     const bookingLine = document.querySelector("#final-booking-summary-booking");
     if (bookingLine) {
-      bookingLine.querySelector(".summary-line-item").textContent = `Booking Total ($${baseRate}/hr × ${hours} ${hoursText})`;
+      bookingLine.querySelector(".summary-line-item").textContent = `Booking Total ($${baseRate} × ${hours} ${hoursText})`;
       bookingLine.querySelector(".summary-line-item-price").textContent = `$${(baseRate * hours).toFixed(2)}`;
     }
   
@@ -862,7 +862,7 @@ function updateBookingSummary() {
         }
     }
 
-    if (totalRateEl) totalRateEl.textContent = `$${finalRate}/hr`;
+    if (totalRateEl) totalRateEl.textContent = `$${finalRate}`;
 
     const baseTotal = hoursDecimal * baseRate;
     const discountedTotal = hoursDecimal * finalRate;
