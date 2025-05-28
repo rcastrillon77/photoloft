@@ -524,6 +524,9 @@ async function goToDateTime() {
     // Summary - Sections
     document.getElementById("reservation-summary")?.classList.remove("hide");
     document.getElementById("payment-summary")?.classList.add("hide");
+
+    clearInterval(countdownInterval);
+    await releaseTempHold();
 }
 
 async function goToDetails() {
