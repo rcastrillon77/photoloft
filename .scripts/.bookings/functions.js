@@ -736,8 +736,8 @@ function updateBookingSummary() {
 
     const hoursDecimal = booking_duration / 60;
     const hoursDisplay = (hoursDecimal % 1 === 0)
-        ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hour' : 'Hours'}`
-        : `${hoursDecimal.toFixed(1)} Hours`;
+        ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hr' : 'Hrs'}`
+        : `${hoursDecimal.toFixed(1)} Hrs`;
     if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
 
     const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
