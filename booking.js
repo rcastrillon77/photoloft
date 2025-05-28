@@ -2566,16 +2566,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     clearInterval(countdownInterval);
     await releaseTempHold();
-
-    document.getElementById("date-cal")?.classList.remove("hide");
-    document.querySelector(".booking-bg-col")?.classList.add("right");
-    document.getElementById("duration-and-time")?.classList.remove("hide");
-    document.getElementById("attendees-and-type")?.classList.add("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
-    document.querySelector(".booking-summary-button-container")?.classList.remove("hide");
-    document.getElementById("reserve-timer")?.classList.add("hide");
-    document.getElementById("contact-info")?.classList.add("hide");
-    document.getElementById("summary-clicker")?.classList.add("hidden");
+    goToDateTime();
     });
 
     // Countdown logic
@@ -3036,7 +3027,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // BOOKING SUMMARY AFFECTS EXPANDED PADDING
     function updateExpandedPadding() {
-      const nav = document.querySelector(".booking-summary-container");
+      const nav = document.getElementById("booking-summary-wrapper");
       if (!nav) return;
   
       const navHeight = nav.offsetHeight;
@@ -3046,7 +3037,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   
-    const bookingNav = document.querySelector(".booking-summary-container");
+    const bookingNav = document.getElementById("booking-summary-wrapper");
 
     if (bookingNav) {
       const resizeObserver = new ResizeObserver(updateExpandedPadding);
@@ -3073,7 +3064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 window.addEventListener("resize", () => {
-    const nav = document.querySelector(".booking-summary-container");
+    const nav = document.getElementById("booking-summary-wrapper");
     if (!nav) return;
   
     const navHeight = nav.offsetHeight;
