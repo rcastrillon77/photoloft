@@ -511,6 +511,8 @@ function updateAttendeeButtons() {
 }
 
 async function goToDateTime() {
+    await releaseTempHold();
+    
     // Section
     document.getElementById("date-time-section")?.classList.remove("hidden");
     document.getElementById("details-section")?.classList.add("hidden");
@@ -525,8 +527,8 @@ async function goToDateTime() {
     document.getElementById("reservation-summary")?.classList.remove("hide");
     document.getElementById("payment-summary")?.classList.add("hide");
 
+    updateBookingSummary();
     clearInterval(countdownInterval);
-    await releaseTempHold();
 }
 
 async function goToDetails() {
@@ -683,7 +685,20 @@ async function populateFinalSummary() {
     const shouldHideSubtotal = rateDiff <= 0 && !couponCode && !creditsAmount;
     document.getElementById("final-booking-summary-subtotal")?.classList.toggle("hide", shouldHideSubtotal);
     document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
-  
+     
+    // ✅ Show/hide Stripe button depending on total
+    const stripeBtn = document.getElementById("confirm-with-stripe");
+    const confirmBtn = document.getElementById("confirm-without-stripe");
+
+    if (total === 0) {
+        stripeBtn?.classList.add("hide");
+        confirmBtn?.classList.remove("hide");
+        console.log("✅ Total is $0 — showing confirm-only button. (from populateFinalSummary)");
+    } else {
+        stripeBtn?.classList.remove("hide");
+        confirmBtn?.classList.add("hide");
+    }
+
     const subtotal = globals.subtotal || 0;
     console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via populateFinalSummary`);
     const tax = globals.taxTotal || 0;
@@ -1391,6 +1406,13 @@ function setupStripeElements() {
 }
 
 async function requestPaymentIntent() {
+    if (bookingGlobals.payment_intent_id) {
+        console.log("🧾 Updating existing payment intent:", bookingGlobals.payment_intent_id);
+        return await updatePaymentIntent();
+      }
+    
+    console.log("🧾 Requesting new payment intent...");
+
     const urlParams = new URLSearchParams(window.location.search);
     const bookingSource = urlParams.get('source') || null;
 
@@ -1543,6 +1565,9 @@ async function updatePaymentIntent() {
       alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
     }
   
+    window.bookingGlobals.subtotal = subtotal;
+    window.bookingGlobals.total = total;
+
     // ✅ Show confirm-only if total is 0, else show Stripe UI
     const stripeBtns = document.getElementById("confirm-with-stripe");
     const confirmBtn = document.getElementById("confirm-without-stripe");
