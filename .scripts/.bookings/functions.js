@@ -477,6 +477,8 @@ async function goToDetails() {
 }
 
 async function goToPayment() {
+    setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
+    setButtonText("#confirm-booking", "Confirm Booking", false); 
     // Section
     document.getElementById("date-time-section")?.classList.add("hidden");
     document.getElementById("details-section")?.classList.add("hidden");
