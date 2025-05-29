@@ -488,11 +488,10 @@ async function goToPayment() {
 }  
 
 function showBookingConfirmation() {
-    document.getElementById("stripe-payment")?.classList.add("hide");
-    document.getElementById("confirmation-section")?.classList.remove("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.add("shrink");
-    document.querySelector(".booking-bg-col")?.classList.add("confirmation");
-    document.querySelector(".booking-component")?.classList.add("confirmation");
+    const currentUrl = new URL(window.location.href);
+    const rootUrl = `${currentUrl.origin}/b?booking=${window.bookingGlobals.booking_uuid}&confirmation=true`;
+    window.location.href = rootUrl;
+
 }  
 
 async function populateFinalSummary() {
@@ -715,6 +714,22 @@ function setButtonText(id, text, isProcessing = false) {
     button.classList.toggle("processing", isProcessing);
 }
 
+function checkScrollHelperVisibility() {
+    const activeSection = document.querySelector(".section:not(.hidden)");
+    const expanded = activeSection?.querySelector(".expanded");
+    const scrollHelper = document.getElementById("summary-scroll-helper");
+  
+    if (!expanded || !scrollHelper) return;
+  
+    const lastChild = expanded.lastElementChild;
+    if (!lastChild) return;
+  
+    const rect = lastChild.getBoundingClientRect();
+    const isVisible = rect.bottom <= window.innerHeight;
+  
+    scrollHelper.classList.toggle("hide", isVisible);
+}
+  
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
