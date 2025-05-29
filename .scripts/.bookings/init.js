@@ -129,6 +129,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("🟢 Step 1 Continue clicked");
         clearInterval(countdownInterval);
         await releaseTempHold();
+
+        setButtonText("#continue-to-details", "Validating Time Slot...", true);
     
         // 🔍 1. Get the selected radio input
         const allRadios = Array.from(document.querySelectorAll('#booking-start-time-options input[type="radio"]'));
@@ -136,6 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!selectedRadio) {
             alert("Please select a start time before continuing.");
             console.log("❌ No radio selected.");
+            setButtonText("#continue-to-details", "Continue to Details", false);
             return;
         }
     
@@ -232,10 +235,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
     
             alert("That time slot is no longer available. We'll show you the next best option.");
+            setButtonText("#continue-to-details", "Continue to Details", false);
             await generateStartTimeOptions(true);
             updateBookingSummary();
             return;
         }
+
+        setButtonText("#continue-to-details", "Reserving Time Slot...", true);
     
         // ✅ 5. Hold the time
         const start = bookingDateLuxon.startOf('day').plus({ minutes: selectedStart }).toISO();
@@ -500,42 +506,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });  
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
-        e.preventDefault();
-
-        if (e.currentTarget.classList.contains("processing")) return;
-      
-        const clientSecret = window.bookingGlobals.client_secret;
-        const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
-        const email = document.getElementById("booking-email")?.value;
-        const phone = document.getElementById("booking-phone")?.value;
-      
-        const { cardNumber } = window.cardElements;
-      
-        setButtonText("#pay-now-btn", "Processing Payment...", true);
-
-        const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
-          payment_method: {
-            card: cardNumber,
-            billing_details: {
-              name,
-              email,
-              phone
-            }
-          },
-          setup_future_usage: "off_session"
-        });
-      
-        if (error) {
-          console.error("❌ Payment error:", error.message);
-          alert("Payment failed: " + error.message);
-          setButtonText("#pay-now-btn", "Pay with Card", false);
-        } else if (paymentIntent?.status === "succeeded") {
-            setButtonText("#pay-now-btn", "Creating Booking...", true);
-            console.log("✅ Payment succeeded");
-            await submitFinalBooking();
-        }
-          
-    }); 
+      e.preventDefault();
+    
+      const button = e.currentTarget;
+      if (button.classList.contains("processing")) return;
+    
+      await confirmBookingWithStripe();
+    });
+    
     
     document.getElementById("confirm-booking")?.addEventListener("click", async (e) => {
         if (e.currentTarget.classList.contains("processing")) return;

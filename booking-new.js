@@ -38,14 +38,18 @@ window.bookingGlobals = {
     booking_start: OPEN_TIME,
     booking_end: OPEN_TIME + DEFAULT_DURATION * 60,
     booking_duration: DEFAULT_DURATION * 60,
-    booking_rate: FULL_RATE,
-    booking_total: DEFAULT_DURATION * FULL_RATE,
-    booking_discount: null,
+    final_rate: FULL_RATE,
+    base_rate: null,
+    rate_label: null,
+    subtotal: DEFAULT_DURATION * FULL_RATE,
     selected_start_time: minutesToTimeValue(OPEN_TIME),
     taxRate: TAX_RATE,
-    discountCode: null,
-    discountUUID: null,
-    creditsApplied: 0
+    taxTotal: null,
+    discountTotals: [], 
+    discountCodes: [],
+    discountUUIDs: [],
+    creditsApplied: 0,
+    creditsToUser: 0,
 };
 
 // === Event & Rate Storage
@@ -68,8 +72,8 @@ const selectedContainer = document.querySelector('.selected-options-container');
 const bookingTypeInstructions = document.getElementById('booking-type-instructions');
 
 let bookingTypes = {};
-
 let selectedActivities = [];
+let countdownInterval = null;
 
 // ================================== //
 // =======  UTLITY FUNCTIONS  ======= //
@@ -120,14 +124,6 @@ function updateFormField(id, value) {
 function updateAttendeesHiddenField(newValue) {
     updateFormField('attendees', newValue);
     window.bookingGlobals.attendees = parseInt(newValue, 10);
-}
-
-function updatePurposeHiddenField() {
-    const selected = Array.from(document.querySelectorAll('.selected-options-container .selected-option > div:first-child'))
-      .map(el => el.textContent.trim())
-      .filter(Boolean);
-    updateFormField('purpose', selected.join(', '));
-    window.bookingGlobals.activities = selected;
 }
 
 function isTimeSlotAvailable(startTime, duration, eventsForDay) {
@@ -305,12 +301,10 @@ async function refreshStartTimeOptions() {
     isRefreshingStartTimes = true;
 
     try {
-        const { data: events, error } = await window.supabase
-        .from("events")
-        .select("start, end")
-        .eq("location_id", LOCATION_UUID)
-        .gte("start", window.bookingMinDate.toISOString())
-        .lte("end", window.bookingMaxDate.toISOString());
+        const events = await fetchEventsForRange(window.bookingMinDate, window.bookingMaxDate);
+        window.bookingEvents = events;
+        console.log("🔄 Refreshed bookingEvents:", window.bookingEvents);
+
 
         if (error) {
             console.error("❌ Failed to refresh confirmed bookings:", error);
@@ -362,12 +356,12 @@ async function checkIfGuestHasActiveHold() {
     }
 
     let query = window.supabase
-    .from('temp_events')
-    .select('*')
-    .eq('listing_id', LISTING_UUID)
-    .eq('location_id', LOCATION_UUID)
-    .gt('expires_at', now)
-    .limit(1);
+        .from('temp_events')
+        .select('uuid')
+        .eq('listing_id', LISTING_UUID)
+        .eq('location_id', LOCATION_UUID)
+        .gt('expires_at', now)
+        .limit(1);
 
     if (userId) {
         console.log("🧑‍💻 Checking for holds by user ID:", userId);
@@ -384,33 +378,28 @@ async function checkIfGuestHasActiveHold() {
         return false;
     }
 
-    if (!Array.isArray(data) || data.length === 0 || !data[0]) {
+    if (!data?.length) {
         console.log("❎ No active hold found.");
         return false;
     }
 
-    const hold = data[0];
-    console.log("✅ Active hold found:", hold);
+    const holdId = data[0]?.uuid;
 
-    // Rehydrate preselection values only
-    const start = luxon.DateTime.fromISO(hold.start_time, { zone });
-    const end = luxon.DateTime.fromISO(hold.end_time, { zone });
+    if (holdId) {
+        console.log("🗑️ Found stale hold, deleting it:", holdId);
+        const { error: deleteError } = await window.supabase
+            .from('temp_events')
+            .delete()
+            .eq('uuid', holdId);
 
-    const startMinutes = start.hour * 60 + start.minute;
-    const endMinutes = end.hour * 60 + end.minute;
-    const duration = endMinutes - startMinutes;
+        if (deleteError) {
+            console.error("❌ Error deleting stale hold:", deleteError);
+        } else {
+            console.log("✅ Stale hold deleted.");
+        }
+    }
 
-    window.preselectedBooking = {
-        date: start.toISODate(),           // "2025-05-22"
-        time: hold.start_time,             // full ISO string
-        duration: duration / 60            // in hours
-    };
-
-    // ✅ Release hold immediately so user can re-select it freely
-    await releaseTempHold(hold.id);
-
-    return true;
-
+    return false;
 }
 
 function getCurrentRoundedMinutes() {
@@ -450,7 +439,7 @@ function updateDurationDisplay(duration) {
     document.getElementById('duration-hours').textContent = hours;
     document.getElementById('duration-minutes').textContent = minutes.toString().padStart(2, '0');
 
-    const unit = hours === 1 ? 'Hour' : 'Hours';
+    const unit = hours === 1 ? 'Hr' : 'Hrs';
     document.getElementById('duration-unit').textContent = unit;
 }
 
@@ -521,119 +510,332 @@ function updateAttendeeButtons() {
     countDisplay.textContent = showPlus ? `${attendeeCount}+` : attendeeCount;
 }
 
-function goToStep3() {
-    document.getElementById("attendees-and-type")?.classList.add("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
-    document.querySelector(".booking-bg-col")?.classList.add("right");
-    document.getElementById("date-cal")?.classList.add("hidden");
-    document.getElementById("final-summary")?.classList.remove("hidden");
-    document.getElementById("stripe-payment")?.classList.remove("hide");
-    document.querySelector(".summary-clicker")?.classList.add("hidden");
+async function goToDateTime() {
+    await releaseTempHold();
+    
+    // Section
+    document.getElementById("date-time-section")?.classList.remove("hidden");
+    document.getElementById("details-section")?.classList.add("hidden");
+    document.getElementById("payment-section")?.classList.add("hidden");
+
+    // Summary - Timer & Buttons
+    document.getElementById("reserve-timer")?.classList.add("hide"); // Hold Timer
+    document.getElementById("date-time-button-container")?.classList.remove("hide"); // Date Time Continue Btn
+    document.getElementById("details-button-container")?.classList.add("hide"); // Details Continue Btn
+
+    // Summary - Sections
+    document.getElementById("reservation-summary")?.classList.remove("hide");
+    document.getElementById("payment-summary")?.classList.add("hide");
+
+    updateBookingSummary();
+    clearInterval(countdownInterval);
+    checkScrollHelperVisibility();
+
+}
+
+async function goToDetails() {
+    // Section
+    document.getElementById("date-time-section")?.classList.add("hidden");
+    document.getElementById("details-section")?.classList.remove("hidden");
+    document.getElementById("payment-section")?.classList.add("hidden");
+
+    // Summary - Timer & Buttons
+    document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
+    document.getElementById("date-time-button-container")?.classList.add("hide"); // Date Time Continue Btn
+    document.getElementById("details-button-container")?.classList.remove("hide"); // Details Continue Btn
+
+    // Summary - Sections
+    document.getElementById("reservation-summary")?.classList.remove("hide");
+    document.getElementById("payment-summary")?.classList.add("hide");
+    checkScrollHelperVisibility();
+
+}
+
+async function goToPayment() {
+    // Section
+    document.getElementById("date-time-section")?.classList.add("hidden");
+    document.getElementById("details-section")?.classList.add("hidden");
+    document.getElementById("payment-section")?.classList.remove("hidden");
+
+    // Summary - Timer & Buttons
+    document.getElementById("reserve-timer")?.classList.remove("hide"); // Hold Timer
+
+    // Summary - Sections
+    document.getElementById("reservation-summary")?.classList.add("hide");
+    document.getElementById("payment-summary")?.classList.remove("hide");
   
-    // New summary layout
-    document.getElementById("initial-booking-summary")?.classList.add("hide");
-    document.querySelector(".booking-summary-section.final")?.classList.remove("hide");
-  
-    populateFinalSummary();
+    await populateFinalSummary();
     setupStripeElements();
+    checkScrollHelperVisibility();
+
 }  
 
-function populateFinalSummary() {
+function showBookingConfirmation() {
+    const currentUrl = new URL(window.location.href);
+    const rootUrl = `${currentUrl.origin}/b?booking=${window.bookingGlobals.booking_uuid}&confirmation=true`;
+    window.location.href = rootUrl;
+
+}  
+
+async function populateFinalSummary() {
     const globals = window.bookingGlobals;
     const luxonDate = luxon.DateTime.fromJSDate(globals.booking_date, { zone: window.TIMEZONE });
+    const TZ_ABBREVIATION = luxonDate.offsetNameShort || "CT";
   
-    // 📅 Date, time
+    // 📍 Listing Name
+    const nameEl = document.getElementById('final-summary-listing-name');
+    if (nameEl) nameEl.textContent = window.listingName || "Listing";
+  
+    // 📅 Date + Time
     document.getElementById("final-summary-date").textContent = luxonDate.toFormat("MMMM d, yyyy");
   
     const startMinutes = globals.booking_start;
     const endMinutes = globals.booking_start + globals.booking_duration;
   
-    document.getElementById("final-summary-start").textContent = formatMinutesToTime(startMinutes);
-    document.getElementById("final-summary-end").textContent = formatMinutesToTime(endMinutes);
+    document.getElementById("final-summary-start").innerHTML = `${formatMinutesToTime(startMinutes)} <span class="tz-suffix">${TZ_ABBREVIATION}</span>`;
+    document.getElementById("final-summary-end").innerHTML = `${formatMinutesToTime(endMinutes)} <span class="tz-suffix">${TZ_ABBREVIATION}</span>`;
   
-    // 👥 Name, email, phone, attendees
-    document.getElementById("final-summary-attendees").textContent = globals.attendees || 1;
+    // 👥 Name, contact, attendees
+    const attendees = globals.attendees || 1;
+    document.getElementById("final-summary-attendees").textContent = `${attendees} ${attendees === 1 ? "Guest" : "Guests"}`;
+  
     const first = document.getElementById("booking-first-name")?.value || "";
     const last = document.getElementById("booking-last-name")?.value || "";
     document.getElementById("final-summary-name").textContent = `${first} ${last}`;
     document.getElementById("email").textContent = document.getElementById("booking-email")?.value || "";
     document.getElementById("final-summary-phone").textContent = document.getElementById("booking-phone")?.value || "";
-    document.getElementById("final-summary-attendees-label").textContent = globals.attendees === 1 ? "Guest" : "Guests";
-
+  
     // 🏷️ Activities
-    const selectedLabels = globals.activities || [];
+    const selected = window.bookingGlobals.activities?.selected || [];
+    const other = window.bookingGlobals.activities?.other || [];
 
     const activityList = document.getElementById("final-summary-activities");
     activityList.innerHTML = "";
 
-    selectedLabels.forEach(label => {
+    selected.forEach(({ title }) => {
     const pill = document.createElement("div");
     pill.className = "booking-summary-value pill";
-    selectedLabels.forEach(label => {
-        const cleanLabel = label.replace(/^Other:\s*/i, "").trim();
-        const pill = document.createElement("div");
-        pill.className = "booking-summary-value pill";
-        pill.textContent = cleanLabel;
-        activityList.appendChild(pill);
-      });
-      
+    pill.textContent = title;
     activityList.appendChild(pill);
     });
-  
-    const activityLabel = document.getElementById("final-summary-activities-label");
-    activityLabel.textContent = selectedLabels.length === 1 ? "Activity" : "Activities";
-  
-    // 💵 Line items
-    const baseHours = (globals.booking_duration / 60).toFixed(1);
-    const baseRate = globals.booking_rate;
-    const baseTotal = baseHours * baseRate;
+
+    other.forEach(label => {
+    const pill = document.createElement("div");
+    pill.className = "booking-summary-value pill";
+    pill.textContent = label;
+    activityList.appendChild(pill);
+    });
+
+    const totalActivities = selected.length + other.length;
+    document.getElementById("final-summary-activities-label").textContent =
+    totalActivities === 1 ? "Activity" : "Activities";
+
+    // 💵 Rate Calculations
+    const baseRate = globals.base_rate || globals.final_rate; // fallback
+    const finalRate = globals.final_rate;
+    const hours = (globals.booking_duration / 60);
+    const hoursText = hours === 1 ? "hr" : "hrs";
   
     const bookingLine = document.querySelector("#final-booking-summary-booking");
     if (bookingLine) {
-      bookingLine.querySelector(".summary-line-item").textContent = `Booking (${baseHours} Hrs x $${baseRate}/hr)`;
-      bookingLine.querySelector(".summary-line-item-price").textContent = `$${baseTotal.toFixed(2)}`;
+      bookingLine.querySelector(".summary-line-item").textContent = `Booking Total ($${baseRate} × ${hours} ${hoursText})`;
+      bookingLine.querySelector(".summary-line-item-price").textContent = `$${(baseRate * hours).toFixed(2)}`;
     }
   
-    const discountAmount = globals.booking_discount?.amount || 0;
+    const specialRateLine = document.getElementById("final-booking-summary-special-rate");
+    const rateDiff = (baseRate - finalRate) * hours;
+    const rateLabel = globals.rate_label || "Member Rate";
+    specialRateLine?.classList.toggle("hide", rateDiff <= 0);
+    if (rateDiff > 0) {
+      specialRateLine.querySelector(".summary-line-item").textContent = rateLabel;
+      specialRateLine.querySelector(".summary-line-item-price").textContent = `- $${rateDiff.toFixed(2)}`;
+    }
+  
+    const discountAmount = (globals.discountTotals || []).reduce((a, b) => a + b, 0);
     const creditsAmount = globals.creditsApplied || 0;
-    const couponCode = globals.discountCode || "";
-    const taxRate = (globals.taxRate || 8.25) / 100;
+    const couponCode = globals.discountCodes || "";
+    const taxRate = globals.taxRate || 8.25;
   
-    // Toggle special rate
-    const discountLine = document.getElementById("final-booking-summary-special-rate");
-    discountLine?.classList.toggle("hide", !discountAmount);
-    if (discountAmount) {
-      discountLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
-    }
-  
-    // Toggle credits
+    const codeLine = document.getElementById("final-booking-summary-code");
+    const codes = window.bookingGlobals.discountCodes || [];
+    const discounts = window.bookingGlobals.discountTotals || [];
+
+    codeLine?.classList.toggle("hide", codes.length === 0);
+    codeLine.innerHTML = ""; // Clear previous content
+
+    codes.forEach((code, i) => {
+    const amount = roundDecimals(discounts[i] || 0);
+    const line = document.createElement("div");
+    line.className = "code-line-item";
+
+    const label = document.createElement("div");
+    label.className = "summary-line-item";
+    label.textContent = code;
+
+    const price = document.createElement("div");
+    price.className = "summary-line-item-price";
+    price.textContent = `- $${amount.toFixed(2)}`;
+
+    line.appendChild(label);
+    line.appendChild(price);
+    codeLine.appendChild(line);
+    });
+
     const creditsLine = document.getElementById("final-booking-summary-credits");
     creditsLine?.classList.toggle("hide", !creditsAmount);
     if (creditsAmount) {
       creditsLine.querySelector(".summary-line-item-price").textContent = `- $${creditsAmount.toFixed(2)}`;
     }
   
-    // Toggle coupon
-    const codeLine = document.getElementById("final-booking-summary-code");
-    codeLine?.classList.toggle("hide", !couponCode);
-    if (couponCode) {
-      codeLine.querySelector(".summary-line-item").textContent = `${couponCode}`;
-      codeLine.querySelector(".summary-line-item-price").textContent = `- $${discountAmount.toFixed(2)}`;
-    }
-  
-    const shouldHideSubtotal = !discountAmount && !creditsAmount && !couponCode;
+    const shouldHideSubtotal = rateDiff <= 0 && !couponCode && !creditsAmount;
     document.getElementById("final-booking-summary-subtotal")?.classList.toggle("hide", shouldHideSubtotal);
     document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
-  
-    const subtotal = baseTotal - discountAmount - creditsAmount;
-    const tax = subtotal * taxRate;
-    const total = subtotal + tax;
+
+    const subtotal = globals.subtotal || 0;
+    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via populateFinalSummary`);
+    const tax = globals.taxTotal || 0;
+    const total = globals.total || 0;
   
     document.querySelector("#final-booking-summary-subtotal .summary-line-item-price").textContent = `$${subtotal.toFixed(2)}`;
+    document.querySelector("#final-booking-summary-taxes .summary-line-item").textContent = `Tax Rate (${taxRate.toFixed(2)}%)`;
     document.querySelector("#final-booking-summary-taxes .summary-line-item-price").textContent = `$${tax.toFixed(2)}`;
     document.querySelector("#final-booking-summary-total .summary-line-item-price").textContent = `$${total.toFixed(2)}`;
 }
+  
+async function submitFinalBooking() {
+    const g = window.bookingGlobals;
+  
+    const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
+    const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
+  
+    const activities = {
+        selected: g.activities?.selected || [],
+        other: g.activities?.other || []
+    };
+      
+  
+    const payload = {
+        listing_uuid: LISTING_UUID,
+        user_uuid: window.supabaseUser?.id || g.user_uuid_override || null,
+        date: g.booking_date,
+        start: bookingStart.toISO(),
+        end: bookingEnd.toISO(),
+        duration: g.booking_duration,
+        attendees: g.attendees || 1,
+        activities,
+        activities_uuid: g.activitiesUUID || [],
+        activities_payload: g.activitiesPayload || {},
+        first_name: document.getElementById('booking-first-name')?.value || "",
+        last_name: document.getElementById('booking-last-name')?.value || "",
+        email: document.getElementById('booking-email')?.value || "",
+        phone: document.getElementById('booking-phone')?.value || "",
+    
+        payment_intent_id: g.payment_intent_id || null,
+        transaction_uuid: g.transaction_uuid || null,
+        temp_hold_uuid: g.temp_hold_uuid || null,
+    
+        base_rate: g.base_rate || g.final_rate,
+        final_rate: g.final_rate,
+        final_rate_name: g.rate_label || null,
+    
+        discount_code: g.discountCodes || [],
+        discount_code_uuid: g.discountUUIDs || [],
+        discount_code_amounts: g.discountTotals || [],
+        discount_code_total: (g.discountTotals || []).reduce((a, b) => a + b, 0),
 
+        credits_to_user: g.creditsToUser,
+        user_credits_applied: g.creditsApplied || 0,
+        subtotal: g.subtotal || 0,
+        tax_rate: g.taxRate || 0,
+        tax_total: g.taxTotal || 0,
+        total: g.total || 0,
+    
+        source: new URLSearchParams(window.location.search).get('source') || null
+    };
+    console.log(`SUBTOTAL CALLED: ${window.bookingGlobals.subtotal} via submitFinalBooking`);
+  
+    try {
+      const res = await fetch("https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!res.ok) throw new Error(`Make.com create booking failed: ${res.status}`);
+  
+      const result = await res.json();
+  
+      // Store booking UUID for redirect
+      window.bookingGlobals.booking_uuid = result.booking_uuid;
+  
+      showBookingConfirmation();
+  
+    } catch (err) {
+      console.error("❌ Failed to create booking:", err);
+      alert("Something went wrong confirming your booking. Please try again.");
+    }
+}  
+
+function formatMembershipLabel(level) {
+    switch (level) {
+        case 'paid-member': return 'Pro Member';
+        case 'free-member': return 'Free Member';
+        default: return 'Non-member';
+    }
+}
+
+function setButtonText(id, text, isProcessing = false) {
+    const button = document.querySelector(id);
+    if (!button) return;
+  
+    // Update text
+    button.querySelectorAll(".button-text").forEach(el => {
+      el.textContent = text;
+    });
+  
+    // Toggle class
+    button.classList.toggle("processing", isProcessing);
+}
+
+function checkScrollHelperVisibility() {
+    const helper = document.getElementById("summary-scroll-helper");
+    if (!helper) return;
+  
+    const activeSection = document.querySelector(".step-container:not(.hidden)");
+    if (!activeSection) return;
+  
+    // Determine scrollable container
+    const isMobile = window.innerWidth <= 991; // Tablet and below
+    const scrollable = isMobile
+      ? activeSection
+      : activeSection.querySelector(".expanded");
+  
+    if (!scrollable) return;
+  
+    const scrollTop = scrollable.scrollTop;
+    const scrollHeight = scrollable.scrollHeight;
+    const clientHeight = scrollable.clientHeight;
+  
+    const atBottom = scrollTop + clientHeight >= scrollHeight - 32; // buffer to account for rounding
+  
+    if (atBottom) {
+      helper.classList.add("hide");
+    } else {
+      helper.classList.remove("hide");
+    }
+}
+
+function setupScrollHelperListener() {
+    const stepContainers = document.querySelectorAll(".step-container");
+  
+    stepContainers.forEach(container => {
+      container.addEventListener("scroll", checkScrollHelperVisibility);
+    });
+  
+    window.addEventListener("resize", checkScrollHelperVisibility);
+    document.addEventListener("DOMContentLoaded", checkScrollHelperVisibility);
+}  
+  
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
     const bookingDateEl = document.getElementById('booking-total-date');
@@ -650,59 +852,78 @@ function updateBookingSummary() {
         booking_date,
         booking_start,
         booking_end,
-        booking_duration
+        booking_duration,
+        membership_level = 'non-member'
     } = window.bookingGlobals;
 
     const hoursDecimal = booking_duration / 60;
     const hoursDisplay = (hoursDecimal % 1 === 0)
-    ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hour' : 'Hours'}`
-    : `${hoursDecimal.toFixed(1)} Hours`;
+        ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hr' : 'Hrs'}`
+        : `${hoursDecimal.toFixed(1)} Hrs`;
     if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
 
-    const isToday = booking_date.toDateString() === new Date().toDateString();
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
+    const todayLuxon = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const isToday = bookingDateLuxon.hasSame(todayLuxon, 'day');
     const dateKey = booking_date.toISOString().split("T")[0];
     const special = window.specialRates?.[dateKey];
 
-    let finalRate = FULL_RATE;
-    let discountTitle = '';
+    // 🧾 Always compare to non-member base rate
+    const nonMemberSchedule = getScheduleForDate(window.listingSchedule, booking_date, 'non-member');
+    const baseRate = nonMemberSchedule?.rate ?? FULL_RATE;
+
+    // 🔑 Actual member rate
+    const memberSchedule = getScheduleForDate(window.listingSchedule, booking_date, membership_level);
+    let finalRate = memberSchedule?.rate ?? baseRate;
+    let rateLabel = '';
     let discountAmount = 0;
 
+    // ⭐️ Special rate overrides all
     if (special) {
         finalRate = special.amount;
-        discountTitle = special.title || "Special Rate";
-        discountEl.textContent = discountTitle;
+        rateLabel = special.title || "Special Rate";
+        discountEl.textContent = rateLabel;
         discountEl.classList.remove("hidden");
-    } else if (isToday && window.sameDayRate !== undefined) {
-        finalRate = window.sameDayRate;
-        discountTitle = "Same-day discount";
-        discountEl.textContent = discountTitle;
-        discountEl.classList.remove("hidden");
-    } else {
+    }
+    // 📆 Same-day rate
+    else if (isToday && memberSchedule) {
+        const sameDayKey = 'same-day-rate' in memberSchedule ? 'same-day-rate' : 'same-day';
+        if (sameDayKey in memberSchedule && memberSchedule[sameDayKey] !== undefined) {
+            finalRate = memberSchedule[sameDayKey];
+            rateLabel = "Same-day Discount";
+            discountEl.textContent = rateLabel;
+            discountEl.classList.remove("hidden");
+        } else {
+            discountEl.classList.add("hidden");
+        }
+    }
+    // 🧍 Membership fallback label
+    else {
         discountEl.classList.add("hidden");
+        if (membership_level !== 'non-member') {
+            rateLabel = formatMembershipLabel(membership_level);
+        } else {
+            rateLabel = "Non-member";
+        }
     }
 
-    if (totalRateEl) totalRateEl.textContent = `$${finalRate}/hr`;
+    if (totalRateEl) totalRateEl.textContent = `$${finalRate}`;
 
-    const baseTotal = (booking_duration / 60) * FULL_RATE;
-    const discountedTotal = (booking_duration / 60) * finalRate;
+    const baseTotal = hoursDecimal * baseRate;
+    const discountedTotal = hoursDecimal * finalRate;
     discountAmount = baseTotal - discountedTotal;
 
-    // Update bookingGlobals
-    window.bookingGlobals.booking_rate = finalRate;
-    window.bookingGlobals.booking_total = discountedTotal;
-    window.bookingGlobals.booking_discount = discountAmount > 0 ? {
-        title: discountTitle,
-        rate: finalRate,
-        discount_amount: discountAmount.toFixed(2),
-        total_due: discountedTotal.toFixed(2),
-        original: baseTotal.toFixed(2)
-    } : null;
+    // 💾 Store in bookingGlobals
+    window.bookingGlobals.base_rate = baseRate;
+    window.bookingGlobals.final_rate = finalRate;
+    window.bookingGlobals.subtotal = discountedTotal;
+    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updateBookingSummary`);
+    window.bookingGlobals.rate_label = rateLabel;
 
-    const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
     const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
     const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
 
-    // Update timezone display with correct offset from booking date
+    // 🕓 Timezone label
     const longName = startTime.offsetNameLong;
     const shortName = startTime.offsetNameShort;
 
@@ -731,8 +952,9 @@ function updateBookingSummary() {
     } else {
         discountedTotalEl.classList.add('hidden');
     }
-    console.log("📅 updateBookingSummary bookingGlobals.booking_date", window.bookingGlobals.booking_date);
-    console.log("📅 updateBookingSummary Luxon date:", luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE }).toISO());  
+
+    console.log("📅 updateBookingSummary bookingGlobals.booking_date", booking_date);
+    console.log("📅 updateBookingSummary Luxon date:", bookingDateLuxon.toISO());
 }
 
 // ** SCHEDULE LOGIC ** //
@@ -980,41 +1202,6 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
     console.log("📅 Luxon:", bookingDateLuxon.toISO());
 
     return await renderStartTimeOptions(availableTimes);
-
-    // ✅ Preselect held booking data (if exists)
-    if (window.preselectedBooking) {
-        const { date, time, duration } = window.preselectedBooking;
-    
-        // Set calendar date (if not already applied)
-        if (window.flatpickrCalendar) {
-        window.flatpickrCalendar.setDate(date, true); // triggers onChange
-        }
-    
-        // Set slider + globals
-        const slider = document.getElementById("duration-slider");
-        if (slider) {
-        slider.value = duration;
-        updateDurationDisplay(duration * 60);
-        window.bookingGlobals.booking_duration = duration * 60;
-        setSliderProgress(duration);
-        }
-    
-        // Set selected time radio
-        const targetTimeValue = luxon.DateTime.fromISO(time).toFormat("h:mm a");
-        const radios = document.querySelectorAll(".radio-option-label");
-        radios.forEach((label) => {
-        if (label.textContent.trim() === targetTimeValue) {
-            const input = label.previousElementSibling;
-            if (input?.type === "radio") {
-            input.checked = true;
-            input.dispatchEvent(new Event("change", { bubbles: true }));
-            }
-        }
-        });
-    
-        console.log("🟢 Preselected booking restored:", window.preselectedBooking);
-        window.preselectedBooking = null;
-    }
   
 }
 
@@ -1083,82 +1270,6 @@ async function findNextAvailableDate(maxDays = 30) {
     return null;
 }
 
-async function requestPaymentIntent() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const bookingSource = urlParams.get('source') || null;
-
-    const selectedLabels = window.bookingGlobals.activities || [];
-
-    const selected = [];
-    const other = [];
-
-    selectedLabels.forEach(label => {
-    const match = Object.entries(bookingTypes).find(([id, data]) => data.title === label);
-    if (match) {
-        selected.push(match[0]); // push the ID (e.g. "general-photo")
-    } else {
-        other.push(label.replace(/^Other:\s*/i, "").trim());
-    }
-    });
-
-    const activityPayload = {
-    selected, // pre-defined activity IDs
-    other     // custom user-typed entries
-    };
-
-
-    const payload = {
-        rate: bookingGlobals.booking_rate,
-        date: bookingGlobals.booking_date,
-        timezone: window.TIMEZONE,
-        start_time: bookingGlobals.booking_start,
-        duration: bookingGlobals.booking_duration,
-        listing_uuid: LISTING_UUID,
-        tax_rate: window.bookingGlobals.taxRate,
-    
-        first_name: document.getElementById('booking-first-name')?.value,
-        last_name: document.getElementById('booking-last-name')?.value,
-        email: document.getElementById('booking-email')?.value,
-        phone: document.getElementById('booking-phone')?.value,
-        user_uuid: window.supabaseUser?.id || null,
-    
-        activities: activityPayload || [],
-        attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
-        source: bookingSource,
-    
-        discount_code: window.bookingGlobals.discountCode || null,
-        discount_certificate_uuid: window.bookingGlobals.discountUUID || null, 
-        credits_applied: window.bookingGlobals.creditsApplied || 0.0
-    };
-    
-    try {
-      const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-  
-      if (!response.ok) {
-        throw new Error(`PaymentIntent webhook failed: ${response.status}`);
-      }
-  
-      const data = await response.json();
-  
-      // Store client_secret and intent ID for Step 3
-      window.bookingGlobals.client_secret = data.client_secret;
-      window.bookingGlobals.payment_intent_id = data.payment_intent_id;
-      window.bookingGlobals.payment_amount = data.amount; 
-      console.log("✅ PaymentIntent created:", data);
-      setupStripeElements();
-  
-    } catch (err) {
-      console.error("❌ Error requesting PaymentIntent:", err);
-      // Show UI error here if needed
-    }
-}
-
 async function isTempHoldStillValid() {
     const { data, error } = await supabase
       .from("temp_events")
@@ -1175,7 +1286,34 @@ async function isTempHoldStillValid() {
     return expiry > now;
 }
 
+async function fetchEventsForRange(start, end) {
+    const { data, error } = await window.supabase
+      .from("events")
+      .select("start, end")
+      .eq("location_id", LOCATION_UUID)
+      .gte("start", start.toISOString())
+      .lte("end", end.toISOString());
+  
+    if (error) {
+      console.error("❌ Failed to fetch events:", error);
+      return [];
+    }
+  
+    return data;
+}
+  
+  async function fetchEventsForDate(date) {
+    const zone = window.TIMEZONE;
+    const dayStart = luxon.DateTime.fromJSDate(date, { zone }).startOf('day');
+    const dayEnd = dayStart.endOf('day');
+  
+    return fetchEventsForRange(dayStart.toJSDate(), dayEnd.toJSDate());
+}
+
 // ** PAYMENT ** //
+function roundDecimals(n) {
+    return Math.round(n * 100) / 100;
+}
 
 function setupStripeElements() {
     const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
@@ -1232,12 +1370,10 @@ function setupStripeElements() {
           });
         });
       });
-          
-      
       
     // 🔥 Use real values passed in after Make.com response
     const clientSecret = window.bookingGlobals?.client_secret;
-    const amount = window.bookingGlobals?.payment_amount;
+    const amount = window.bookingGlobals?.total;
   
     if (!clientSecret || !amount) {
       console.warn("Stripe setup skipped: Missing client secret or amount.");
@@ -1249,11 +1385,13 @@ function setupStripeElements() {
       currency: 'usd',
       total: {
         label: 'Total',
-        amount: amount
+        amount: amount * 100
       },
       requestPayerName: true,
       requestPayerEmail: true
     });
+
+    window.paymentRequest = paymentRequest;
   
     const prButton = elements.create("paymentRequestButton", {
       paymentRequest,
@@ -1261,7 +1399,7 @@ function setupStripeElements() {
         paymentRequestButton: {
           type: "default",
           theme: "dark",
-          height: "60px",
+          height: "57.6px",
           borderRadius: "30px"
         }
       }
@@ -1288,12 +1426,395 @@ function setupStripeElements() {
           alert("❌ Payment failed: " + error.message);
         } else {
           ev.complete("success");
-          window.location.href = "/thank-you"; // 🔁 Update as needed
+          await submitFinalBooking();
         }
       } catch (err) {
         console.error("Stripe Payment Error:", err);
         ev.complete("fail");
       }
+    });
+}
+
+async function requestPaymentIntent() {
+    if (bookingGlobals.payment_intent_id) {
+        console.log("🧾 Updating existing payment intent:", bookingGlobals.payment_intent_id);
+        return await updatePaymentIntent();
+      }
+    
+    console.log("🧾 Requesting new payment intent...");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingSource = urlParams.get('source') || null;
+
+    const activityData = window.bookingGlobals.activities || {};
+    const selectedLabels = activityData.selected?.map(a => a.title) || [];
+
+    const selected = [];
+    const other = [];
+
+    selectedLabels.forEach(label => {
+    const match = Object.entries(bookingTypes).find(([_, data]) => data.title === label);
+    if (match) {
+        selected.push(match[0]); // UUID
+    } else {
+        other.push(label.replace(/^Other:\s*/i, "").trim());
+    }
+    });
+
+
+    const {
+        final_rate = 0,
+        booking_duration = 0,
+        creditsApplied = 0,
+        taxRate = 0,
+    } = window.bookingGlobals;
+
+    const hours = roundDecimals(booking_duration / 60);
+    const certificateDiscount = roundDecimals(
+        (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
+    );
+    const credits = roundDecimals(creditsApplied);
+
+    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - certificateDiscount - credits));
+    let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
+    let total = roundDecimals(subtotal + subtotalTaxes);
+
+    // ✅ Handle near-zero edge case
+    if (total > 0 && total < 0.5) {
+        const needed = roundDecimals(0.5 - total);
+        total = 0.5;
+
+        console.warn(`💸 Rounding up total to Stripe minimum ($0.50).`);
+        console.log(`📥 Crediting back $${needed} to bookingGlobals.creditsToUser`);
+
+        window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+        alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
+    }
+
+    const activityPayload = {
+        selected,
+        other
+    };
+
+    const payload = {
+        base_rate: window.bookingGlobals.base_rate,
+        rate: final_rate,
+        hours,
+        certificate_discount: certificateDiscount,
+        user_credits: credits,
+        subtotal,
+        tax_rate: taxRate,
+        subtotal_taxes: subtotalTaxes,
+        total,
+
+        date: bookingGlobals.booking_date,
+        timezone: window.TIMEZONE,
+        start_time: bookingGlobals.booking_start,
+        duration: bookingGlobals.booking_duration,
+        listing_uuid: LISTING_UUID,
+
+        first_name: document.getElementById('booking-first-name')?.value,
+        last_name: document.getElementById('booking-last-name')?.value,
+        email: document.getElementById('booking-email')?.value,
+        phone: document.getElementById('booking-phone')?.value,
+        user_uuid: window.supabaseUser?.id || window.bookingGlobals.user_uuid_override || null,
+        customer_id: window.bookingGlobals.customer_id || null,
+
+        activities: activityPayload,
+        attendees: parseInt(document.getElementById('attendees')?.value, 10) || 1,
+        source: bookingSource,
+
+        discount_code: window.bookingGlobals.discountCodes || [],
+        discount_certificate_uuid: window.bookingGlobals.discountUUIDs || [],
+        discount_total: window.bookingGlobals.discountTotals || [],
+        credits_applied: credits
+    };
+
+    try {
+        const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);        
+
+        const data = await response.json();
+
+        window.bookingGlobals.client_secret = data.client_secret;
+        window.bookingGlobals.payment_intent_id = data.payment_intent_id;
+        window.bookingGlobals.transaction_uuid = data.transaction_uuid;
+        window.bookingGlobals.total = (data.amount / 100);
+
+        const total = window.bookingGlobals.total;
+
+        if (total === 0) {
+            document.getElementById("confirm-with-stripe")?.classList.add("hide");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
+        } else {
+            document.getElementById("confirm-with-stripe")?.classList.remove("hide");
+            document.getElementById("confirm-without-stripe")?.classList.add("hide");
+            setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
+        }
+
+        console.log("✅ PaymentIntent created:", data);
+        setupStripeElements();
+
+    } catch (err) {
+        console.error("❌ Error requesting PaymentIntent:", err);
+    }
+}
+
+async function updatePaymentIntent() {
+    const {
+      final_rate = window.bookingGlobals.final_rate,
+      taxRate = window.bookingGlobals.taxRate,
+      payment_intent_id,
+      transaction_uuid
+    } = window.bookingGlobals;
+  
+    const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
+    const appliedCredits = window.bookingGlobals.creditsApplied || 0;
+    const credits = creditsEnabled ? appliedCredits : 0;
+  
+    const hours = (window.bookingGlobals.booking_duration / 60);
+    const certificateDiscount = roundDecimals(
+      (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0)
+    );
+  
+    let subtotal = roundDecimals(Math.max(0, (final_rate * hours) - appliedCredits - certificateDiscount));
+    let subtotalTaxes = roundDecimals(subtotal * (taxRate / 100));
+    let total = roundDecimals(subtotal + subtotalTaxes);
+  
+    // 💸 Stripe $0.50 minimum charge
+    if (total > 0 && total < 0.5) {
+      const needed = roundDecimals(0.5 - total);
+      total = 0.5;
+  
+      window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + needed;
+      alert(`A small remaining balance has been rounded up to $0.50. The extra $${needed.toFixed(2)} has been saved as account credit.`);
+    }
+  
+    window.bookingGlobals.subtotal = subtotal;
+    window.bookingGlobals.total = total;
+
+    // ✅ Show confirm-only if total is 0, else show Stripe UI
+    const stripeBtns = document.getElementById("confirm-with-stripe");
+    const confirmBtn = document.getElementById("confirm-without-stripe");
+  
+    if (total === 0) {
+      stripeBtns?.classList.add("hidden");
+      confirmBtn?.classList.remove("hidden");
+      console.log("✅ Total is $0 — showing confirm-only button.");
+      return;
+    } else {
+      stripeBtns?.classList.remove("hidden");
+      confirmBtn?.classList.add("hidden");
+    }
+  
+    // ✅ Send updated values to Make.com
+    const payload = {
+      final_rate,
+      hours,
+      certificate_discount: certificateDiscount,
+      user_credits: credits,
+      subtotal,
+      tax_rate: taxRate,
+      subtotal_taxes: subtotalTaxes,
+      total,
+      payment_intent_id: payment_intent_id || null,
+      transaction_uuid: transaction_uuid || null,
+    };
+  
+    try {
+      const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  
+      console.log("✅ updatePaymentIntent sent:", payload);
+
+      const data = await res.json();
+
+      window.paymentRequest?.update?.({
+        total: {
+          label: "Total",
+          amount: data.amount
+        }
+    });
+
+    // ✅ Store values in bookingGlobals
+    window.bookingGlobals.subtotal = subtotal;
+    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
+    window.bookingGlobals.taxTotal = subtotalTaxes;
+    window.bookingGlobals.total = (data.amount / 100);
+    setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
+  
+    } catch (err) {
+      console.error("❌ Failed to update payment intent:", err);
+    }
+}  
+
+function applyStackedDiscounts(certs = [], finalRate, hours) {
+    const totalBase = finalRate * hours;
+    let newRate = finalRate;
+    let total = totalBase;
+    let rateUsed = false;
+  
+    console.log("📦 Starting discount stacking...");
+    console.log("💰 Base total:", totalBase, "| Hours:", hours, "| Final rate:", finalRate);
+  
+    const typePriority = { rate: 0, minutes: 1, currency: 2, percent: 3 };
+    const sorted = [...certs].sort((a, b) => {
+      const p1 = typePriority[a.type] ?? 99;
+      const p2 = typePriority[b.type] ?? 99;
+      if (p1 === p2 && a.type === 'percent') return a.amount - b.amount;
+      return p1 - p2;
+    });
+  
+    const results = [];
+    const failures = [];
+    let creditsToUser = 0;
+  
+    for (const cert of sorted) {
+      const { code, uuid, type, amount, rules } = cert;
+      let discountAmount = 0;
+  
+      const threshold = rules?.threshold;
+      if (threshold) {
+        const val = threshold.amount ?? 0;
+        const passes = threshold.type === 'currency'
+          ? totalBase >= val
+          : (hours * 60) >= val;
+  
+        if (!passes) {
+          const reason = threshold.type === 'currency'
+            ? `Booking must be at least $${val}`
+            : `Booking must be at least ${val} minutes`;
+          console.log(`⏳ Skipping ${code} → ${reason}`);
+          failures.push({ code, reason });
+          continue;
+        }
+      }
+  
+      if (type === 'rate') {
+        if (rateUsed) {
+          failures.push({ code, reason: "Only one rate-based coupon can be applied" });
+          continue;
+        }
+        if (newRate > amount) {
+          discountAmount = roundDecimals((newRate - amount) * hours);
+          newRate = amount;
+          rateUsed = true;
+          console.log(`📉 Applying rate override (${code}): -$${discountAmount}`);
+        } else {
+          failures.push({ code, reason: "Your current rate is already lower than this coupon's rate" });
+          continue;
+        }
+      } else if (type === 'minutes') {
+        discountAmount = roundDecimals((amount * newRate) / 60);
+        console.log(`⏱️ Minutes (${code}): -$${discountAmount}`);
+      } else if (type === 'currency') {
+        discountAmount = roundDecimals(amount);
+        console.log(`💵 Currency (${code}): -$${discountAmount}`);
+      } else if (type === 'percent') {
+        discountAmount = roundDecimals(total * (amount / 100));
+        console.log(`📊 Percent (${code}): -$${discountAmount}`);
+      }
+  
+      if (rules?.limit && discountAmount > rules.limit) {
+        console.log(`🔒 Applying limit for ${code}: was $${discountAmount}, capped to $${rules.limit}`);
+        discountAmount = rules.limit;
+      }
+  
+      // ✅ Cap if it would go negative
+      if (discountAmount > total) {
+        const usable = roundDecimals(total);
+        const overage = roundDecimals(discountAmount - usable);
+        discountAmount = usable;
+  
+        if (type === 'currency') {
+          console.log(`💳 Capping ${code} to avoid negative total: using $${usable}, crediting $${overage}`);
+          creditsToUser += overage;
+        }
+      }
+  
+      total -= discountAmount;
+      results.push({ code, uuid, amount: discountAmount });
+    }
+
+    const subtotalAfterDiscounts = total;
+
+    return {
+        results,
+        failures,
+        creditsToUser: roundDecimals(creditsToUser),
+        subtotalAfterDiscounts
+    };
+}  
+
+function renderAppliedCoupons() {
+    const container = document.getElementById("applied-coupons-container");
+    container.innerHTML = "";
+  
+    const codes = window.bookingGlobals.discountCodes || [];
+  
+    if (codes.length === 0) {
+      container.classList.add("hide");
+      return;
+    }
+  
+    container.classList.remove("hide");
+  
+    codes.forEach(code => {
+      const option = document.createElement("div");
+      option.className = "selected-option";
+      option.innerHTML = `
+        <div>${code}</div>
+        <div class="select-option-close-out" data-code="${code}">
+          <div class="x-icon-container">
+            <div class="x-icon-line-vertical"></div>
+            <div class="x-icon-line-horizontal"></div>
+          </div>
+        </div>
+      `;
+      container.appendChild(option);
+    });
+  
+    // ✅ Attach click handlers after rendering
+    container.querySelectorAll(".select-option-close-out").forEach(el => {
+      el.addEventListener("click", async () => {
+        const code = el.getAttribute("data-code");
+        if (!code) return;
+  
+        // Remove the coupon from appliedCertificates
+        window.bookingGlobals.appliedCertificates = (window.bookingGlobals.appliedCertificates || []).filter(c => c.code !== code);
+  
+        // Recalculate discounts & credits
+        const rate = window.bookingGlobals.final_rate;
+        const hours = window.bookingGlobals.booking_duration / 60;
+  
+        const {
+          results,
+          failures,
+          creditsToUser,
+          subtotalAfterDiscounts
+        } = applyStackedDiscounts(window.bookingGlobals.appliedCertificates, rate, hours);
+  
+        const currentCredits = window.bookingGlobals.credits || 0;
+        window.bookingGlobals.discountTotals = results.map(r => r.amount);
+        window.bookingGlobals.discountCodes = results.map(r => r.code);
+        window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
+        window.bookingGlobals.creditsToUser = creditsToUser || 0;
+        const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
+  
+        await updatePaymentIntent();
+        renderAppliedCoupons();
+        populateFinalSummary();
+      });
     });
 }  
 
@@ -1421,10 +1942,12 @@ function initCalendar() {
         e.preventDefault();
         if (!nextBtn.classList.contains("disabled")) calendar.changeMonth(1);
     });
+
+    checkScrollHelperVisibility();
 }
 
 function generateExtendedTimeOptions() {
-    const container = document.querySelector('.extended-time .pill-button-flex-container');
+        const container = document.querySelector('.extended-time .pill-button-flex-container');
     const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
 
     container.innerHTML = '';
@@ -1529,11 +2052,9 @@ async function initBookingConfig(listingId, locationId) {
         window.bookingGlobals.booking_start = OPEN_TIME;
         window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
         window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
-        window.bookingGlobals.booking_rate = FULL_RATE;
-        window.bookingGlobals.booking_total = (DEFAULT_DURATION * FULL_RATE);
-        window.bookingGlobals.booking_discount = null;
+        window.bookingGlobals.final_rate = FULL_RATE;
 
-        // --- Pull Activities ---
+        // OLD PULL ACTIVITIES
         const { data: activitiesData, error: activitiesError } = await window.supabase
         .from("listings")
         .select("activities, details")
@@ -1543,14 +2064,18 @@ async function initBookingConfig(listingId, locationId) {
         if (activitiesError || !activitiesData) {
         console.error("❌ Failed to fetch booking types:", activitiesError);
         } else {
-            const flat = {};
-            for (const group of Object.values(activitiesData.activities || {})) {
-                for (const [key, obj] of Object.entries(group)) {
-                    flat[key] = obj;
-                }
-            }
+            const flat = activitiesData.activities || {};
+
             window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
-            bookingTypes = flat;
+
+            bookingTypes = {};
+            for (const [uuid, obj] of Object.entries(flat)) {
+            if (obj?.title) {
+                bookingTypes[obj.title] = { id: uuid, ...obj };
+            }
+            }
+            console.log("✅ bookingTypes:", bookingTypes);
+
             const capacityConfig = activitiesData.details?.capacity || {};
             window.capacitySettings = {
                 min: capacityConfig.min ?? 1,
@@ -1568,28 +2093,17 @@ async function initBookingConfig(listingId, locationId) {
             console.log("👥 Loaded capacity:", window.listingCapacity);
         }
 
-
-
-            console.log("🧩 Booking Config:", {
-                MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
-                BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
-                minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
-            });
+        console.log("🧩 Booking Config:", {
+            MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
+            BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
+            minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
+        });
 
         // --- Pull Events ---
-            const { data: eventsData, error: eventsError } = await window.supabase
-            .from("events")
-            .select("start, end")
-            .eq("location_id", locationId)
-            .gte("start", minDate.toISOString())
-            .lte("end", maxDate.toISOString());
+        const eventsData = await fetchEventsForRange(minDate, maxDate);
+        window.bookingEvents = eventsData;
+        console.log("📅 Booking Events:", window.bookingEvents);
         
-            if (eventsError) {
-                console.error("❌ Failed to fetch booking events:", eventsError);
-            } else {
-                window.bookingEvents = eventsData || [];
-                console.log("📅 Booking Events:", window.bookingEvents);
-            }
         
         // --- Pull Special Rates ---
             const { data: ratesData, error: ratesError } = await window.supabase
@@ -1632,6 +2146,29 @@ async function initBookingConfig(listingId, locationId) {
     }
 }
 
+function prefillContactInfoIfLoggedIn() {
+    if (!window.supabaseUser) return;
+  
+    const { email, phone, first_name, last_name } = window.supabaseUser;
+  
+    const setField = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = value || '';
+        el.setAttribute('readonly', 'readonly'); // disable editing
+        el.classList.add('readonly'); // optional for styling
+      }
+    };
+  
+    setField("booking-email", email);
+    setField("booking-phone", phone);
+    setField("booking-first-name", first_name);
+    setField("booking-last-name", last_name);
+  
+    window.bookingGlobals.user_uuid_override = window.supabaseUser.id;
+    window.bookingGlobals.customer_id = window.supabaseUser?.customer_id || null;
+    window.bookingGlobals.credits = window.supabaseUser?.credits || 0;
+}
 
 // ================================== //
 // ========  NEW FUNCTIONS  ========= //
@@ -1687,6 +2224,7 @@ window.releaseTempHold = async function () {
     }
 };
 
+// Booking Activities
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
       .sort((a, b) => b[1].count - a[1].count)
@@ -1772,10 +2310,60 @@ function renderSelectedOptions() {
   
     container.classList.toggle('hide', selectedActivities.length === 0);
     updatePurposeHiddenField();
-    window.bookingGlobals.activities = [...selectedActivities];
+    const selected = selectedActivities
+    .map(title => {
+        const data = bookingTypes[title];
+        if (!data) return null;
+        return {
+        id: data.id,
+        ...data,
+        count: (data.count || 0) + 1
+        };
+    })
+    .filter(Boolean);
 
-}
+    const other = selectedActivities
+    .filter(title => title.startsWith("Other:"))
+    .map(val => val.replace(/^Other:\s*/i, "").trim());
+
+    const activitiesUUID = selected.map(a => a.id);
+
+    const activitiesPayload = selected.reduce((acc, activity) => {
+    acc[activity.id] = {
+        ...activity
+    };
+    delete acc[activity.id].id; // optional: remove ID from value if Make expects only key
+    return acc;
+    }, {});
+
+    window.bookingGlobals.activities = {
+    selected,
+    other
+    };
+    window.bookingGlobals.activitiesUUID = activitiesUUID;
+    window.bookingGlobals.activitiesPayload = activitiesPayload;
+};
+
+function updatePurposeHiddenField() {
+    updateFormField('purpose', selectedActivities.join(', '));
   
+    const selected = selectedActivities
+      .map(title => {
+        const data = bookingTypes[title];
+        if (!data) return null;
+        return { id: data.id, ...data, count: (data.count || 0) + 1 };
+      })
+      .filter(Boolean);
+  
+    const other = selectedActivities
+      .filter(title => title.startsWith("Other:"))
+      .map(val => val.replace(/^Other:\s*/i, "").trim());
+  
+    window.bookingGlobals.activities = {
+      selected,
+      other
+    };
+}  
 
 
 // ================================== //
@@ -1800,7 +2388,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         window.bookingGlobals.booking_duration = duration;
         window.bookingGlobals.booking_end = end;
-        window.bookingGlobals.booking_total = (duration / 60) * window.bookingGlobals.booking_rate;
+        window.bookingGlobals.subtotal = (duration / 60) * window.bookingGlobals.final_rate;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via duration-slider`);
     
         updateDurationDisplay(duration);
         updateBookingSummary();
@@ -1829,7 +2418,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
         window.bookingGlobals.booking_duration = duration;
         window.bookingGlobals.booking_end = end;
-        window.bookingGlobals.booking_total = (duration / 60) * window.bookingGlobals.booking_rate;
+        window.bookingGlobals.subtotal = (duration / 60) * window.bookingGlobals.final_rate;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via extended-time`);
     
         updateDurationDisplay(duration);
         updateBookingSummary();
@@ -1902,7 +2492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('beforeunload', window.releaseTempHold);
 
     // Step 1 "Continue" → place temporary hold
-    document.getElementById('step-1-continue')?.addEventListener('click', async () => {
+    document.getElementById('continue-to-details')?.addEventListener('click', async () => {
         console.log("🟢 Step 1 Continue clicked");
         clearInterval(countdownInterval);
         await releaseTempHold();
@@ -1947,18 +2537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dayEnd
         });
     
-        const { data: events, error } = await window.supabase
-            .from("events")
-            .select("start, end")
-            .eq("location_id", LOCATION_UUID)
-            .gte("start", dayStart)
-            .lt("end", dayEnd);
-    
-        if (error || !events) {
-            console.error("❌ Supabase event fetch error:", error);
-            alert("Could not validate availability. Please try again.");
-            return;
-        }
+        const events = await fetchEventsForDate(window.bookingGlobals.booking_date);
     
         console.log("📦 Events for selected day:", events);
     
@@ -2036,41 +2615,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     
         // 🟢 6. Transition to Step 2
-        console.log("✅ Slot confirmed. Proceeding to Step 2.");
-        document.getElementById("date-cal")?.classList.add("hide");
-        document.querySelector(".booking-bg-col")?.classList.remove("right");
-        document.getElementById("duration-and-time")?.classList.add("hide");
-        document.getElementById("attendees-and-type")?.classList.remove("hide");
-        document.getElementById("booking-summary-wrapper")?.classList.add("dark");
-        document.querySelector(".booking-summary-button-container")?.classList.add("hide");
-        document.getElementById("reserve-timer")?.classList.remove("hide");
-        document.getElementById("contact-info")?.classList.remove("hide");
-        document.getElementById("summary-clicker")?.classList.remove("hidden");
-    
+        prefillContactInfoIfLoggedIn();
         startCountdownTimer();
-    });
-    
-    // Step 2 "Back" → release hold
-    document.getElementById('summary-clicker')?.addEventListener('click', async () => {
-    if (!document.getElementById("booking-summary-wrapper")?.classList.contains("dark")) return;
-
-    clearInterval(countdownInterval);
-    await releaseTempHold();
-
-    document.getElementById("date-cal")?.classList.remove("hide");
-    document.querySelector(".booking-bg-col")?.classList.add("right");
-    document.getElementById("duration-and-time")?.classList.remove("hide");
-    document.getElementById("attendees-and-type")?.classList.add("hide");
-    document.getElementById("booking-summary-wrapper")?.classList.remove("dark");
-    document.querySelector(".booking-summary-button-container")?.classList.remove("hide");
-    document.getElementById("reserve-timer")?.classList.add("hide");
-    document.getElementById("contact-info")?.classList.add("hide");
-    document.getElementById("summary-clicker")?.classList.add("hidden");
+        goToDetails();
     });
 
     // Countdown logic
-    let countdownInterval = null;
-
     function startCountdownTimer(durationSeconds = 600) {
     const display = document.getElementById('booking-total-countdown');
     const reserveWrapper = document.querySelector('.booking-reserve-container');
@@ -2165,8 +2715,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateAttendeeButtons();
         }
     });
-    
-    
 
     document.addEventListener("DOMContentLoaded", () => {
         countDisplay.textContent = attendeeCount;
@@ -2174,7 +2722,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updatePurposeHiddenField();
     });
 
-    document.getElementById("confirm-and-pay")?.addEventListener("click", async (e) => {
+    document.getElementById("continue-to-payment")?.addEventListener("click", async (e) => {
         e.preventDefault();
       
         const button = e.currentTarget;
@@ -2223,14 +2771,105 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
         }
-      
+
+        // 🔍 Check if user exists by email (if not logged in)
+        document.getElementById("credits-section")?.classList.add("hidden");
+
+        if (!window.supabaseUser?.id) {
+            const email = document.getElementById("booking-email")?.value?.trim().toLowerCase();
+            if (email) {
+            const { data, error } = await window.supabase
+                .from("users")
+                .select("uuid, credits, customer_id")
+                .ilike("email", email) // case-insensitive match
+                .maybeSingle();
+        
+            if (error) {
+                console.error("❌ Error looking up user by email:", error);
+            } else if (data?.uuid) {
+                console.log("👤 Matched existing user:", data);
+                window.bookingGlobals.user_uuid_override = data.uuid;
+                window.bookingGlobals.customer_id = data.customer_id;
+                window.bookingGlobals.credits = data.credits || 0;
+        
+                if (data.credits > 0) {
+                document.getElementById("credits-section")?.classList.remove("hidden");
+                document.getElementById("final-summary-credit-amount").textContent = `$${data.credits.toFixed(2)}`;
+                }
+            }
+            }
+        }
+
         // ✅ Proceed with payment intent
         await requestPaymentIntent();
-        goToStep3();
+        goToPayment();
     });
+
+    document.getElementById("use-credits")?.addEventListener("click", async () => {
+        const button = document.getElementById("use-credits");
+        const icon = button.querySelector(".btn-check-icon");
+        const label = button.querySelector("div:nth-child(2)");
+        const active = button.classList.contains("active");
+      
+        const rate = window.bookingGlobals.final_rate;
+        const hours = window.bookingGlobals.booking_duration / 60;
+        const discount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
+      
+        const rawSubtotal = rate * hours;
+        const adjustedSubtotal = Math.max(0, rawSubtotal - discount);
+      
+        const credits = window.bookingGlobals.credits || 0;
+        const applied = Math.min(adjustedSubtotal, credits);
+      
+        if (active) {
+          // ❌ Removing credits
+          label.textContent = "Removing credits...";
+          window.bookingGlobals.creditsApplied = 0;
+      
+          await updatePaymentIntent();
+      
+          button.classList.remove("active");
+          icon.classList.add("hide");
+          label.textContent = "Use your credits for this booking";
+        } else {
+
+          // ✅ Applying credits
+          label.textContent = "Applying credits...";
+          window.bookingGlobals.creditsApplied = applied;
+      
+          let baseSubtotal = rawSubtotal - discount - applied;
+          let taxRate = window.bookingGlobals.taxRate || 0;
+          let baseTaxes = roundDecimals(baseSubtotal * (taxRate / 100));
+          let total = roundDecimals(baseSubtotal + baseTaxes);
+      
+          if (total > 0 && total < 0.5) {
+            const overage = roundDecimals(0.5 - total);
+            total = 0.5;
+            window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + overage;
+            alert(`A small remaining balance has been rounded up to $0.50. The extra $${overage.toFixed(2)} has been saved as account credit.`);
+          }
+      
+          if (total === 0) {
+            document.getElementById("confirm-with-stripe")?.classList.add("hide");
+            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
+          } else {
+            window.bookingGlobals.creditsApplied = applied;
+            await updatePaymentIntent();
+          }
+      
+          button.classList.add("active");
+          icon.classList.remove("hide");
+          label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
+          //document.getElementById("use-credits").button.querySelector("div:nth-child(2)").textContent = `$${g.creditsApplied} in credits have been applied`;
+        }
+      
+        populateFinalSummary();
+    });  
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
         e.preventDefault();
+
+        if (e.currentTarget.classList.contains("processing")) return;
       
         const clientSecret = window.bookingGlobals.client_secret;
         const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
@@ -2239,6 +2878,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const { cardNumber } = window.cardElements;
       
+        setButtonText("#pay-now-btn", "Processing Payment...", true);
+
         const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
           payment_method: {
             card: cardNumber,
@@ -2248,16 +2889,271 @@ document.addEventListener('DOMContentLoaded', async () => {
               phone
             }
           },
-          setup_future_usage: "off_session" // ✅ Save for future automatic charges
+          setup_future_usage: "off_session"
         });
       
         if (error) {
           console.error("❌ Payment error:", error.message);
           alert("Payment failed: " + error.message);
+          setButtonText("#pay-now-btn", "Pay with Card", false);
         } else if (paymentIntent?.status === "succeeded") {
-          console.log("✅ Payment succeeded");
-          showBookingConfirmation();
+            setButtonText("#pay-now-btn", "Creating Booking...", true);
+            console.log("✅ Payment succeeded");
+            await submitFinalBooking();
         }
-    });              
+          
+    }); 
+    
+    document.getElementById("confirm-booking")?.addEventListener("click", async (e) => {
+        if (e.currentTarget.classList.contains("processing")) return;
+        setButtonText("#confirm-booking", "Creating Booking...", true);
+        await submitFinalBooking();
+    });
+    
+    document.getElementById("reservation-page-btn")?.addEventListener("click", () => {
+            const id = window.bookingGlobals.booking_uuid;
+            if (id) {
+            window.location.href = `https://photoloft.co/b?booking=${id}`;
+            }
+    });
+
+    const couponInput = document.getElementById("coupon-code");
+    const applyButton = document.getElementById("apply-coupon");
+
+    couponInput.addEventListener("input", () => {
+      applyButton.classList.toggle("disabled", !couponInput.value.trim());
+      const formatted = couponInput.value.toUpperCase().replace(/\s/g, "");
+      couponInput.value = formatted;
+    });
+
+    couponInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyButton.click();
+      }
+    });
+
+    applyButton.addEventListener("click", async () => {
+        if (applyButton.classList.contains("disabled")) return;
+      
+        const code = couponInput.value.trim().toLowerCase();
+        const listingId = LISTING_UUID;
+        const userId = window.supabaseUser?.id || window.bookingGlobals.user_uuid_override || null;
+        const bookingDate = window.bookingGlobals.booking_date;
+        const today = luxon.DateTime.now().setZone(window.TIMEZONE);
+      
+        const { data: certsRaw, error } = await window.supabase
+          .from("certificates")
+          .select("*")
+          .eq("code", code);
+      
+        if (error) {
+          console.error("❌ Supabase error:", error);
+          alert("Something went wrong checking the code.");
+          return;
+        }
+      
+        const certs = (certsRaw || []).filter(c =>
+          !c.listings || (Array.isArray(c.listings) && c.listings.includes(listingId))
+        );
+      
+        if (!certs.length) {
+          alert("Invalid or expired coupon.");
+          return;
+        }
+      
+        const cert = certs[0];
+        const rules = cert.rules || {};
+        const discount = cert.discount || {};
+      
+        const upperCode = code.toUpperCase();
+        const existing = (window.bookingGlobals.appliedCertificates || []).find(c => c.code === upperCode);
+        if (existing) {
+          alert("You’ve already applied this coupon.");
+          return;
+        }
+      
+        if (!rules.stackable && (bookingGlobals.base_rate !== bookingGlobals.final_rate || appliedCertificates.length > 0)) {
+            alert("This coupon cannot be used with other discounts.");
+            return;
+        }
+      
+        // ✅ Date check
+        if (rules?.['date-limit']) {
+          const { type, start, end } = rules['date-limit'];
+          const checkDate = type === "use" ? luxon.DateTime.fromJSDate(bookingDate) : today;
+          const startDate = luxon.DateTime.fromISO(start);
+          const endDate = luxon.DateTime.fromISO(end);
+      
+          if (checkDate < startDate || checkDate > endDate) {
+            alert("This coupon is not valid for the selected booking date.");
+            return;
+          }
+        }
+      
+        // ✅ User check
+        if (Array.isArray(rules.users) && userId && !rules.users.includes(userId)) {
+          alert("This coupon is not valid for your account.");
+          return;
+        }
+      
+        const rate = window.bookingGlobals.final_rate;
+        const hours = window.bookingGlobals.booking_duration / 60;
+        const currentCredits = window.bookingGlobals.credits || 0;
+        const creditsEnabled = document.getElementById("use-credits")?.classList.contains("active");
+        const appliedCredits = window.bookingGlobals.creditsApplied || 0;
+        const currentDiscount = (window.bookingGlobals.discountTotals || []).reduce((a, b) => a + b, 0);
+        const currentBalance = Math.max(0, (rate * hours) - currentDiscount - appliedCredits);
+      
+        // 🛑 Stop if balance is already zero and this is a money-based coupon
+        if (currentBalance <= 0 && ['currency', 'minutes', 'percent'].includes(discount.type)) {
+          alert("This coupon can't be applied because your current balance is already covered.");
+          return;
+        }
+      
+        // ✅ Push full object
+        window.bookingGlobals.appliedCertificates ??= [];
+        window.bookingGlobals.appliedCertificates.push({
+          code: upperCode,
+          uuid: cert.uuid,
+          type: discount.type,
+          amount: discount.amount,
+          rules
+        });
+      
+        console.log("🆕 Coupon added:", {
+          code: upperCode,
+          type: discount.type,
+          amount: discount.amount,
+          rules
+        });
+      
+        console.log("🧮 Recalculating all discounts from:", window.bookingGlobals.appliedCertificates);
+      
+        const {
+          results,
+          failures,
+          creditsToUser,
+          subtotalAfterDiscounts
+        } = applyStackedDiscounts(
+          window.bookingGlobals.appliedCertificates,
+          rate,
+          hours
+        );
+      
+        window.bookingGlobals.discountTotals = results.map(r => r.amount);
+        window.bookingGlobals.discountCodes = results.map(r => r.code);
+        window.bookingGlobals.discountUUIDs = results.map(r => r.uuid);
+        window.bookingGlobals.creditsToUser = creditsToUser > 0 ? creditsToUser : 0;
+      
+        renderAppliedCoupons();
+
+        // 🧮 Adjust creditsApplied to avoid over-discounting
+        if (creditsEnabled && currentCredits > 0) {
+            const adjusted = Math.min(subtotalAfterDiscounts, currentCredits);
+            if (adjusted < appliedCredits) {
+              const diff = appliedCredits - adjusted;
+              alert(`Your applied credits were reduced by $${diff.toFixed(2)} to make room for coupon savings.`);
+            }
+            window.bookingGlobals.creditsApplied = adjusted;
+          }
+          
+      
+        if (creditsToUser > 0) {
+          alert(`Only part of "${upperCode}" was applied. $${creditsToUser.toFixed(2)} has been saved as account credit.`);
+        }
+      
+        // Show alert for any failed coupons (only the last one just added)
+        const failed = failures.find(f => f.code === upperCode);
+        if (failed) {
+          alert(`Coupon ${upperCode} could not be applied: ${failed.reason}`);
+          window.bookingGlobals.appliedCertificates = window.bookingGlobals.appliedCertificates.filter(c => c.code !== upperCode);
+          return;
+        }
+      
+        const total = window.bookingGlobals.total;
+      
+        if (total === 0) {
+          document.getElementById("confirm-with-stripe")?.classList.add("hide");
+          document.getElementById("confirm-without-stripe")?.classList.remove("hide");
+          populateFinalSummary();
+          return;
+        }
+      
+        await updatePaymentIntent();
+        populateFinalSummary();
+        couponInput.value = "";
+    });
+      
+
+    // BOOKING SUMMARY AFFECTS EXPANDED MARGIN
+    function updateExpandedMargin() {
+      const nav = document.getElementById("booking-summary-wrapper");
+      if (!nav) return;
   
+      const navHeight = nav.offsetHeight;
+  
+      document.querySelectorAll(".expanded").forEach(el => {
+        el.style.marginBottom = `${navHeight}px`;
+      });
+    }
+  
+    const bookingNav = document.getElementById("booking-summary-wrapper");
+
+    if (bookingNav) {
+      const resizeObserver = new ResizeObserver(updateExpandedMargin);
+      resizeObserver.observe(bookingNav);
+  
+      // On hover: show line items
+      bookingNav.addEventListener("mouseenter", () => {
+        const paymentSummary = document.getElementById("payment-summary");
+        if (paymentSummary && !paymentSummary.classList.contains("hide")) {
+          document.querySelectorAll(".line-items").forEach(el => el.classList.remove("hide"));
+        }
+      });
+  
+      // On mouse leave: hide line items
+      bookingNav.addEventListener("mouseleave", () => {
+        const paymentSummary = document.getElementById("payment-summary");
+        if (paymentSummary && !paymentSummary.classList.contains("hide")) {
+          document.querySelectorAll(".line-items").forEach(el => el.classList.add("hide"));
+        }
+      });
+    }  
+  
+    updateExpandedMargin(); // Initial run
+
+    // SCROLL HELPER
+    setupScrollHelperListener();
+
+    document.getElementById("summary-scroll-helper")?.addEventListener("click", (e) => {
+      e.preventDefault();
+    
+      const activeSection = document.querySelector(".step-container:not(.hidden)");
+      if (!activeSection) return;
+    
+      const isMobile = window.innerWidth <= 991;
+      const scrollable = isMobile
+        ? activeSection
+        : activeSection.querySelector(".expanded");
+    
+      if (!scrollable) return;
+    
+      scrollable.scrollTo({
+        top: scrollable.scrollHeight,
+        behavior: "smooth"
+      });
+    });
+    
+});
+
+window.addEventListener("resize", () => {
+    const nav = document.getElementById("booking-summary-wrapper");
+    if (!nav) return;
+  
+    const navHeight = nav.offsetHeight;
+  
+    document.querySelectorAll(".expanded").forEach(el => {
+      el.style.marginBottom = `${navHeight}px`;
+    });
 });
