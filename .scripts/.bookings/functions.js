@@ -452,6 +452,8 @@ async function goToDateTime() {
 
     updateBookingSummary();
     clearInterval(countdownInterval);
+    checkScrollHelperVisibility();
+
 }
 
 async function goToDetails() {
@@ -468,6 +470,8 @@ async function goToDetails() {
     // Summary - Sections
     document.getElementById("reservation-summary")?.classList.remove("hide");
     document.getElementById("payment-summary")?.classList.add("hide");
+    checkScrollHelperVisibility();
+
 }
 
 async function goToPayment() {
@@ -485,6 +489,8 @@ async function goToPayment() {
   
     await populateFinalSummary();
     setupStripeElements();
+    checkScrollHelperVisibility();
+
 }  
 
 function showBookingConfirmation() {
@@ -715,20 +721,25 @@ function setButtonText(id, text, isProcessing = false) {
 }
 
 function checkScrollHelperVisibility() {
+    const helper = document.getElementById("summary-scroll-helper");
+    if (!helper) return;
+  
     const activeSection = document.querySelector(".step-container:not(.hidden)");
     const expanded = activeSection?.querySelector(".expanded");
-    const scrollHelper = document.getElementById("summary-scroll-helper");
   
-    if (!expanded || !scrollHelper) return;
+    if (!expanded) return;
   
-    const lastChild = expanded.lastElementChild;
-    if (!lastChild) return;
+    const rect = expanded.getBoundingClientRect();
+    const bottom = rect.bottom;
+    const windowHeight = window.innerHeight;
   
-    const rect = lastChild.getBoundingClientRect();
-    const isVisible = rect.bottom <= window.innerHeight;
+    if (bottom <= windowHeight) {
+      helper.classList.add("hide");
+    } else {
+      helper.classList.remove("hide");
+    }
+  }
   
-    scrollHelper.classList.toggle("hide", isVisible);
-}
   
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
