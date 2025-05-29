@@ -435,6 +435,7 @@ function updateAttendeeButtons() {
 
 async function goToDateTime() {
     await releaseTempHold();
+    setButtonText("#continue-to-details", "Continue to Details", false);
     
     // Section
     document.getElementById("date-time-section")?.classList.remove("hidden");
@@ -457,6 +458,7 @@ async function goToDateTime() {
 }
 
 async function goToDetails() {
+    setButtonText("#continue-to-payment", "Continue to Payment", false);
     // Section
     document.getElementById("date-time-section")?.classList.add("hidden");
     document.getElementById("details-section")?.classList.remove("hidden");
@@ -1580,6 +1582,44 @@ async function updatePaymentIntent() {
       console.error("❌ Failed to update payment intent:", err);
     }
 }  
+
+async function confirmBookingWithStripe() {
+    const clientSecret = window.bookingGlobals.client_secret;
+    const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
+    const email = document.getElementById("booking-email")?.value;
+    const phone = document.getElementById("booking-phone")?.value;
+    const { cardNumber } = window.cardElements;
+  
+    setButtonText("#pay-now-btn", "Processing Payment...", true);
+  
+    try {
+      const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardNumber,
+          billing_details: { name, email, phone }
+        },
+        setup_future_usage: "off_session"
+      });
+  
+      if (error) {
+        console.error("❌ Payment error:", error.message);
+        alert("Payment failed: " + error.message);
+        setButtonText("#pay-now-btn", "Pay with Card", false);
+        return;
+      }
+  
+      if (paymentIntent?.status === "succeeded") {
+        console.log("✅ Payment succeeded");
+        setButtonText("#pay-now-btn", "Creating Booking...", true);
+        await submitFinalBooking(); // 🔁 Your booking submission logic
+      }
+    } catch (err) {
+      console.error("❌ Unexpected Stripe error:", err);
+      alert("Something went wrong with payment.");
+      setButtonText("#pay-now-btn", "Pay with Card", false);
+    }
+}  
+  
 
 function applyStackedDiscounts(certs = [], finalRate, hours) {
     const totalBase = finalRate * hours;
