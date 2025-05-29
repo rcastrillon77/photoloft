@@ -685,25 +685,11 @@ async function populateFinalSummary() {
     const shouldHideSubtotal = rateDiff <= 0 && !couponCode && !creditsAmount;
     document.getElementById("final-booking-summary-subtotal")?.classList.toggle("hide", shouldHideSubtotal);
     document.querySelector(".summary-divider")?.classList.toggle("hide", shouldHideSubtotal);
-     
-    // ✅ Show/hide Stripe button depending on total
-    const stripeBtn = document.getElementById("confirm-with-stripe");
-    const confirmBtn = document.getElementById("confirm-without-stripe");
-
-    if (total === 0) {
-        stripeBtn?.classList.add("hide");
-        confirmBtn?.classList.remove("hide");
-        console.log("✅ Total is $0 — showing confirm-only button. (from populateFinalSummary)");
-    } else {
-        stripeBtn?.classList.remove("hide");
-        confirmBtn?.classList.add("hide");
-    }
 
     const subtotal = globals.subtotal || 0;
     console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via populateFinalSummary`);
     const tax = globals.taxTotal || 0;
     const total = globals.total || 0;
-
   
     document.querySelector("#final-booking-summary-subtotal .summary-line-item-price").textContent = `$${subtotal.toFixed(2)}`;
     document.querySelector("#final-booking-summary-taxes .summary-line-item").textContent = `Tax Rate (${taxRate.toFixed(2)}%)`;
