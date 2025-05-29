@@ -2727,6 +2727,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // 🔍 Check if user exists by email (if not logged in)
+        document.getElementById("credits-section")?.classList.add("hidden");
+
         if (!window.supabaseUser?.id) {
             const email = document.getElementById("booking-email")?.value?.trim().toLowerCase();
             if (email) {
@@ -2873,7 +2875,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const applyButton = document.getElementById("apply-coupon");
 
     couponInput.addEventListener("input", () => {
-    applyButton.classList.toggle("disabled", !couponInput.value.trim());
+      applyButton.classList.toggle("disabled", !couponInput.value.trim());
+      const formatted = couponInput.value.toUpperCase().replace(/\s/g, "");
+      couponInput.value = formatted;
+    });
+
+    couponInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyButton.click();
+      }
     });
 
     applyButton.addEventListener("click", async () => {
@@ -3025,6 +3036,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         await updatePaymentIntent();
         populateFinalSummary();
+        couponInput.value = "";
     });
       
 
@@ -3076,3 +3088,8 @@ window.addEventListener("resize", () => {
       el.style.marginBottom = `${navHeight}px`;
     });
 });
+
+ // SCROLL HELPER
+ window.addEventListener("DOMContentLoaded", checkScrollHelperVisibility);
+ window.addEventListener("scroll", checkScrollHelperVisibility);
+ window.addEventListener("resize", checkScrollHelperVisibility);
