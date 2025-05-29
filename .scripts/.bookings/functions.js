@@ -715,7 +715,7 @@ function setButtonText(id, text, isProcessing = false) {
 }
 
 function checkScrollHelperVisibility() {
-    const activeSection = document.querySelector(".section:not(.hidden)");
+    const activeSection = document.querySelector(".step-container:not(.hidden)");
     const expanded = activeSection?.querySelector(".expanded");
     const scrollHelper = document.getElementById("summary-scroll-helper");
   
