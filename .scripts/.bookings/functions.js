@@ -1865,6 +1865,8 @@ function initCalendar() {
         e.preventDefault();
         if (!nextBtn.classList.contains("disabled")) calendar.changeMonth(1);
     });
+
+    checkScrollHelperVisibility();
 }
 
 function generateExtendedTimeOptions() {
