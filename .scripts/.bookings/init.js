@@ -755,6 +755,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }  
   
     updateExpandedMargin(); // Initial run
+
+    // SCROLL HELPER
+    setupScrollHelperListener();
+
+    document.getElementById("summary-scroll-helper")?.addEventListener("click", (e) => {
+      e.preventDefault();
+    
+      const activeSection = document.querySelector(".step-container:not(.hidden)");
+      if (!activeSection) return;
+    
+      const isMobile = window.innerWidth <= 991;
+      const scrollable = isMobile
+        ? activeSection
+        : activeSection.querySelector(".expanded");
+    
+      if (!scrollable) return;
+    
+      scrollable.scrollTo({
+        top: scrollable.scrollHeight,
+        behavior: "smooth"
+      });
+    });
+    
 });
 
 window.addEventListener("resize", () => {
@@ -767,8 +790,3 @@ window.addEventListener("resize", () => {
       el.style.marginBottom = `${navHeight}px`;
     });
 });
-
- // SCROLL HELPER
- window.addEventListener("DOMContentLoaded", checkScrollHelperVisibility);
- window.addEventListener("scroll", checkScrollHelperVisibility);
- window.addEventListener("resize", checkScrollHelperVisibility);
