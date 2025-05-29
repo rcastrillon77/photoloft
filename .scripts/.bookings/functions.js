@@ -1530,8 +1530,8 @@ async function updatePaymentIntent() {
     const confirmBtn = document.getElementById("confirm-without-stripe");
   
     if (total === 0) {
-      stripeBtns?.classList.add("hidden");
-      confirmBtn?.classList.remove("hidden");
+      stripeBtns?.classList.add("hide");
+      confirmBtn?.classList.remove("hide");
       console.log("✅ Total is $0 — showing confirm-only button.");
       return;
     } else {
