@@ -816,7 +816,7 @@ function checkScrollHelperVisibility() {
     const scrollHeight = scrollable.scrollHeight;
     const clientHeight = scrollable.clientHeight;
   
-    const atBottom = scrollTop + clientHeight >= scrollHeight - 4; // buffer to account for rounding
+    const atBottom = scrollTop + clientHeight >= scrollHeight - 32; // buffer to account for rounding
   
     if (atBottom) {
       helper.classList.add("hide");
