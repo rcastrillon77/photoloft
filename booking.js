@@ -824,8 +824,17 @@ function checkScrollHelperVisibility() {
       helper.classList.remove("hide");
     }
 }
+
+function setupScrollHelperListener() {
+    const stepContainers = document.querySelectorAll(".step-container");
   
+    stepContainers.forEach(container => {
+      container.addEventListener("scroll", checkScrollHelperVisibility);
+    });
   
+    window.addEventListener("resize", checkScrollHelperVisibility);
+    document.addEventListener("DOMContentLoaded", checkScrollHelperVisibility);
+}  
   
 // ** BOOKING SUMMARY ** //
 function updateBookingSummary() {
