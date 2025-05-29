@@ -802,20 +802,29 @@ function checkScrollHelperVisibility() {
     if (!helper) return;
   
     const activeSection = document.querySelector(".step-container:not(.hidden)");
-    const expanded = activeSection?.querySelector(".expanded");
+    if (!activeSection) return;
   
-    if (!expanded) return;
+    // Determine scrollable container
+    const isMobile = window.innerWidth <= 991; // Tablet and below
+    const scrollable = isMobile
+      ? activeSection
+      : activeSection.querySelector(".expanded");
   
-    const rect = expanded.getBoundingClientRect();
-    const bottom = rect.bottom;
-    const windowHeight = window.innerHeight;
+    if (!scrollable) return;
   
-    if (bottom <= windowHeight) {
+    const scrollTop = scrollable.scrollTop;
+    const scrollHeight = scrollable.scrollHeight;
+    const clientHeight = scrollable.clientHeight;
+  
+    const atBottom = scrollTop + clientHeight >= scrollHeight - 4; // buffer to account for rounding
+  
+    if (atBottom) {
       helper.classList.add("hide");
     } else {
       helper.classList.remove("hide");
     }
-  }
+}
+  
   
   
 // ** BOOKING SUMMARY ** //
