@@ -487,19 +487,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + overage;
             alert(`A small remaining balance has been rounded up to $0.50. The extra $${overage.toFixed(2)} has been saved as account credit.`);
           }
-      
-          if (total === 0) {
-            document.getElementById("confirm-with-stripe")?.classList.add("hide");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
-          } else {
-            window.bookingGlobals.creditsApplied = applied;
-            await updatePaymentIntent();
-          }
+  
+          window.bookingGlobals.creditsApplied = applied;
+          await updatePaymentIntent();
       
           button.classList.add("active");
           icon.classList.remove("hide");
           label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
-          //document.getElementById("use-credits").button.querySelector("div:nth-child(2)").textContent = `$${g.creditsApplied} in credits have been applied`;
         }
       
         populateFinalSummary();
@@ -683,14 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       
         const total = window.bookingGlobals.total;
-      
-        if (total === 0) {
-          document.getElementById("confirm-with-stripe")?.classList.add("hide");
-          document.getElementById("confirm-without-stripe")?.classList.remove("hide");
-          populateFinalSummary();
-          return;
-        }
-      
+
         await updatePaymentIntent();
         populateFinalSummary();
         couponInput.value = "";
