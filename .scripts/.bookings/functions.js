@@ -1459,37 +1459,40 @@ async function requestPaymentIntent() {
 
     try {
         const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-
-        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);        
-
+    
+        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);
+    
         const data = await response.json();
-
+    
+        // ✅ Store Make.com-confirmed totals
         window.bookingGlobals.client_secret = data.client_secret;
         window.bookingGlobals.payment_intent_id = data.payment_intent_id;
         window.bookingGlobals.transaction_uuid = data.transaction_uuid;
-        window.bookingGlobals.total = (data.amount / 100);
-
-        const total = window.bookingGlobals.total;
-
-        if (total === 0) {
-            document.getElementById("confirm-with-stripe")?.classList.add("hide");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
+        window.bookingGlobals.total = data.amount / 100;
+    
+        const stripeBtns = document.getElementById("confirm-with-stripe");
+        const confirmBtn = document.getElementById("confirm-without-stripe");
+    
+        if (window.bookingGlobals.total === 0) {
+          stripeBtns?.classList.add("hide");
+          confirmBtn?.classList.remove("hide");
+          console.log("✅ Total is $0 — showing confirm-only button (Make.com response).");
         } else {
-            document.getElementById("confirm-with-stripe")?.classList.remove("hide");
-            document.getElementById("confirm-without-stripe")?.classList.add("hide");
-            setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
+          stripeBtns?.classList.remove("hide");
+          confirmBtn?.classList.add("hide");
+          setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
         }
-
+    
         console.log("✅ PaymentIntent created:", data);
         setupStripeElements();
-
-    } catch (err) {
+    
+      } catch (err) {
         console.error("❌ Error requesting PaymentIntent:", err);
-    }
+      }
 }
 
 async function updatePaymentIntent() {
@@ -1535,55 +1538,64 @@ async function updatePaymentIntent() {
       confirmBtn?.classList.remove("hide");
       console.log("✅ Total is $0 — showing confirm-only button.");
       return;
-    } else {
-      stripeBtns?.classList.remove("hide");
-      confirmBtn?.classList.add("hide");
     }
-  
+    
     // ✅ Send updated values to Make.com
     const payload = {
-      final_rate,
-      hours,
-      certificate_discount: certificateDiscount,
-      user_credits: credits,
-      subtotal,
-      tax_rate: taxRate,
-      subtotal_taxes: subtotalTaxes,
-      total,
-      payment_intent_id: payment_intent_id || null,
-      transaction_uuid: transaction_uuid || null,
+        final_rate,
+        hours,
+        certificate_discount: certificateDiscount,
+        user_credits: credits,
+        subtotal,
+        tax_rate: taxRate,
+        subtotal_taxes: subtotalTaxes,
+        total,
+        payment_intent_id: payment_intent_id || null,
+        transaction_uuid: transaction_uuid || null,
     };
-  
+    
     try {
-      const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
+        const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-      });
-  
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  
-      console.log("✅ updatePaymentIntent sent:", payload);
+        });
+    
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+        console.log("✅ updatePaymentIntent sent:", payload);
 
-      const data = await res.json();
+        const data = await res.json();
 
-      window.paymentRequest?.update?.({
+        window.paymentRequest?.update?.({
         total: {
-          label: "Total",
-          amount: data.amount
+            label: "Total",
+            amount: data.amount
         }
-    });
+        });
+    
+        // ✅ Store values in bookingGlobals
+        window.bookingGlobals.subtotal = subtotal;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
+        window.bookingGlobals.taxTotal = subtotalTaxes;
+        window.bookingGlobals.total = data.amount / 100;
 
-    // ✅ Store values in bookingGlobals
-    window.bookingGlobals.subtotal = subtotal;
-    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
-    window.bookingGlobals.taxTotal = subtotalTaxes;
-    window.bookingGlobals.total = (data.amount / 100);
-    setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
-  
+        const updatedTotal = window.bookingGlobals.total;
+        setButtonText("#pay-now-btn", `Pay $${updatedTotal} with Card`, false);
+    
+        if (updatedTotal === 0) {
+            stripeBtns?.classList.add("hide");
+            confirmBtn?.classList.remove("hide");
+            console.log("✅ Total is $0 — showing confirm-only button (after Make response).");
+        } else {
+            stripeBtns?.classList.remove("hide");
+            confirmBtn?.classList.add("hide");
+        }
+        
     } catch (err) {
-      console.error("❌ Failed to update payment intent:", err);
+        console.error("❌ Failed to update payment intent:", err);
     }
+  
 }  
 
 async function confirmBookingWithStripe() {
