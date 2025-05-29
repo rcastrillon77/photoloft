@@ -1524,6 +1524,7 @@ async function updatePaymentIntent() {
   
     window.bookingGlobals.subtotal = subtotal;
     window.bookingGlobals.total = total;
+    window.bookingGlobals.taxTotal = subtotalTaxes
 
     // ✅ Show confirm-only if total is 0, else show Stripe UI
     const stripeBtns = document.getElementById("confirm-with-stripe");
