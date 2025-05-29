@@ -1613,8 +1613,8 @@ async function updatePaymentIntent() {
       console.log("✅ Total is $0 — showing confirm-only button.");
       return;
     } else {
-      stripeBtns?.classList.remove("hidden");
-      confirmBtn?.classList.add("hidden");
+      stripeBtns?.classList.remove("hide");
+      confirmBtn?.classList.add("hide");
     }
   
     // ✅ Send updated values to Make.com
