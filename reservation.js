@@ -192,7 +192,7 @@ function populateDetailsSidebar() {
   
     console.log("📦 Loaded bookingDetails:", window.bookingDetails);
     // TODO: Show booking info in UI
-
+    
     populateDetailsSidebar();
   })();
   
