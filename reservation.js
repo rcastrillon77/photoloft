@@ -13,14 +13,21 @@ window.bookingDetails = {
     certificate_id: [],
     cameras: null,
     details: {},
+
+    first_name: null,
+    last_name: null,
+    email: null,
     membership: null,
   
     start: null,
     end: null,
+    duration: null,
     timezone: null,
   
     location_name: null,
     location_address: null,
+    attendees: null,
+    activities: null,
   
     base_rate: null,
     final_rate: null,
