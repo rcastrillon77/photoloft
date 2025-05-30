@@ -2,7 +2,7 @@ name: Upload booking.js to Supabase
 
 on:
   push:
-    branches: [main]  # or change to 'master' if that's your branch
+    branches: [main]
 
 jobs:
   upload:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Upload to Supabase Storage
+      - name: Upload booking.js to Supabase
         run: |
           curl -X PUT "$SUPABASE_URL/storage/v1/object/scripts/booking.js" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \

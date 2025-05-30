@@ -1,8 +1,8 @@
-name: Upload scripts to Supabase
+name: Upload reservation.js to Supabase
 
 on:
   push:
-    branches: [main]  # or 'master'
+    branches: [main]
 
 jobs:
   upload:
@@ -12,20 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Upload booking.js to Supabase
-        run: |
-          curl -X PUT "$SUPABASE_URL/storage/v1/object/scripts/booking.js" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Content-Type: application/javascript" \
-            --data-binary @booking.js
-
       - name: Upload reservation.js to Supabase
         run: |
           curl -X PUT "$SUPABASE_URL/storage/v1/object/scripts/reservation.js" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/javascript" \
             --data-binary @reservation.js
-
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
