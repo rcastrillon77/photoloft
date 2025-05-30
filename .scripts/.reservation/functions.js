@@ -14,7 +14,7 @@ async function fetchBookingDetails(bookingId) {
         certificate_id,
         cameras,
         details,
-        events (
+        events:event_id (
           start,
           end,
           timezone
