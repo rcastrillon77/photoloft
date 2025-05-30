@@ -80,9 +80,9 @@ async function fetchBookingDetails(bookingId) {
           total
         ),
         users:user_id (
-          first_name
-          last_name
-          email
+          first_name,
+          last_name,
+          email,
           membership
         )
       `)
