@@ -125,24 +125,38 @@ async function fetchBookingDetails(bookingId) {
 }
 
   
-function populateBookingDetailsUI() {
-    const formatCurrency = (amount) => `$${Number(amount || 0).toFixed(2)}`;
-    const formatDate = (dateStr) => luxon.DateTime.fromISO(dateStr).toFormat("DDD • t");
+function populateDetailsSidebar() {
+    const { first_name, last_name, start, end, timezone, duration, attendees, total, type } = bookingDetails;
   
-    document.getElementById("details_start").textContent = formatDate(bookingDetails.start);
-    document.getElementById("details_end").textContent = formatDate(bookingDetails.end);
-    document.getElementById("details_duration").textContent = `${bookingDetails.duration || "?"} minutes`;
-    document.getElementById("details_location").textContent = bookingDetails.location_name || "—";
-    document.getElementById("details_rate_label").textContent = bookingDetails.rate_label || "—";
-    document.getElementById("details_user_credits").textContent = bookingDetails.user_credits_applied > 0 ? formatCurrency(bookingDetails.user_credits_applied) : "None";
+    // Format date and time
+    const luxonStart = luxon.DateTime.fromISO(start, { zone: timezone });
+    const luxonEnd = luxon.DateTime.fromISO(end, { zone: timezone });
   
-    const totalDiscount = Object.values(bookingDetails.discounts || {}).reduce((sum, val) => sum + Number(val || 0), 0);
-    document.getElementById("details_discount").textContent = totalDiscount > 0 ? formatCurrency(totalDiscount) : "None";
+    const formattedDate = luxonStart.toFormat("EEEE MMMM d, yyyy");
+    const formattedStart = luxonStart.toFormat("h:mm a");
+    const formattedEnd = luxonEnd.toFormat("h:mm a");
+    const tzAbbr = luxonEnd.offsetNameShort || luxonEnd.toFormat("ZZZZ");
   
-    document.getElementById("details_subtotal").textContent = formatCurrency(bookingDetails.subtotal);
-    document.getElementById("details_tax").textContent = formatCurrency(bookingDetails.tax_subtotal);
-    document.getElementById("details_total").textContent = formatCurrency(bookingDetails.total);
-}
+    const guestName = `${first_name} ${last_name}`;
+    const durationLabel = `${duration} Hour${duration === 1 ? "" : "s"}`;
+    const attendeesLabel = `${attendees} ${attendees === 1 ? "Person" : "People"}`;
+    const totalLabel = `$${total.toFixed(2)}`;
+  
+    document.getElementById("details_user").textContent = guestName;
+    document.getElementById("details_date").textContent = formattedDate;
+    document.getElementById("details_start").textContent = formattedStart;
+    document.getElementById("details_end").textContent = `${formattedEnd} ${tzAbbr}`;
+    document.getElementById("details_duration").textContent = durationLabel;
+    document.getElementById("details_attendees").textContent = attendeesLabel;
+    document.getElementById("details_paid").textContent = totalLabel;
+  
+    // Disable reschedule/cancel if type is "rescheduled"
+    if (type === "rescheduled") {
+      document.getElementById("actions_cancel")?.classList.add("disabled");
+      document.getElementById("actions_reschedule")?.classList.add("disabled");
+    }
+  }
+  
   
 
 (async function initReservationPage() {
