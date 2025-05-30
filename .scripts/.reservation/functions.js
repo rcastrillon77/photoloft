@@ -36,6 +36,9 @@ async function fetchBookingDetails(bookingId) {
           total
         ),
         users:user_id (
+          first_name
+          last_name
+          email
           membership
         )
       `)
@@ -64,6 +67,9 @@ async function fetchBookingDetails(bookingId) {
       cameras: data.cameras,
       details: data.details || {},
       membership: users?.membership || null,
+      first_name: users?.first_name || null,
+      last_name: users?.last_name || null,
+      email: users?.email || null,
   
       start: events?.start || null,
       end: events?.end || null,
@@ -71,6 +77,8 @@ async function fetchBookingDetails(bookingId) {
   
       location_name: locations?.name || null,
       location_address: locations?.address || null,
+      attendees: data.details.attendees || null,
+      activities: data.details.activities || {},
   
       base_rate: transactions?.base_rate ?? null,
       final_rate: transactions?.final_rate ?? null,
