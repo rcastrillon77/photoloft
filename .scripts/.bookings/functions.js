@@ -613,6 +613,9 @@ async function submitFinalBooking() {
   
     const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
+    const marketingCheckbox = document.querySelector('[data-name="marketing"]');
+    const marketingOptIn = marketingCheckbox?.checked || false;
+
   
     const activities = {
         selected: g.activities?.selected || [],
@@ -635,6 +638,7 @@ async function submitFinalBooking() {
         last_name: document.getElementById('booking-last-name')?.value || "",
         email: document.getElementById('booking-email')?.value || "",
         phone: document.getElementById('booking-phone')?.value || "",
+        marketing_opt_in: marketingOptIn,
     
         payment_intent_id: g.payment_intent_id || null,
         transaction_uuid: g.transaction_uuid || null,
@@ -662,7 +666,7 @@ async function submitFinalBooking() {
     console.log(`SUBTOTAL CALLED: ${window.bookingGlobals.subtotal} via submitFinalBooking`);
   
     try {
-      const res = await fetch("https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4", {
+      const res = await fetch("https://hook.us1.make.com/0k9wwbwp51j6y3eipbd1d8oixr37el39", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
