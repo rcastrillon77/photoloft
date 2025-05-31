@@ -1,4 +1,5 @@
 async function initReservationUpdate() {
+  populateReservationDetails();
   if (!bookingUuid) return;
 
   const success = await rebuildBookingDetails(bookingUuid);
@@ -6,8 +7,6 @@ async function initReservationUpdate() {
     alert("Unable to load booking.");
     return;
   }
-
-  populateReservationDetails();
 
   console.log("✅ Booking updated and ready");
 }
