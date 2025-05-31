@@ -691,11 +691,16 @@ async function submitFinalBooking() {
     const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
     const marketingCheckbox = document.querySelector('[data-name="marketing"]');
-    const marketingOptIn = marketingCheckbox?.checked || false;
     const socialUrlInput = document.getElementById("social-url");
     const socialUrl = socialUrlInput?.value?.trim() || null;
 
+    let marketingOptIn = false;
 
+    if (window.supabaseUser?.preferences?.marketing === true) {
+    marketingOptIn = true;
+    } else {
+    marketingOptIn = marketingCheckbox?.checked === true;
+    }
   
     const activities = {
         selected: g.activities?.selected || [],
