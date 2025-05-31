@@ -723,7 +723,12 @@ async function submitFinalBooking() {
         last_name: document.getElementById('booking-last-name')?.value || "",
         email: document.getElementById('booking-email')?.value || "",
         phone: document.getElementById('booking-phone')?.value || "",
-        marketing_opt_in: marketingOptIn,
+        marketing_opt_in: (
+            (document.querySelector('[data-name="marketing"]')?.closest(".checkbox-field")?.classList.contains("hidden") &&
+             window.supabaseUser?.preferences?.marketing === true)
+              ? true
+              : document.querySelector('[data-name="marketing"]')?.checked === true
+          ),
         social_url: socialUrl,
     
         payment_intent_id: g.payment_intent_id || null,
