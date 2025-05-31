@@ -88,7 +88,7 @@ async function rebuildBookingDetails(bookingUuid) {
     return false;
   }
 
-  window.bookingDetails = {
+  const details = {
     booking_uuid: bookingData.uuid,
     listing_uuid: bookingData.listing_id,
     transaction_uuid: bookingData.transaction_id,
