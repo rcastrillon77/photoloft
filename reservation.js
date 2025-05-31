@@ -131,8 +131,8 @@ async function rebuildBookingDetails(bookingUuid) {
 function populateReservationDetails(details) {
   if (!details) return;
 
-  const start = luxon.DateTime.fromISO(details.start);
-  const end = luxon.DateTime.fromISO(details.end);
+  const start = luxon.DateTime.fromISO(details.start).setZone(details.listing.timezone);
+  const end = luxon.DateTime.fromISO(details.end).setZone(details.listing.timezone);
 
   document.getElementById("details_user").textContent =
     `${details.user?.first_name || ''} ${details.user?.last_name || ''}`;
@@ -149,7 +149,7 @@ function populateReservationDetails(details) {
     start.toFormat("cccc LLLL d, yyyy");
 
   document.getElementById("details_start").textContent = start.toFormat("h:mm a");
-  document.getElementById("details_end").textContent = end.toFormat("h:mm a");
+  document.getElementById("details_end").textContent = end.toFormat("h:mm a z");
 
   document.getElementById("details_duration").textContent =
     `${details.duration/60 || '?'} Hours`;
