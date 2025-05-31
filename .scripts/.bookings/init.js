@@ -253,6 +253,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert("Couldn't hold time slot. Please try again.");
             return;
         }
+
+        const socialSection = document.getElementById("social-media-section");
+
+        if (window.supabaseUser?.profile?.social) {
+          socialSection?.classList.add("hidden");
+        }
     
         // 🟢 6. Transition to Step 2
         prefillContactInfoIfLoggedIn();
@@ -445,6 +451,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             }
+        }
+
+        const marketingCheckbox = document.querySelector('[data-name="marketing"]');
+        const marketingWrapper = marketingCheckbox?.closest(".checkbox-field");
+
+        const userMarketingPref = window.supabaseUser?.preferences?.marketing;
+
+        if (userMarketingPref === true) {
+          marketingCheckbox.checked = true;
+          marketingWrapper?.classList.add("hidden");
         }
 
         // ✅ Proceed with payment intent
