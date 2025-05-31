@@ -203,3 +203,4 @@ async function initReservationUpdate() {
 }
 
 initReservationUpdate();
+populateReservationDetails();
