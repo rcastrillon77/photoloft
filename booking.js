@@ -1800,8 +1800,11 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
       total -= discountAmount;
       results.push({ code, uuid, amount: discountAmount });
     }
-
+  
     const subtotalAfterDiscounts = total;
+  
+    // Assign globally
+    window.bookingDetails.discounts = results;
 
     return {
         results,
