@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { data: refreshedEvents, error } = await supabase
                 .from("events")
                 .select("start, end")
-                .eq("location_id", LOCATION_UUID)
+                .overlaps("location_id", LOCATION_UUID)
                 .eq("status", "confirmed")
                 .gte("start", minDate.toISO())
                 .lte("end", maxDate.toISO());

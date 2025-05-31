@@ -512,6 +512,7 @@ function updateAttendeeButtons() {
 
 async function goToDateTime() {
     await releaseTempHold();
+    setButtonText("#continue-to-details", "Continue to Details", false);
     
     // Section
     document.getElementById("date-time-section")?.classList.remove("hidden");
@@ -534,6 +535,7 @@ async function goToDateTime() {
 }
 
 async function goToDetails() {
+    setButtonText("#continue-to-payment", "Continue to Payment", false);
     // Section
     document.getElementById("date-time-section")?.classList.add("hidden");
     document.getElementById("details-section")?.classList.remove("hidden");
@@ -552,6 +554,8 @@ async function goToDetails() {
 }
 
 async function goToPayment() {
+    setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
+    setButtonText("#confirm-booking", "Confirm Booking", false); 
     // Section
     document.getElementById("date-time-section")?.classList.add("hidden");
     document.getElementById("details-section")?.classList.add("hidden");
@@ -738,6 +742,7 @@ async function submitFinalBooking() {
         final_rate: g.final_rate,
         final_rate_name: g.rate_label || null,
     
+        discounts: g.discounts || [],
         discount_code: g.discountCodes || [],
         discount_code_uuid: g.discountUUIDs || [],
         discount_code_amounts: g.discountTotals || [],
@@ -1532,37 +1537,40 @@ async function requestPaymentIntent() {
 
     try {
         const response = await fetch("https://hook.us1.make.com/7a52ywj2uxmqes7rylp8g53mp7cy5yef", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-
-        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);        
-
+    
+        if (!response.ok) throw new Error(`PaymentIntent webhook failed: ${response.status}`);
+    
         const data = await response.json();
-
+    
+        // ✅ Store Make.com-confirmed totals
         window.bookingGlobals.client_secret = data.client_secret;
         window.bookingGlobals.payment_intent_id = data.payment_intent_id;
         window.bookingGlobals.transaction_uuid = data.transaction_uuid;
-        window.bookingGlobals.total = (data.amount / 100);
-
-        const total = window.bookingGlobals.total;
-
-        if (total === 0) {
-            document.getElementById("confirm-with-stripe")?.classList.add("hide");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
+        window.bookingGlobals.total = data.amount / 100;
+    
+        const stripeBtns = document.getElementById("confirm-with-stripe");
+        const confirmBtn = document.getElementById("confirm-without-stripe");
+    
+        if (window.bookingGlobals.total === 0) {
+          stripeBtns?.classList.add("hide");
+          confirmBtn?.classList.remove("hide");
+          console.log("✅ Total is $0 — showing confirm-only button (Make.com response).");
         } else {
-            document.getElementById("confirm-with-stripe")?.classList.remove("hide");
-            document.getElementById("confirm-without-stripe")?.classList.add("hide");
-            setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false); 
+          stripeBtns?.classList.remove("hide");
+          confirmBtn?.classList.add("hide");
+          setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
         }
-
+    
         console.log("✅ PaymentIntent created:", data);
         setupStripeElements();
-
-    } catch (err) {
+    
+      } catch (err) {
         console.error("❌ Error requesting PaymentIntent:", err);
-    }
+      }
 }
 
 async function updatePaymentIntent() {
@@ -1597,66 +1605,114 @@ async function updatePaymentIntent() {
   
     window.bookingGlobals.subtotal = subtotal;
     window.bookingGlobals.total = total;
+    window.bookingGlobals.taxTotal = subtotalTaxes
 
     // ✅ Show confirm-only if total is 0, else show Stripe UI
     const stripeBtns = document.getElementById("confirm-with-stripe");
     const confirmBtn = document.getElementById("confirm-without-stripe");
   
     if (total === 0) {
-      stripeBtns?.classList.add("hidden");
-      confirmBtn?.classList.remove("hidden");
+      stripeBtns?.classList.add("hide");
+      confirmBtn?.classList.remove("hide");
       console.log("✅ Total is $0 — showing confirm-only button.");
       return;
-    } else {
-      stripeBtns?.classList.remove("hidden");
-      confirmBtn?.classList.add("hidden");
     }
-  
+    
     // ✅ Send updated values to Make.com
     const payload = {
-      final_rate,
-      hours,
-      certificate_discount: certificateDiscount,
-      user_credits: credits,
-      subtotal,
-      tax_rate: taxRate,
-      subtotal_taxes: subtotalTaxes,
-      total,
-      payment_intent_id: payment_intent_id || null,
-      transaction_uuid: transaction_uuid || null,
+        final_rate,
+        hours,
+        certificate_discount: certificateDiscount,
+        user_credits: credits,
+        subtotal,
+        tax_rate: taxRate,
+        subtotal_taxes: subtotalTaxes,
+        total,
+        payment_intent_id: payment_intent_id || null,
+        transaction_uuid: transaction_uuid || null,
     };
-  
+    
     try {
-      const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
+        const res = await fetch("https://hook.us1.make.com/shf2pq5lzik6ibnqrxgue64cj44ctxo9", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
+        });
+    
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+        console.log("✅ updatePaymentIntent sent:", payload);
+
+        const data = await res.json();
+
+        window.paymentRequest?.update?.({
+        total: {
+            label: "Total",
+            amount: data.amount
+        }
+        });
+    
+        // ✅ Store values in bookingGlobals
+        window.bookingGlobals.subtotal = subtotal;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
+        window.bookingGlobals.taxTotal = subtotalTaxes;
+        window.bookingGlobals.total = data.amount / 100;
+
+        const updatedTotal = window.bookingGlobals.total;
+        setButtonText("#pay-now-btn", `Pay $${updatedTotal} with Card`, false);
+    
+        if (updatedTotal === 0) {
+            stripeBtns?.classList.add("hide");
+            confirmBtn?.classList.remove("hide");
+            console.log("✅ Total is $0 — showing confirm-only button (after Make response).");
+        } else {
+            stripeBtns?.classList.remove("hide");
+            confirmBtn?.classList.add("hide");
+        }
+        
+    } catch (err) {
+        console.error("❌ Failed to update payment intent:", err);
+    }
+  
+}  
+
+async function confirmBookingWithStripe() {
+    const clientSecret = window.bookingGlobals.client_secret;
+    const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
+    const email = document.getElementById("booking-email")?.value;
+    const phone = document.getElementById("booking-phone")?.value;
+    const { cardNumber } = window.cardElements;
+  
+    setButtonText("#pay-now-btn", "Processing Payment...", true);
+  
+    try {
+      const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardNumber,
+          billing_details: { name, email, phone }
+        },
+        setup_future_usage: "off_session"
       });
   
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (error) {
+        console.error("❌ Payment error:", error.message);
+        alert("Payment failed: " + error.message);
+        setButtonText("#pay-now-btn", "Pay with Card", false);
+        return;
+      }
   
-      console.log("✅ updatePaymentIntent sent:", payload);
-
-      const data = await res.json();
-
-      window.paymentRequest?.update?.({
-        total: {
-          label: "Total",
-          amount: data.amount
-        }
-    });
-
-    // ✅ Store values in bookingGlobals
-    window.bookingGlobals.subtotal = subtotal;
-    console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
-    window.bookingGlobals.taxTotal = subtotalTaxes;
-    window.bookingGlobals.total = (data.amount / 100);
-    setButtonText("#pay-now-btn", `Pay $${window.bookingGlobals.total} with Card`, false);
-  
+      if (paymentIntent?.status === "succeeded") {
+        console.log("✅ Payment succeeded");
+        setButtonText("#pay-now-btn", "Creating Booking...", true);
+        await submitFinalBooking(); // 🔁 Your booking submission logic
+      }
     } catch (err) {
-      console.error("❌ Failed to update payment intent:", err);
+      console.error("❌ Unexpected Stripe error:", err);
+      alert("Something went wrong with payment.");
+      setButtonText("#pay-now-btn", "Pay with Card", false);
     }
 }  
+  
 
 function applyStackedDiscounts(certs = [], finalRate, hours) {
     const totalBase = finalRate * hours;
@@ -1745,8 +1801,11 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
       total -= discountAmount;
       results.push({ code, uuid, amount: discountAmount });
     }
-
+  
     const subtotalAfterDiscounts = total;
+  
+    // Assign globally
+    window.bookingGlobals.discounts = results;
 
     return {
         results,
@@ -2496,6 +2555,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("🟢 Step 1 Continue clicked");
         clearInterval(countdownInterval);
         await releaseTempHold();
+
+        setButtonText("#continue-to-details", "Validating Time Slot...", true);
     
         // 🔍 1. Get the selected radio input
         const allRadios = Array.from(document.querySelectorAll('#booking-start-time-options input[type="radio"]'));
@@ -2503,6 +2564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!selectedRadio) {
             alert("Please select a start time before continuing.");
             console.log("❌ No radio selected.");
+            setButtonText("#continue-to-details", "Continue to Details", false);
             return;
         }
     
@@ -2599,10 +2661,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
     
             alert("That time slot is no longer available. We'll show you the next best option.");
+            setButtonText("#continue-to-details", "Continue to Details", false);
             await generateStartTimeOptions(true);
             updateBookingSummary();
             return;
         }
+
+        setButtonText("#continue-to-details", "Reserving Time Slot...", true);
     
         // ✅ 5. Hold the time
         const start = bookingDateLuxon.startOf('day').plus({ minutes: selectedStart }).toISO();
@@ -2848,61 +2913,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.bookingGlobals.creditsToUser = (window.bookingGlobals.creditsToUser || 0) + overage;
             alert(`A small remaining balance has been rounded up to $0.50. The extra $${overage.toFixed(2)} has been saved as account credit.`);
           }
-      
-          if (total === 0) {
-            document.getElementById("confirm-with-stripe")?.classList.add("hide");
-            document.getElementById("confirm-without-stripe")?.classList.remove("hide");
-          } else {
-            window.bookingGlobals.creditsApplied = applied;
-            await updatePaymentIntent();
-          }
+  
+          window.bookingGlobals.creditsApplied = applied;
+          await updatePaymentIntent();
       
           button.classList.add("active");
           icon.classList.remove("hide");
           label.textContent = `$${applied.toFixed(2)} in credits have been applied`;
-          //document.getElementById("use-credits").button.querySelector("div:nth-child(2)").textContent = `$${g.creditsApplied} in credits have been applied`;
         }
       
         populateFinalSummary();
     });  
 
     document.getElementById("pay-now-btn")?.addEventListener("click", async (e) => {
-        e.preventDefault();
-
-        if (e.currentTarget.classList.contains("processing")) return;
-      
-        const clientSecret = window.bookingGlobals.client_secret;
-        const name = document.getElementById("booking-first-name")?.value + " " + document.getElementById("booking-last-name")?.value;
-        const email = document.getElementById("booking-email")?.value;
-        const phone = document.getElementById("booking-phone")?.value;
-      
-        const { cardNumber } = window.cardElements;
-      
-        setButtonText("#pay-now-btn", "Processing Payment...", true);
-
-        const { error, paymentIntent } = await window.stripe.confirmCardPayment(clientSecret, {
-          payment_method: {
-            card: cardNumber,
-            billing_details: {
-              name,
-              email,
-              phone
-            }
-          },
-          setup_future_usage: "off_session"
-        });
-      
-        if (error) {
-          console.error("❌ Payment error:", error.message);
-          alert("Payment failed: " + error.message);
-          setButtonText("#pay-now-btn", "Pay with Card", false);
-        } else if (paymentIntent?.status === "succeeded") {
-            setButtonText("#pay-now-btn", "Creating Booking...", true);
-            console.log("✅ Payment succeeded");
-            await submitFinalBooking();
-        }
-          
-    }); 
+      e.preventDefault();
+    
+      const button = e.currentTarget;
+      if (button.classList.contains("processing")) return;
+    
+      await confirmBookingWithStripe();
+    });
+    
     
     document.getElementById("confirm-booking")?.addEventListener("click", async (e) => {
         if (e.currentTarget.classList.contains("processing")) return;
@@ -3072,14 +3103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       
         const total = window.bookingGlobals.total;
-      
-        if (total === 0) {
-          document.getElementById("confirm-with-stripe")?.classList.add("hide");
-          document.getElementById("confirm-without-stripe")?.classList.remove("hide");
-          populateFinalSummary();
-          return;
-        }
-      
+
         await updatePaymentIntent();
         populateFinalSummary();
         couponInput.value = "";
