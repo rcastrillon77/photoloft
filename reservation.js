@@ -140,6 +140,40 @@ async function rebuildBookingDetails(bookingUuid) {
   return true;
 }
 
+function populateReservationDetails(details) {
+  if (!details) return;
+
+  const start = luxon.DateTime.fromISO(details.start);
+  const end = luxon.DateTime.fromISO(details.end);
+
+  document.getElementById("details_user").textContent =
+    `${details.user?.first_name || ''} ${details.user?.last_name || ''}`;
+
+  document.getElementById("details_listing").textContent =
+    details.listing?.name || "";
+
+  document.getElementById("details_address").innerHTML = `
+    ${details.listing?.address_line_1 || ''} ${details.listing?.address_line_2 || ''}<br>
+    ${details.listing?.city || ''}, ${details.listing?.state || ''} ${details.listing?.zip_code || ''}
+  `;
+
+  document.getElementById("details_date").textContent =
+    start.toFormat("cccc LLLL d, yyyy");
+
+  document.getElementById("details_start").textContent = start.toFormat("h:mm a");
+  document.getElementById("details_end").textContent = end.toFormat("h:mm a");
+
+  document.getElementById("details_duration").textContent =
+    `${details.duration || '?'} Hours`;
+
+  document.getElementById("details_attendees").textContent =
+    `${details.attendees || '?'} People`;
+
+  document.getElementById("details_paid").textContent =
+    `$${(details.transaction?.total || 0).toFixed(2)}`;
+}
+
+
 async function initReservationUpdate() {
   if (!bookingUuid) return;
 
