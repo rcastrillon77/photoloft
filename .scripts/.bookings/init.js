@@ -377,6 +377,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
             // ✅ 1. Clean up expired holds
             await deleteExpiredHolds();
+
+            if (!Array.isArray(window.LOCATION_UUID)) {
+              console.error("❌ LOCATION_UUID is not an array:", window.LOCATION_UUID);
+              return;
+            }
         
             // ✅ 2. Reload latest confirmed events
             const minDate = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: "America/Chicago" }).startOf('day');
