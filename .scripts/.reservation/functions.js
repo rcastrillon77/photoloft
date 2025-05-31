@@ -82,7 +82,6 @@ async function rebuildBookingDetails(bookingUuid) {
 
   console.log("✅ Booking details updated.");
   return true;
-}
 
 function populateReservationDetails(details) {
   if (!details) return;
@@ -115,4 +114,6 @@ function populateReservationDetails(details) {
 
   document.getElementById("details_paid").textContent =
     `$${(details.transaction?.total || 0).toFixed(2)}`;
+}
+
 }
