@@ -1,26 +1,28 @@
 async function rebuildBookingDetails(bookingUuid) {
-  const { data, error } = await window.supabase
-    .from("bookings")
-    .select(`
-      *,
-      events:event_id (start, end, duration, timezone),
-      locations:location_id (name, address, coordinates),
-      transactions:transaction_id (
-        subtotal, total, tax_rate, taxes_total,
-        discount_total, user_credits_applied,
-        base_rate, final_rate, rate_label, discounts
-      ),
-      users:user_id (
-        first_name, last_name, email, phone, membership
-      )
-    `)
-    .eq("uuid", bookingUuid)
-    .maybeSingle();
+  const { data: bookingData, error } = await supabase
+  .from("bookings")
+  .select("*")
+  .eq("uuid", bookingUuid)
+  .maybeSingle();
 
-  if (error || !data) {
-    console.error("❌ Booking not found or error:", error);
-    return false;
-  }
+if (error || !bookingData) {
+  console.error("❌ Booking not found or error:", error);
+  return;
+}
+
+const [user, transaction, events, locations] = await Promise.all([
+  supabase.from("users").select("*").eq("uuid", bookingData.user_id).maybeSingle(),
+  supabase.from("transactions").select("*").eq("uuid", bookingData.transaction_id).maybeSingle(),
+  supabase.from("events").select("*").in("uuid", bookingData.event_id).then(res => res.data || []),
+  supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
+]);
+
+if (!user.data) console.warn("⚠️ User not found");
+if (!transaction.data) console.warn("⚠️ Transaction not found");
+if (!events.length) console.warn("⚠️ No events found");
+if (!locations.length) console.warn("⚠️ No locations found");
+
+
 
   const details = {
     start: data.events?.start || null,
