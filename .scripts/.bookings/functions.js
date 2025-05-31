@@ -2225,9 +2225,10 @@ window.releaseTempHold = async function () {
 // Booking Activities
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
-      .sort((a, b) => b[1].count - a[1].count)
+      .sort((a, b) => Number(b[1].count || 0) - Number(a[1].count || 0))
       .map(([id, val]) => ({ id, ...val }));
-}
+  }
+  
   
 function highlightMatch(text, match) {
     if (!match) return text;
