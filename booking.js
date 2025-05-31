@@ -1292,25 +1292,27 @@ async function isTempHoldStillValid() {
 }
 
 async function fetchEventsForRange(start, end) {
-    if (!Array.isArray(window.LOCATION_UUID)) {
-      console.error("❌ LOCATION_UUID is not an array:", window.LOCATION_UUID);
-      return [];
+    const allEvents = [];
+  
+    for (const locationId of window.LOCATION_UUID || []) {
+      const { data, error } = await window.supabase
+        .from("events")
+        .select("start, end")
+        .eq("location_id", locationId)
+        .gte("start", start.toISOString())
+        .lte("end", end.toISOString());
+  
+      if (error) {
+        console.error(`❌ Failed to fetch events for location ${locationId}:`, error);
+        continue;
+      }
+  
+      allEvents.push(...(data || []));
     }
   
-    const { data, error } = await window.supabase
-      .from("events")
-      .select("start, end")
-      .overlaps("location_id", window.LOCATION_UUID) // this will only work if LOCATION_UUID is an array
-      .gte("start", start.toISOString())
-      .lte("end", end.toISOString());
-  
-    if (error) {
-      console.error("❌ Failed to fetch events:", error);
-      return [];
-    }
-  
-    return data;
+    return allEvents;
   }
+  
   
   
   async function fetchEventsForDate(date) {
