@@ -145,7 +145,7 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
         .from('temp_events')
         .select('start_time, end_time, created_at, expires_at')
         .eq('listing_id', LISTING_UUID)
-        .eq('location_id', LOCATION_UUID)
+        .overlaps("location_id", LOCATION_UUID)
         .gte('start_time', startOfDay)
         .lte('end_time', endOfDay);
 
@@ -282,7 +282,7 @@ async function checkIfGuestHasActiveHold() {
         .from('temp_events')
         .select('uuid')
         .eq('listing_id', LISTING_UUID)
-        .eq('location_id', LOCATION_UUID)
+        .overlaps("location_id", LOCATION_UUID)
         .gt('expires_at', now)
         .limit(1);
 
@@ -1218,7 +1218,7 @@ async function fetchEventsForRange(start, end) {
     const { data, error } = await window.supabase
       .from("events")
       .select("start, end")
-      .eq("location_id", LOCATION_UUID)
+      .overlaps("location_id", LOCATION_UUID)
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
   
@@ -2036,7 +2036,7 @@ async function initBookingConfig(listingId, locationId) {
         window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
         window.bookingGlobals.final_rate = FULL_RATE;
 
-        // OLD PULL ACTIVITIES
+        // PULL ACTIVITIES
         const { data: activitiesData, error: activitiesError } = await window.supabase
         .from("listings")
         .select("activities, details")
@@ -2046,15 +2046,15 @@ async function initBookingConfig(listingId, locationId) {
         if (activitiesError || !activitiesData) {
         console.error("❌ Failed to fetch booking types:", activitiesError);
         } else {
-            const flat = activitiesData.activities || {};
+            const activityArray = activitiesData.activities || [];
 
             window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
 
             bookingTypes = {};
-            for (const [uuid, obj] of Object.entries(flat)) {
-            if (obj?.title) {
-                bookingTypes[obj.title] = { id: uuid, ...obj };
-            }
+            for (const activity of activityArray) {
+                if (activity?.title && activity?.id) {
+                    bookingTypes[activity.title] = { ...activity };
+                }
             }
             console.log("✅ bookingTypes:", bookingTypes);
 
