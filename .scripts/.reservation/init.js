@@ -12,4 +12,4 @@ async function initReservationUpdate() {
 }
 
 await initReservationUpdate();
-populateReservationDetails();
+populateReservationDetails(details);
