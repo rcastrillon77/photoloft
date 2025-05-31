@@ -145,7 +145,7 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
         .from('temp_events')
         .select('start_time, end_time, created_at, expires_at')
         .eq('listing_id', LISTING_UUID)
-        .overlaps("location_id", LOCATION_UUID)
+        .overlaps("location_id", window.LOCATION_UUID)
         .gte('start_time', startOfDay)
         .lte('end_time', endOfDay);
 
@@ -282,7 +282,7 @@ async function checkIfGuestHasActiveHold() {
         .from('temp_events')
         .select('uuid')
         .eq('listing_id', LISTING_UUID)
-        .overlaps("location_id", LOCATION_UUID)
+        .overlaps("location_id", window.LOCATION_UUID)
         .gt('expires_at', now)
         .limit(1);
 
@@ -1218,7 +1218,7 @@ async function fetchEventsForRange(start, end) {
     const { data, error } = await window.supabase
       .from("events")
       .select("start, end")
-      .overlaps("location_id", LOCATION_UUID)
+      .overlaps("location_id", window.LOCATION_UUID)
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
   
@@ -2167,7 +2167,7 @@ window.holdTemporaryBooking = async function (start, end) {
             end_time: end,
             expires_at: expires,
             listing_id: LISTING_UUID,
-            location_id: LOCATION_UUID,
+            location_id: window.LOCATION_UUID,
             user_id: window.supabaseUser?.id || null,
             guest_id: window.guestId || null
         }]).select('uuid');
