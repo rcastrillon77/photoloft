@@ -117,6 +117,7 @@ async function fetchBookingDetails(bookingId) {
   
       start: events?.start || null,
       end: events?.end || null,
+      duration:
       timezone: events?.timezone || null,
   
       location_name: locations?.name || null,
