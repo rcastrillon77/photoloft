@@ -616,15 +616,17 @@ async function submitFinalBooking() {
     const marketingCheckbox = document.querySelector('[data-name="marketing"]');
     const socialUrlInput = document.getElementById("social-url");
     const socialUrl = socialUrlInput?.value?.trim() || null;
-
-    let marketingOptIn = false;
-
-    if (window.supabaseUser?.preferences?.marketing === true) {
-    marketingOptIn = true;
-    } else {
-    marketingOptIn = marketingCheckbox?.checked === true;
-    }
-  
+    const marketingEl = document.getElementById("marketing");
+    const userMarketingPref = window.supabaseUser?.preferences?.marketing === true;
+    
+    const marketingOptIn = userMarketingPref
+      ? true
+      : marketingEl?.checked === true;
+    
+      console.log("✅ Checkbox input checked state:", marketingEl?.checked);
+      console.log("✅ User marketing pref:", userMarketingPref);
+      console.log("✅ Final value sent:", marketingOptIn);
+      
     const activities = {
         selected: g.activities?.selected || [],
         other: g.activities?.other || []
@@ -646,12 +648,7 @@ async function submitFinalBooking() {
         last_name: document.getElementById('booking-last-name')?.value || "",
         email: document.getElementById('booking-email')?.value || "",
         phone: document.getElementById('booking-phone')?.value || "",
-        marketing_opt_in: (
-            (document.querySelector('[data-name="marketing"]')?.closest(".checkbox-field")?.classList.contains("hidden") &&
-             window.supabaseUser?.preferences?.marketing === true)
-              ? true
-              : document.querySelector('[data-name="marketing"]')?.checked === true
-          ),
+        marketing_opt_in: marketingOptIn,
         social_url: socialUrl,
     
         payment_intent_id: g.payment_intent_id || null,
