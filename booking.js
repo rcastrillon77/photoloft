@@ -2426,7 +2426,7 @@ function updatePurposeHiddenField() {
       .map(title => {
         const data = bookingTypes[title];
         if (!data) return null;
-        return { id: data.id, ...data, count: (data.count || 0) + 1 };
+        return { id: data.id, ...data, count: Number(data.count || 0) + 1};
       })
       .filter(Boolean);
   
