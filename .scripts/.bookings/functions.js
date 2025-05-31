@@ -665,6 +665,7 @@ async function submitFinalBooking() {
         final_rate: g.final_rate,
         final_rate_name: g.rate_label || null,
     
+        discounts: g.discounts || [],
         discount_code: g.discountCodes || [],
         discount_code_uuid: g.discountUUIDs || [],
         discount_code_amounts: g.discountTotals || [],
@@ -1727,7 +1728,7 @@ function applyStackedDiscounts(certs = [], finalRate, hours) {
     const subtotalAfterDiscounts = total;
   
     // Assign globally
-    window.bookingDetails.discounts = results;
+    window.bookingGlobals.discounts = results;
 
     return {
         results,
