@@ -4,7 +4,8 @@
 // ================================== //
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await initBookingConfig(LISTING_UUID, window.LOCATION_UUID);
+  await loadListingConfig(LISTING_UUID);
+  await initBookingConfig(LISTING_UUID, window.LOCATION_UUID);
   
     const jumped = await checkIfGuestHasActiveHold();
     if (!jumped) {
