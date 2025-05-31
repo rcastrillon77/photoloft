@@ -54,6 +54,7 @@ window.bookingGlobals = {
   }
 };
 
+
 async function rebuildBookingDetails(bookingUuid) {
   const { data: bookingData, error } = await supabase
     .from("bookings")
