@@ -95,3 +95,5 @@ async function initReservationUpdate() {
   // Optionally re-fetch and render UI now that details are up to date
   console.log("✅ Booking updated and ready");
 }
+
+initReservationUpdate();
