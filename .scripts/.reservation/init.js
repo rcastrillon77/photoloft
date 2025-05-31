@@ -11,5 +11,5 @@ async function initReservationUpdate() {
   console.log("✅ Booking updated and ready");
 }
 
-initReservationUpdate();
+await initReservationUpdate();
 populateReservationDetails();
