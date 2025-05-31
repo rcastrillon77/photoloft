@@ -1,132 +1,74 @@
-async function fetchBookingDetails(bookingId) {
-    const { data, error } = await window.supabase
-      .from("bookings")
-      .select(`
-        uuid,
-        user_id,
-        listing_id,
-        location_id,
-        transaction_id,
-        status,
-        entry_code,
-        source,
-        type,
-        certificate_id,
-        cameras,
-        details,
-        events:event_id (
-          start,
-          end,
-          timezone
-        ),
-        locations:location_id (
-          name,
-          address
-        ),
-        transactions:transaction_id (
-          base_rate,
-          final_rate,
-          rate_label,
-          user_credits_applied,
-          discounts,
-          discount_total,
-          subtotal,
-          tax_rate,
-          taxes_total,
-          total
-        ),
-        users:user_id (
-          first_name,
-          last_name,
-          email,
-          membership
-        )
-      `)
-      .eq("uuid", bookingId)
-      .maybeSingle();
-  
-    if (error || !data) {
-      console.error("❌ Booking not found or error:", error);
-      alert("Booking not found.");
-      return false;
-    }
-  
-    const { events, locations, transactions, users } = data;
-  
-    Object.assign(window.bookingDetails, {
-      booking_id: data.uuid,
-      user_id: data.user_id,
-      listing_id: data.listing_id,
-      location_id: data.location_id,
-      transaction_id: data.transaction_id,
-      status: data.status,
-      entry_code: data.entry_code,
-      source: data.source,
-      type: data.type,
-      certificate_id: data.certificate_id,
-      cameras: data.cameras,
-      details: data.details || {},
-      membership: users?.membership || null,
-      first_name: users?.first_name || null,
-      last_name: users?.last_name || null,
-      email: users?.email || null,
-  
-      start: events?.start || null,
-      end: events?.end || null,
-      duration:
-      timezone: events?.timezone || null,
-  
-      location_name: locations?.name || null,
-      location_address: locations?.address || null,
-      attendees: data.details.attendees || null,
-      activities: data.details.activities || {},
-  
-      base_rate: transactions?.base_rate ?? null,
-      final_rate: transactions?.final_rate ?? null,
-      rate_label: transactions?.rate_label || null,
-      user_credits_applied: transactions?.user_credits_applied ?? null,
-      discounts: transactions?.discounts || [],
-      discount_total: transactions?.discount_total ?? 0,
-      subtotal: transactions?.subtotal ?? null,
-      tax_rate: transactions?.tax_rate ?? null,
-      tax_subtotal: transactions?.taxes_total ?? null,
-      total: transactions?.total ?? null
-    });
-  
-    return true;
-}
+async function rebuildBookingDetails(bookingUuid) {
+  const { data, error } = await window.supabase
+    .from("bookings")
+    .select(`
+      *,
+      events:event_id (start, end, duration, timezone),
+      locations:location_id (name, address, coordinates),
+      transactions:transaction_id (
+        subtotal, total, tax_rate, taxes_total,
+        discount_total, user_credits_applied,
+        base_rate, final_rate, rate_label, discounts
+      ),
+      users:user_id (
+        first_name, last_name, email, phone, membership
+      )
+    `)
+    .eq("uuid", bookingUuid)
+    .maybeSingle();
 
-  
-function populateDetailsSidebar() {
-    const { first_name, last_name, start, end, timezone, duration, attendees, total, type } = bookingDetails;
-  
-    // Format date and time
-    const luxonStart = luxon.DateTime.fromISO(start, { zone: timezone });
-    const luxonEnd = luxon.DateTime.fromISO(end, { zone: timezone });
-  
-    const formattedDate = luxonStart.toFormat("EEEE MMMM d, yyyy");
-    const formattedStart = luxonStart.toFormat("h:mm a");
-    const formattedEnd = luxonEnd.toFormat("h:mm a");
-    const tzAbbr = luxonEnd.offsetNameShort || luxonEnd.toFormat("ZZZZ");
-  
-    const guestName = `${first_name} ${last_name}`;
-    const durationLabel = `${duration} Hour${duration === 1 ? "" : "s"}`;
-    const attendeesLabel = `${attendees} ${attendees === 1 ? "Person" : "People"}`;
-    const totalLabel = `$${total.toFixed(2)}`;
-  
-    document.getElementById("details_user").textContent = guestName;
-    document.getElementById("details_date").textContent = formattedDate;
-    document.getElementById("details_start").textContent = formattedStart;
-    document.getElementById("details_end").textContent = `${formattedEnd} ${tzAbbr}`;
-    document.getElementById("details_duration").textContent = durationLabel;
-    document.getElementById("details_attendees").textContent = attendeesLabel;
-    document.getElementById("details_paid").textContent = totalLabel;
-  
-    // Disable reschedule/cancel if type is "rescheduled"
-    if (type === "rescheduled") {
-      document.getElementById("actions_cancel")?.classList.add("disabled");
-      document.getElementById("actions_reschedule")?.classList.add("disabled");
-    }
+  if (error || !data) {
+    console.error("❌ Booking not found or error:", error);
+    return false;
   }
-  
-  
+
+  const details = {
+    start: data.events?.start || null,
+    end: data.events?.end || null,
+    duration: data.events?.duration || null,
+    attendees: data.details?.attendees || null,
+    user: {
+      first_name: data.users?.first_name || "",
+      last_name: data.users?.last_name || "",
+      email: data.users?.email || "",
+      phone: data.users?.phone || "",
+      membership: data.users?.membership || "guest"
+    },
+    listing: {
+      name: data.details?.listing?.name || "",
+      city: data.details?.listing?.city || "",
+      state: data.details?.listing?.state || "",
+      timezone: data.details?.listing?.timezone || "",
+      zip_code: data.details?.listing?.zip_code || "",
+      address_line_1: data.details?.listing?.address_line_1 || "",
+      address_line_2: data.details?.listing?.address_line_2 || "",
+      coordinates: data.details?.listing?.coordinates || {}
+    },
+    activities: data.details?.activities || [],
+    transaction: {
+      subtotal: data.transactions?.subtotal || 0,
+      total: data.transactions?.total || 0,
+      tax_rate: data.transactions?.tax_rate || 0,
+      tax_total: data.transactions?.taxes_total || 0,
+      discount_total: data.transactions?.discount_total || 0,
+      base_rate: data.transactions?.base_rate || 0,
+      final_rate: data.transactions?.final_rate || 0,
+      rate_label: data.transactions?.rate_label || "",
+      user_credits_applied: data.transactions?.user_credits_applied || 0,
+      discounts: data.transactions?.discounts || []
+    }
+  };
+
+  const { error: updateError } = await window.supabase
+    .from("bookings")
+    .update({ details })
+    .eq("uuid", bookingUuid);
+
+  if (updateError) {
+    console.error("❌ Failed to update booking details:", updateError);
+    return false;
+  }
+
+  console.log("✅ Booking details updated.");
+  return true;
+}
