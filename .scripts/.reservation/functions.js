@@ -1,10 +1,3 @@
-const urlParams = new URLSearchParams(window.location.search);
-const bookingUuid = urlParams.get("booking");
-
-if (!bookingUuid) {
-  console.warn("⚠️ No booking ID in URL.");
-}
-
 async function rebuildBookingDetails(bookingUuid) {
   const { data: bookingData, error } = await supabase
     .from("bookings")
@@ -83,21 +76,6 @@ async function rebuildBookingDetails(bookingUuid) {
   return true;
 }
 
-async function initReservationUpdate() {
-  if (!bookingUuid) return;
-
-  const success = await rebuildBookingDetails(bookingUuid);
-
-  if (!success) {
-    alert("Unable to load booking.");
-    return;
-  }
-
-  console.log("✅ Booking updated and ready");
-}
-
-initReservationUpdate();
-
 function populateReservationDetails(details) {
   if (!details) return;
 
@@ -131,4 +109,3 @@ function populateReservationDetails(details) {
     `$${(details.transaction?.total || 0).toFixed(2)}`;
 }
 
-populateReservationDetails();
