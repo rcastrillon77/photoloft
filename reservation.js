@@ -8,68 +8,69 @@ if (!bookingUuid) {
 
 async function rebuildBookingDetails(bookingUuid) {
   const { data: bookingData, error } = await supabase
-  .from("bookings")
-  .select("*")
-  .eq("uuid", bookingUuid)
-  .maybeSingle();
+    .from("bookings")
+    .select("*")
+    .eq("uuid", bookingUuid)
+    .maybeSingle();
 
-if (error || !bookingData) {
-  console.error("❌ Booking not found or error:", error);
-  return;
-}
+  if (error || !bookingData) {
+    console.error("❌ Booking not found or error:", error);
+    return;
+  }
 
-const [user, transaction, events, locations] = await Promise.all([
-  supabase.from("users").select("*").eq("uuid", bookingData.user_id).maybeSingle(),
-  supabase.from("transactions").select("*").eq("uuid", bookingData.transaction_id).maybeSingle(),
-  supabase.from("events").select("*").in("uuid", bookingData.event_id).then(res => res.data || []),
-  supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
-]);
+  const [user, transaction, events, locations] = await Promise.all([
+    supabase.from("users").select("*").eq("uuid", bookingData.user_id).maybeSingle(),
+    supabase.from("transactions").select("*").eq("uuid", bookingData.transaction_id).maybeSingle(),
+    supabase.from("events").select("*").in("uuid", bookingData.event_id).then(res => res.data || []),
+    supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
+  ]);
 
-if (!user.data) console.warn("⚠️ User not found");
-if (!transaction.data) console.warn("⚠️ Transaction not found");
-if (!events.length) console.warn("⚠️ No events found");
-if (!locations.length) console.warn("⚠️ No locations found");
+  if (!user.data) console.warn("⚠️ User not found");
+  if (!transaction.data) console.warn("⚠️ Transaction not found");
+  if (!events.length) console.warn("⚠️ No events found");
+  if (!locations.length) console.warn("⚠️ No locations found");
 
-
+  const firstEvent = events[0] || {};
+  const firstLocation = locations[0] || {};
 
   const details = {
-    start: data.events?.start || null,
-    end: data.events?.end || null,
-    duration: data.events?.duration || null,
-    attendees: data.details?.attendees || null,
+    start: firstEvent.start || null,
+    end: firstEvent.end || null,
+    duration: firstEvent.duration || null,
+    attendees: bookingData.details?.attendees || null,
     user: {
-      first_name: data.users?.first_name || "",
-      last_name: data.users?.last_name || "",
-      email: data.users?.email || "",
-      phone: data.users?.phone || "",
-      membership: data.users?.membership || "guest"
+      first_name: user.data?.first_name || "",
+      last_name: user.data?.last_name || "",
+      email: user.data?.email || "",
+      phone: user.data?.phone || "",
+      membership: user.data?.membership || "guest"
     },
-    listing: {
-      name: data.details?.listing?.name || "",
-      city: data.details?.listing?.city || "",
-      state: data.details?.listing?.state || "",
-      timezone: data.details?.listing?.timezone || "",
-      zip_code: data.details?.listing?.zip_code || "",
-      address_line_1: data.details?.listing?.address_line_1 || "",
-      address_line_2: data.details?.listing?.address_line_2 || "",
-      coordinates: data.details?.listing?.coordinates || {}
+    listing: bookingData.details?.listing || {
+      name: firstLocation.name || "",
+      address_line_1: firstLocation.address?.address_line_1 || "",
+      address_line_2: firstLocation.address?.address_line_2 || "",
+      city: firstLocation.address?.city || "",
+      state: firstLocation.address?.state || "",
+      zip_code: firstLocation.address?.zip_code || "",
+      timezone: firstEvent.timezone || "America/Chicago",
+      coordinates: firstLocation.coordinates || {}
     },
-    activities: data.details?.activities || [],
+    activities: bookingData.details?.activities || [],
     transaction: {
-      subtotal: data.transactions?.subtotal || 0,
-      total: data.transactions?.total || 0,
-      tax_rate: data.transactions?.tax_rate || 0,
-      tax_total: data.transactions?.taxes_total || 0,
-      discount_total: data.transactions?.discount_total || 0,
-      base_rate: data.transactions?.base_rate || 0,
-      final_rate: data.transactions?.final_rate || 0,
-      rate_label: data.transactions?.rate_label || "",
-      user_credits_applied: data.transactions?.user_credits_applied || 0,
-      discounts: data.transactions?.discounts || []
+      subtotal: transaction.data?.subtotal || 0,
+      total: transaction.data?.total || 0,
+      tax_rate: transaction.data?.tax_rate || 0,
+      tax_total: transaction.data?.taxes_total || 0,
+      discount_total: transaction.data?.discount_total || 0,
+      base_rate: transaction.data?.base_rate || 0,
+      final_rate: transaction.data?.final_rate || 0,
+      rate_label: transaction.data?.rate_label || "",
+      user_credits_applied: transaction.data?.user_credits_applied || 0,
+      discounts: transaction.data?.discounts || []
     }
   };
 
-  const { error: updateError } = await window.supabase
+  const { error: updateError } = await supabase
     .from("bookings")
     .update({ details })
     .eq("uuid", bookingUuid);
@@ -82,7 +83,6 @@ if (!locations.length) console.warn("⚠️ No locations found");
   console.log("✅ Booking details updated.");
   return true;
 }
-
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
