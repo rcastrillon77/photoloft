@@ -1311,9 +1311,7 @@ async function fetchEventsForRange(start, end) {
     }
   
     return allEvents;
-  }
-  
-  
+}  
   
   async function fetchEventsForDate(date) {
     const zone = window.TIMEZONE;
