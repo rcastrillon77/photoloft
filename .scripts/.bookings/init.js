@@ -387,22 +387,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             const minDate = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: "America/Chicago" }).startOf('day');
             const maxDate = minDate.endOf('day');
 
-                const { data: refreshedEvents, error } = await supabase
-                .from("events")
-                .select("start, end")
-                .overlaps("location_id", window.LOCATION_UUID)
-                .eq("status", "confirmed")
-                .gte("start", minDate.toISO())
-                .lte("end", maxDate.toISO());
+            let refreshedEvents = [];
 
-        
-                if (error || !refreshedEvents) {
-                    console.error("❌ Supabase fetch error:", error);
-                    console.log("🔍 Data:", refreshedEvents);
-                    alert("⚠️ Error checking current availability. Please try again.");
-                    return;
+            for (const locId of window.LOCATION_UUID) {
+                const { data, error } = await supabase
+                    .from("events")
+                    .select("start, end")
+                    .eq("location_id", locId)
+                    .eq("status", "confirmed")
+                    .gte("start", minDate.toISO())
+                    .lte("end", maxDate.toISO());
+
+                if (error) {
+                    console.error(`❌ Supabase error for location ${locId}:`, error);
+                    continue;
                 }
-                
+
+                refreshedEvents = refreshedEvents.concat(data || []);
+            }
         
             const startCode = window.bookingGlobals.selected_start_time;
             const startMinutes = parseInt(startCode.substring(0, 2)) * 60 + parseInt(startCode.substring(2), 10);
