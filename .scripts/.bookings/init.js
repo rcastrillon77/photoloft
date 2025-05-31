@@ -453,16 +453,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        const marketingCheckbox = document.querySelector('[data-name="marketing"]');
-        const marketingWrapper = marketingCheckbox?.closest(".checkbox-field");
-
-        const userMarketingPref = window.supabaseUser?.preferences?.marketing;
-
-        if (userMarketingPref === true) {
-          marketingCheckbox.checked = true;
-          marketingWrapper?.classList.add("hidden");
-        }
-
         // ✅ Proceed with payment intent
         await requestPaymentIntent();
         goToPayment();
