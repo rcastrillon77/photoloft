@@ -168,16 +168,16 @@ function populateReservationDetails(details) {
 
 
 async function initReservationUpdate() {
-  populateReservationDetails();
   if (!bookingUuid) return;
 
-  const success = await rebuildBookingDetails(bookingUuid);
-  if (!success) {
+  const details = await rebuildBookingDetails(bookingUuid);
+  if (!details) {
     alert("Unable to load booking.");
     return;
   }
 
-  console.log("✅ Booking updated and ready");
+  populateReservationDetails(details);
+  console.log("✅ Reservation populated.");
 }
 
 initReservationUpdate();
