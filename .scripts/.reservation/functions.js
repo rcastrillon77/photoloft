@@ -7,7 +7,7 @@ async function rebuildBookingDetails(bookingUuid) {
 
   if (error || !bookingData) {
     console.error("❌ Booking not found or error:", error);
-    return;
+    return null;
   }
 
   const [user, transaction, events, locations] = await Promise.all([
@@ -16,11 +16,6 @@ async function rebuildBookingDetails(bookingUuid) {
     supabase.from("events").select("*").in("uuid", bookingData.event_id).then(res => res.data || []),
     supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
   ]);
-
-  if (!user.data) console.warn("⚠️ User not found");
-  if (!transaction.data) console.warn("⚠️ Transaction not found");
-  if (!events.length) console.warn("⚠️ No events found");
-  if (!locations.length) console.warn("⚠️ No locations found");
 
   const firstEvent = events[0] || {};
   const firstLocation = locations[0] || {};
@@ -69,11 +64,11 @@ async function rebuildBookingDetails(bookingUuid) {
 
   if (updateError) {
     console.error("❌ Failed to update booking details:", updateError);
-    return false;
+    return null;
   }
 
   console.log("✅ Booking details updated.");
-  return true;
+  return details;
 }
 
 function populateReservationDetails(details) {
@@ -108,4 +103,3 @@ function populateReservationDetails(details) {
   document.getElementById("details_paid").textContent =
     `$${(details.transaction?.total || 0).toFixed(2)}`;
 }
-
