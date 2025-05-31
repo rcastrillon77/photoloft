@@ -690,9 +690,9 @@ async function submitFinalBooking() {
   
     const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
-    const marketingCheckbox = document.querySelector('[data-name="marketing"]');
     const socialUrlInput = document.getElementById("social-url");
     const socialUrl = socialUrlInput?.value?.trim() || null;
+    
     const marketingEl = document.getElementById("marketing");
     const userMarketingPref = window.supabaseUser?.preferences?.marketing === true;
     
@@ -2208,7 +2208,7 @@ async function initBookingConfig(listingId, locationId) {
 function prefillContactInfoIfLoggedIn() {
     if (!window.supabaseUser) return;
   
-    const { email, phone, first_name, last_name } = window.supabaseUser;
+    const { email, phone, first_name, last_name, preferences, profile, id, customer_id, credits } = window.supabaseUser;
   
     const setField = (id, value) => {
       const el = document.getElementById(id);
@@ -2224,10 +2224,27 @@ function prefillContactInfoIfLoggedIn() {
     setField("booking-first-name", first_name);
     setField("booking-last-name", last_name);
   
-    window.bookingGlobals.user_uuid_override = window.supabaseUser.id;
-    window.bookingGlobals.customer_id = window.supabaseUser?.customer_id || null;
-    window.bookingGlobals.credits = window.supabaseUser?.credits || 0;
-}
+    // Set globals
+    window.bookingGlobals.user_uuid_override = id;
+    window.bookingGlobals.customer_id = customer_id || null;
+    window.bookingGlobals.credits = credits || 0;
+  
+    // 📬 Marketing Checkbox Logic
+    const marketingEl = document.getElementById("marketing");
+    const marketingWrapper = marketingEl?.closest(".checkbox-field");
+  
+    if (preferences?.marketing === true && marketingEl) {
+      marketingEl.checked = true;
+      marketingWrapper?.classList.add("hidden");
+    }
+  
+    // 🌐 Social Media Field Logic
+    const socialSection = document.getElementById("social-media-section");
+    if (profile?.social && socialSection) {
+      socialSection.classList.add("hidden");
+    }
+  }
+  
 
 // ================================== //
 // ========  NEW FUNCTIONS  ========= //
