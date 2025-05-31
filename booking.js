@@ -692,6 +692,9 @@ async function submitFinalBooking() {
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
     const marketingCheckbox = document.querySelector('[data-name="marketing"]');
     const marketingOptIn = marketingCheckbox?.checked || false;
+    const socialUrlInput = document.getElementById("social-url");
+    const socialUrl = socialUrlInput?.value?.trim() || null;
+
 
   
     const activities = {
@@ -716,6 +719,7 @@ async function submitFinalBooking() {
         email: document.getElementById('booking-email')?.value || "",
         phone: document.getElementById('booking-phone')?.value || "",
         marketing_opt_in: marketingOptIn,
+        social_url: socialUrl,
     
         payment_intent_id: g.payment_intent_id || null,
         transaction_uuid: g.transaction_uuid || null,
