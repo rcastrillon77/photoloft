@@ -141,6 +141,7 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
     const startOfDay = selectedDate.startOf('day').toISO();
     const endOfDay = selectedDate.endOf('day').toISO();
 
+    
     const { data: holds, error } = await window.supabase
         .from('temp_events')
         .select('start_time, end_time, created_at, expires_at')
