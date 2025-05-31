@@ -4,7 +4,7 @@
 // ================================== //
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await initBookingConfig(LISTING_UUID, LOCATION_UUID);
+    await initBookingConfig(LISTING_UUID, window.LOCATION_UUID);
   
     const jumped = await checkIfGuestHasActiveHold();
     if (!jumped) {
@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { data: refreshedEvents, error } = await supabase
                 .from("events")
                 .select("start, end")
-                .overlaps("location_id", LOCATION_UUID)
+                .overlaps("location_id", window.LOCATION_UUID)
                 .eq("status", "confirmed")
                 .gte("start", minDate.toISO())
                 .lte("end", maxDate.toISO());
