@@ -1292,10 +1292,15 @@ async function isTempHoldStillValid() {
 }
 
 async function fetchEventsForRange(start, end) {
+    if (!Array.isArray(window.LOCATION_UUID)) {
+      console.error("❌ LOCATION_UUID is not an array:", window.LOCATION_UUID);
+      return [];
+    }
+  
     const { data, error } = await window.supabase
       .from("events")
       .select("start, end")
-      .overlaps("location_id", window.LOCATION_UUID)
+      .overlaps("location_id", window.LOCATION_UUID) // this will only work if LOCATION_UUID is an array
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
   
@@ -1305,7 +1310,8 @@ async function fetchEventsForRange(start, end) {
     }
   
     return data;
-}
+  }
+  
   
   async function fetchEventsForDate(date) {
     const zone = window.TIMEZONE;
