@@ -1,3 +1,10 @@
+const urlParams = new URLSearchParams(window.location.search);
+const bookingUuid = urlParams.get("booking");
+
+if (!bookingUuid) {
+  console.warn("⚠️ No booking ID in URL.");
+}
+
 async function rebuildBookingDetails(bookingUuid) {
   const { data: bookingData, error } = await supabase
     .from("bookings")
@@ -22,6 +29,46 @@ async function rebuildBookingDetails(bookingUuid) {
   if (!events.length) console.warn("⚠️ No events found");
   if (!locations.length) console.warn("⚠️ No locations found");
 
+  const firstEvent = events[0] || {};
+  const firstLocation = locations[0] || {};
+
+  const details = {
+    start: firstEvent.start || null,
+    end: firstEvent.end || null,
+    duration: firstEvent.duration || null,
+    attendees: bookingData.details?.attendees || null,
+    user: {
+      first_name: user.data?.first_name || "",
+      last_name: user.data?.last_name || "",
+      email: user.data?.email || "",
+      phone: user.data?.phone || "",
+      membership: user.data?.membership || "guest"
+    },
+    listing: bookingData.details?.listing || {
+      name: firstLocation.name || "",
+      address_line_1: firstLocation.address?.address_line_1 || "",
+      address_line_2: firstLocation.address?.address_line_2 || "",
+      city: firstLocation.address?.city || "",
+      state: firstLocation.address?.state || "",
+      zip_code: firstLocation.address?.zip_code || "",
+      timezone: firstEvent.timezone || "America/Chicago",
+      coordinates: firstLocation.coordinates || {}
+    },
+    activities: bookingData.details?.activities || [],
+    transaction: {
+      subtotal: transaction.data?.subtotal || 0,
+      total: transaction.data?.total || 0,
+      tax_rate: transaction.data?.tax_rate || 0,
+      tax_total: transaction.data?.taxes_total || 0,
+      discount_total: transaction.data?.discount_total || 0,
+      base_rate: transaction.data?.base_rate || 0,
+      final_rate: transaction.data?.final_rate || 0,
+      rate_label: transaction.data?.rate_label || "",
+      user_credits_applied: transaction.data?.user_credits_applied || 0,
+      discounts: transaction.data?.discounts || []
+    }
+  };
+
   const { error: updateError } = await supabase
     .from("bookings")
     .update({ details })
@@ -32,56 +79,24 @@ async function rebuildBookingDetails(bookingUuid) {
     return false;
   }
 
-  const details = {
-    booking_uuid: bookingData.uuid,
-    listing_uuid: bookingData.listing_id,
-    transaction_uuid: bookingData.transaction_id,
-    event_uuid: bookingData.event_id,
-    user_uuid: bookingData.user_id,
-    
-    start: bookingData.details.start,
-    end: bookingData.details.end,
-    duration: bookingData.details.duration,
-    timezone: bookingData.details.timezone,
-    status: bookingData.status,
-    cameras: bookingData.cameras,
-    attendees: bookingData.details.attendees,
-    activities: bookingData.activities,
-  
-    transaction: {
-      base_rate: bookingData.details.transaction.base_rate,
-      final_rate: bookingData.details.transaction.final_rate,
-      rate_label: bookingData.details.transaction.rate_label,
-      discounts: bookingData.details.transaction.discounts,
-      credits_applied: bookingData.details.transaction.user_credits_applied,
-      subtotal: bookingData.details.transaction.subtotal,
-      tax_rate: bookingData.details.transaction.tax_rate,
-      tax_subtotal: bookingData.details.transaction.tax_total,
-      total: bookingData.details.transaction.total
-    },
-  
-    user: {
-      first_name: bookingData.details.user.first_name,
-      last_name: bookingData.details.user.last_name,
-      email: bookingData.details.user.email,
-      phone: bookingData.details.user.phone,
-      membership: bookingData.details.user.membership
-    },
-  
-    listing: {
-      name: bookingData.details.listing.name,
-      address: {
-        address_line_1: bookingData.details.listing.address_line_1,
-        address_line_2: bookingData.details.listing.address_line_2,
-        city: bookingData.details.listing.city,
-        state: bookingData.details.listing.state,
-        zip_code: bookingData.details.listing.zip_code
-      }
-    }
-  };
-
   console.log("✅ Booking details updated.");
   return true;
+}
+
+async function initReservationUpdate() {
+  if (!bookingUuid) return;
+
+  const success = await rebuildBookingDetails(bookingUuid);
+
+  if (!success) {
+    alert("Unable to load booking.");
+    return;
+  }
+
+  console.log("✅ Booking updated and ready");
+}
+
+initReservationUpdate();
 
 function populateReservationDetails(details) {
   if (!details) return;
@@ -116,4 +131,4 @@ function populateReservationDetails(details) {
     `$${(details.transaction?.total || 0).toFixed(2)}`;
 }
 
-}
+populateReservationDetails();
