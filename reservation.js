@@ -77,6 +77,10 @@ async function rebuildBookingDetails(bookingUuid) {
   const firstEvent = events[0] || {};
   const firstLocation = locations[0] || {};
 
+  const { DateTime } = luxon;
+  const timezone = details?.listing?.timezone || 'America/Chicago'; // fallback
+
+
   const details = {
     start: firstEvent.start || null,
     end: firstEvent.end || null,
@@ -131,8 +135,8 @@ async function rebuildBookingDetails(bookingUuid) {
 function populateReservationDetails(details) {
   if (!details) return;
 
-  const start = luxon.DateTime.fromISO(details.start).setZone(details.listing.timezone);
-  const end = luxon.DateTime.fromISO(details.end).setZone(details.listing.timezone);
+  const start = DateTime.fromISO(details.start).setZone(timezone);
+  const end = DateTime.fromISO(details.end).setZone(timezone);
 
   document.getElementById("details_user").textContent =
     `${details.user?.first_name || ''} ${details.user?.last_name || ''}`;
@@ -146,7 +150,7 @@ function populateReservationDetails(details) {
   `;
 
   document.getElementById("details_date").textContent =
-    start.toFormat("cccc LLLL d, yyyy");
+    DateTime.fromISO(start).setZone(timezone).toFormat('cccc, LLLL d, yyyy');
 
   document.getElementById("details_start").textContent = start.toFormat("h:mm a");
   document.getElementById("details_end").textContent = end.toFormat("h:mm a z");
