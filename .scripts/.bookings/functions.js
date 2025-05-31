@@ -615,7 +615,7 @@ async function submitFinalBooking() {
     const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
     const socialUrlInput = document.getElementById("social-url");
     const socialUrl = socialUrlInput?.value?.trim() || null;
-    
+
     const marketingEl = document.getElementById("marketing");
     const userMarketingPref = window.supabaseUser?.preferences?.marketing === true;
     
@@ -2153,11 +2153,10 @@ function prefillContactInfoIfLoggedIn() {
     window.bookingGlobals.credits = credits || 0;
   
     // 📬 Marketing Checkbox Logic
-    const marketingEl = document.getElementById("marketing");
-    const marketingWrapper = marketingEl?.closest(".checkbox-field");
+    const marketingWrapper = document.getElementById("marketing")?.closest(".checkbox-field");
   
-    if (preferences?.marketing === true && marketingEl) {
-      marketingEl.checked = true;
+    if (preferences?.marketing === true && document.getElementById("marketing")) {
+      document.getElementById("marketing").checked = true;
       marketingWrapper?.classList.add("hidden");
     }
   
