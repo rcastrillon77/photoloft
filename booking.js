@@ -214,22 +214,26 @@ function getMaxAvailableDurationForDate(date) {
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
     const zone = window.TIMEZONE;
     const selectedDate = luxon.DateTime.fromJSDate(date, { zone });
-
     const startOfDay = selectedDate.startOf('day').toISO();
     const endOfDay = selectedDate.endOf('day').toISO();
 
-    
-    const { data: holds, error } = await window.supabase
-        .from('temp_events')
-        .select('start_time, end_time, created_at, expires_at')
-        .eq('listing_id', LISTING_UUID)
-        .overlaps("location_id", window.LOCATION_UUID)
-        .gte('start_time', startOfDay)
-        .lte('end_time', endOfDay);
+    let holds = [];
 
-    if (error) {
-        console.error("❌ Failed to fetch temp holds:", error);
-        return;
+    for (const locId of window.LOCATION_UUID) {
+        const { data, error } = await window.supabase
+            .from('temp_events')
+            .select('start_time, end_time, created_at, expires_at')
+            .eq('listing_id', LISTING_UUID)
+            .eq('location_id', locId)
+            .gte('start_time', startOfDay)
+            .lte('end_time', endOfDay);
+
+        if (error) {
+            console.error(`❌ Failed to fetch holds for location ${locId}:`, error);
+            continue;
+        }
+
+        holds = holds.concat(data || []);
     }
 
     const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
@@ -237,7 +241,6 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
 
     const before = window.BUFFER_BEFORE ?? 0;
     const after = window.BUFFER_AFTER ?? 0;
-    console.log('Buffers → Before:', before, 'After:', after);
 
     holds.forEach(hold => {
         const holdStart = luxon.DateTime.fromISO(hold.start_time, { zone });
@@ -249,11 +252,7 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
         const percent = Math.min(100, Math.max(0, 100 * (1 - (remaining / total))));
         const expires = luxon.DateTime.fromISO(hold.expires_at, { zone });
 
-        if (expires < luxon.DateTime.now().setZone(zone)) {
-            console.log(`⏱️ Ignoring expired hold → ${hold.start_time}`);
-            return;
-        }
-
+        if (expires < luxon.DateTime.now().setZone(zone)) return;
 
         radios.forEach(input => {
             const value = input.value;
@@ -261,18 +260,16 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
             const minutes = parseInt(value.slice(2), 10);
             const rawStart = hours * 60 + minutes;
             const rawEnd = rawStart + window.bookingGlobals.booking_duration;
-            
             const slotStart = rawStart - before;
             const slotEnd = rawEnd + after;
-            
+
             const overlaps = slotStart < holdEndMinutes && slotEnd > holdStartMinutes;
-            
+
             const container = input.closest('.radio-option-container');
             if (!overlaps || !container) return;
 
             if (!container.classList.contains('on-hold')) {
                 container.classList.add('on-hold');
-                console.log(`⏳ Marked ${value} as on-hold`);
             }
 
             if (!container.querySelector('.radio-progress')) {
@@ -284,7 +281,6 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
                 setTimeout(() => progress.style.width = '100%', 0);
             }
 
-            // Refresh all slots after this hold expires
             setTimeout(() => {
                 if (window.refreshTimeout) clearTimeout(window.refreshTimeout);
                 window.refreshTimeout = setTimeout(() => {
@@ -292,10 +288,10 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
                     window.refreshTimeout = null;
                 }, 250);
             }, remaining * 1000);
-            
         });
     });
 }
+
 
 async function refreshStartTimeOptions() {
     if (isRefreshingStartTimes) return;
@@ -343,60 +339,42 @@ async function deleteExpiredHolds() {
 }
 
 async function checkIfGuestHasActiveHold() {
-    console.log("🔍 Checking for active hold...");
-
     const zone = window.TIMEZONE;
     const now = luxon.DateTime.now().setZone(zone).toISO();
-
     const userId = window.supabaseUser?.id || null;
     const guestId = window.guestId || null;
 
-    if (!userId && !guestId) {
-        console.log("🚫 No user ID or guest ID found, skipping hold check.");
-        return false;
-    }
+    if (!userId && !guestId) return false;
 
-    let query = window.supabase
-        .from('temp_events')
-        .select('uuid')
-        .eq('listing_id', LISTING_UUID)
-        .overlaps("location_id", window.LOCATION_UUID)
-        .gt('expires_at', now)
-        .limit(1);
-
-    if (userId) {
-        console.log("🧑‍💻 Checking for holds by user ID:", userId);
-        query = query.eq('user_id', userId);
-    } else {
-        console.log("👤 Checking for holds by guest ID:", guestId);
-        query = query.eq('guest_id', guestId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-        console.error("❌ Supabase error while checking for active hold:", error);
-        return false;
-    }
-
-    if (!data?.length) {
-        console.log("❎ No active hold found.");
-        return false;
-    }
-
-    const holdId = data[0]?.uuid;
-
-    if (holdId) {
-        console.log("🗑️ Found stale hold, deleting it:", holdId);
-        const { error: deleteError } = await window.supabase
+    for (const locId of window.LOCATION_UUID) {
+        let query = window.supabase
             .from('temp_events')
-            .delete()
-            .eq('uuid', holdId);
+            .select('uuid')
+            .eq('listing_id', LISTING_UUID)
+            .eq('location_id', locId)
+            .gt('expires_at', now)
+            .limit(1);
 
-        if (deleteError) {
-            console.error("❌ Error deleting stale hold:", deleteError);
+        if (userId) {
+            query = query.eq('user_id', userId);
         } else {
-            console.log("✅ Stale hold deleted.");
+            query = query.eq('guest_id', guestId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error(`❌ Supabase error for ${locId}:`, error);
+            continue;
+        }
+
+        if (data?.length) {
+            const holdId = data[0]?.uuid;
+            if (holdId) {
+                await window.supabase.from('temp_events').delete().eq('uuid', holdId);
+                console.log("✅ Deleted stale hold:", holdId);
+            }
+            return false;
         }
     }
 
