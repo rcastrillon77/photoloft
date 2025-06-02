@@ -169,20 +169,33 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   }
 
   const user_credits_returned = userCreditsUsed * cashPercent;
-  const cash_refund = Math.max(0, (totalPaid - userCreditsUsed) * cashPercent).toFixed(2);
-  const credit_refund = Math.max(0, (totalPaid - userCreditsUsed) * creditPercent).toFixed(2);
-  const taxRefund = parseFloat((taxTotal * (onlyCredit ? creditPercent : cashPercent)).toFixed(2));
-  const credits_reissued = Math.max(0, user_credits_returned).toFixed(2);
+  const cash_refund = (totalPaid - userCreditsUsed) * cashPercent;
+  const credit_refund = (totalPaid - userCreditsUsed) * creditPercent;
+  const taxRefund = taxTotal * (onlyCredit ? creditPercent : cashPercent);
+  const credits_reissued = user_credits_returned;
+
+  console.log("💰 Refund Calculation Debug:");
+  console.log("⏱ Time until booking (rounded days):", roundedDiff);
+  console.log("🧾 Total paid:", totalPaid);
+  console.log("🎟️ User credits used:", userCreditsUsed);
+  console.log("💸 Cash refund %:", cashPercent);
+  console.log("💳 Credit refund %:", creditPercent);
+  console.log("🧮 Cash refund calculated:", cash_refund);
+  console.log("💵 Credit refund calculated:", credit_refund);
+  console.log("🏦 Credits reissued:", credits_reissued);
+  console.log("🧾 Tax refund:", taxRefund);
+  console.log("📩 Refund message:", message);
 
   return {
-    cash_refund,
-    credit_refund,
-    credits_reissued,
+    cash_refund: cash_refund.toFixed(2),
+    credit_refund: credit_refund.toFixed(2),
+    credits_reissued: credits_reissued.toFixed(2),
     message,
     onlyCredit,
-    taxRefund
+    taxRefund: parseFloat(taxRefund.toFixed(2))
   };
 }
+
 
 async function sendCancellationWebhook(type, refundData) {
   const payload = {
