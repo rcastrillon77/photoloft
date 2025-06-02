@@ -84,11 +84,11 @@ function populateReservationDetails(details) {
   document.getElementById("details_listing").textContent =
     details.listing?.name || "";
 
-  document.getElementById("details_address-line-1").innerHTML = `
+  document.getElementById("details_address-1").innerHTML = `
     ${details.listing?.address_line_1 || ''} ${details.listing?.address_line_2 || ''}
   `;
 
-  document.getElementById("details_address-line-2").innerHTML = `
+  document.getElementById("details_address-2").innerHTML = `
   ${details.listing?.city || ''}, ${details.listing?.state || ''} ${details.listing?.zip_code || ''}
   `;
 
