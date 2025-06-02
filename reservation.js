@@ -247,56 +247,29 @@ async function initReservationUpdate() {
 
 initReservationUpdate();
 
+document.getElementById("actions_cancel").addEventListener("click", () => {
+  const refund = getRefundAmounts(bookingDetails.start, bookingDetails.transaction.total, bookingDetails.transaction.user_credits_applied);
+  const durationStr = refund.hoursDiff >= 24
+    ? `${Math.floor(refund.hoursDiff / 24)} days away`
+    : `${Math.floor(refund.hoursDiff)} hours away`;
 
-//CANCEL
-let currentBooking = null;
-let currentRefundPercent = 0;
+  document.getElementById("cancel-paragraph").innerHTML =
+    `Your reservation is ${durationStr}. Per the cancellation policy, you are eligible for a <strong>${refund.cash > 0 ? (refund.cash / bookingDetails.transaction.total) * 100 : 0}%</strong> refund or a <strong>${refund.credit > 0 ? (refund.credit / bookingDetails.transaction.total) * 100 : 0}%</strong> credit.`;
 
-async function handleCancelBooking(booking) {
-  const refundPercent = calculateRefundPercent(booking.details.start);
-  if (refundPercent === 0) {
-    alert("This booking is not eligible for a refund due to short notice.");
-    return;
-  }
+  const creditBtn = document.getElementById("confirm-credit-cancel");
+  const cashBtn = document.getElementById("confirm-cash-cancel");
+  creditBtn.querySelector(".button-text").textContent = `Confirm $${refund.credit.toFixed(2)} Credit Refund`;
+  cashBtn.textContent = `or get $${refund.cash.toFixed(2)} back to your payment method`;
 
-  const totalPaid = booking.transaction?.total || 0;
-  const baseRefund = totalPaid * refundPercent;
-  const bonusCredit = baseRefund * 1.1;
+  creditBtn.onclick = () => handleCancelBooking(true);
+  cashBtn.onclick = () => handleCancelBooking(false);
 
-  currentBooking = booking;
-  currentRefundPercent = refundPercent;
-
-  showCancellationPopup({
-    booking,
-    refundPercent,
-    creditAmount: bonusCredit,
-    cashAmount: baseRefund
-  });
-}
-
-document.getElementById("confirm-credit-cancel").addEventListener("click", async (e) => {
-  e.preventDefault();
-  if (!currentBooking) return;
-  const ok = await sendCancellationWebhook({
-    booking: currentBooking,
-    refundPercent: currentRefundPercent,
-    useCredit: true
-  });
-  if (ok) location.reload();
+  showPopupById("cancel-popup");
 });
 
-document.getElementById("confirm-cash-cancel").addEventListener("click", async (e) => {
-  e.preventDefault();
-  if (!currentBooking) return;
-  const ok = await sendCancellationWebhook({
-    booking: currentBooking,
-    refundPercent: currentRefundPercent,
-    useCredit: false
-  });
-  if (ok) location.reload();
+document.getElementById("actions_reschedule").addEventListener("click", () => {
+  showPopupById("reschedule-popup");
 });
 
-document.getElementById("actions_cancel").addEventListener("click", async () => {
-  const booking = await getCurrentBooking(); // replace with your actual booking object reference
-  handleCancelBooking(booking);
-});
+document.getElementById("popup-closer").addEventListener("click", closePopup);
+document.getElementById("popup-close-btn").addEventListener("click", closePopup);
