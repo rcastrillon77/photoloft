@@ -30,43 +30,41 @@ async function rebuildBookingDetails(bookingUuid) {
     supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
   ]);
 
-  const firstEvent = events[0] || {};
-  const firstLocation = locations[0] || {};
-
   details = {
-    start: firstEvent.start || null,
-    end: firstEvent.end || null,
-    duration: firstEvent.duration || null,
+    start: bookingData.details.start || null,
+    end: bookingData.details.end || null,
+    duration: bookingData.details.duration || null,
     attendees: bookingData.details?.attendees || null,
+    activities: bookingData.details?.activities || [],
     user: {
-      first_name: user.data?.first_name || "",
-      last_name: user.data?.last_name || "",
-      email: user.data?.email || "",
-      phone: user.data?.phone || "",
-      membership: user.data?.membership || "guest"
+      first_name: bookingData.details.user?.first_name || "",
+      last_name: bookingData.details.user?.last_name || "",
+      email: bookingData.details.user?.email || "",
+      phone: bookingData.details.user?.phone || "",
+      membership: bookingData.details.user?.membership || "guest"
     },
     listing: bookingData.details?.listing || {
-      name: firstLocation.name || "",
-      address_line_1: firstLocation.address?.address_line_1 || "",
-      address_line_2: firstLocation.address?.address_line_2 || "",
-      city: firstLocation.address?.city || "",
-      state: firstLocation.address?.state || "",
-      zip_code: firstLocation.address?.zip_code || "",
-      timezone: firstEvent.timezone || "America/Chicago",
-      coordinates: firstLocation.coordinates || {}
+      name: bookingData.details.listing?.name || "",
+      address_line_1: bookingData.details.listing?.address_line_1 || "",
+      address_line_2: bookingData.details.listing?.address_line_2 || "",
+      city: bookingData.details.listing?.city || "",
+      state: bookingData.details.listing?.state || "",
+      zip_code: bookingData.details.listing?.zip_code || "",
+      timezone: bookingData.details.listing?.timezone || "America/Chicago",
+      coordinates: bookingData.details.listing?.coordinates || {}
     },
     activities: bookingData.details?.activities || [],
     transaction: {
-      subtotal: transaction.data?.subtotal || 0,
-      total: transaction.data?.total || 0,
-      tax_rate: transaction.data?.tax_rate || 0,
-      tax_total: transaction.data?.taxes_total || 0,
-      discount_total: transaction.data?.discount_total || 0,
-      base_rate: transaction.data?.base_rate || 0,
-      final_rate: transaction.data?.final_rate || 0,
-      rate_label: transaction.data?.rate_label || "",
-      user_credits_applied: transaction.data?.user_credits_applied || 0,
-      discounts: transaction.data?.discounts || []
+      subtotal: bookingData.details.transaction?.subtotal || 0,
+      total: bookingData.details.transaction?.total || 0,
+      tax_rate: bookingData.details.transaction?.tax_rate || 0,
+      tax_total: bookingData.details.transaction?.tax_total || 0,
+      discount_total: bookingData.details.transaction?.discount_total || 0,
+      base_rate: bookingData.details.transaction?.base_rate || 0,
+      final_rate: bookingData.details.transaction?.final_rate || 0,
+      rate_label: bookingData.details.transaction?.rate_label || "",
+      user_credits_applied: bookingData.details.transaction?.user_credits_applied || 0,
+      discounts: bookingData.details.transaction?.discounts || []
     }
   };
 
