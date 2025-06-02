@@ -33,6 +33,7 @@ async function rebuildBookingDetails(bookingUuid) {
   details = {
     start: bookingData.details.start || null,
     end: bookingData.details.end || null,
+    status: bookingData.status || null,
     duration: bookingData.details.duration || null,
     attendees: bookingData.details?.attendees || null,
     activities: bookingData.details?.activities || [],
@@ -91,12 +92,17 @@ function populateReservationDetails(details) {
   document.getElementById("details_user").textContent =
     `${details.user?.first_name || ''} ${details.user?.last_name || ''}`;
 
+  document.getElementById("details_status").textContent = `${details?.status?.charAt(0).toUpperCase() + details?.status?.slice(1) || ''} Booking`;
+
   document.getElementById("details_listing").textContent =
     details.listing?.name || "";
 
-  document.getElementById("details_address").innerHTML = `
-    ${details.listing?.address_line_1 || ''} ${details.listing?.address_line_2 || ''}<br>
-    ${details.listing?.city || ''}, ${details.listing?.state || ''} ${details.listing?.zip_code || ''}
+  document.getElementById("details_address-line-1").innerHTML = `
+    ${details.listing?.address_line_1 || ''} ${details.listing?.address_line_2 || ''}
+  `;
+
+  document.getElementById("details_address-line-2").innerHTML = `
+  ${details.listing?.city || ''}, ${details.listing?.state || ''} ${details.listing?.zip_code || ''}
   `;
 
   document.getElementById("details_date").textContent =
