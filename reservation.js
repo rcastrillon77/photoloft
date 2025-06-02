@@ -165,71 +165,107 @@ function populateReservationDetails(details) {
     `$${(details.transaction?.total || 0).toFixed(2)}`;
 }
 
-function calculateRefundPercent(startTimeISO) {
-  const now = luxon.DateTime.now();
-  const start = luxon.DateTime.fromISO(startTimeISO);
-  const diff = start.diff(now, "days").days;
-
-  if (diff > 10) return 1;       // 100%
-  if (diff > 5) return 0.5;      // 50%
-  if (diff > 2) return 0.25;     // 25%
-  return 0;                      // same-day or < 2 days
+function openPopup() {
+  document.getElementById("popup-container").classList.remove("hide");
+  document.body.classList.add("no-scroll");
 }
 
-function getTimeUntil(startISO) {
-  const now = luxon.DateTime.now();
-  const start = luxon.DateTime.fromISO(startISO);
-  const diff = start.diff(now, ['days', 'hours']).toObject();
-
-  if (diff.days >= 1) return `${Math.floor(diff.days)} day${diff.days >= 2 ? 's' : ''} away`;
-  if (diff.hours >= 1) return `${Math.floor(diff.hours)} hour${diff.hours >= 2 ? 's' : ''} away`;
-  return `less than 1 hour away`;
+function closePopup() {
+  document.getElementById("popup-container").classList.add("hide");
+  document.body.classList.remove("no-scroll");
+  document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden"));
 }
 
-function showCancellationPopup({ booking, refundPercent, creditAmount, cashAmount }) {
-  const durationText = getTimeUntil(booking.details.start);
-  const percentText = refundPercent * 100;
-
-  document.getElementById("cancel-paragraph").innerHTML =
-    `Your reservation is ${durationText}. Per the cancellation policy, you are eligible for a ${percentText}% refund.`;
-
-  document.querySelectorAll("#confirm-credit-cancel .button-text").forEach(el => {
-    el.textContent = `Confirm $${creditAmount.toFixed(2)} Credit Refund`;
-  });
-
-  document.getElementById("confirm-cash-cancel").textContent =
-    `or get $${cashAmount.toFixed(2)} back to your payment method`;
-
-  document.getElementById("cancellations").classList.add("visible");
+function showPopupById(id) {
+  document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  openPopup();
 }
 
-async function sendCancellationWebhook({ booking, refundPercent, useCredit }) {
-  const totalPaid = booking.transaction?.total || 0;
-  const baseRefund = totalPaid * refundPercent;
-  const bonusCredit = useCredit ? baseRefund * 1.1 : 0;
+function getRefundAmounts(startTimeISO, totalPaid, creditsUsed = 0) {
+  const now = luxon.DateTime.now().setZone(bookingDetails.listing.timezone);
+  const startTime = luxon.DateTime.fromISO(startTimeISO).setZone(bookingDetails.listing.timezone);
+  const hoursDiff = startTime.diff(now, "hours").hours;
 
-  const payload = {
-    booking_uuid: booking.uuid,
-    listing_name: booking.details?.listing?.name || "Unknown Listing",
-    credit_refund: useCredit ? +bonusCredit.toFixed(2) : 0,
-    cash_refund: useCredit ? 0 : +baseRefund.toFixed(2)
-  };
+  let cash = 0;
+  let credit = 0;
 
-  const response = await fetch("https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    alert("Something went wrong cancelling your booking.");
-    console.error("Webhook error:", await response.text());
-    return false;
+  if (hoursDiff >= 240) {
+    cash = totalPaid;
+    credit = 0;
+  } else if (hoursDiff >= 120) {
+    cash = totalPaid * 0.5;
+    credit = totalPaid * 0.6;
+  } else if (hoursDiff >= 48) {
+    cash = totalPaid * 0.25;
+    credit = totalPaid * 0.35;
+  } else {
+    cash = 0;
+    credit = totalPaid * 0.10;
   }
 
-  return true;
+  return {
+    hoursDiff,
+    cash: Math.round(cash * 100) / 100,
+    credit: Math.round(credit * 100) / 100,
+    user_credits_returned: creditsUsed,
+  };
 }
 
+async function sendCancellationWebhook({ booking_uuid, listing_name, credit_refund, cash_refund, user_credits_returned }) {
+  const payload = {
+    booking_uuid,
+    listing_name,
+    credit_refund,
+    cash_refund,
+    user_credits_returned
+  };
+
+  try {
+    const res = await fetch(CANCELLATION_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    return json;
+  } catch (error) {
+    console.error("❌ Error sending webhook:", error);
+    throw error;
+  }
+}
+
+async function handleCancelBooking(isCredit = true) {
+  const transaction = bookingDetails.transaction;
+  const refund = getRefundAmounts(bookingDetails.start, transaction.total, transaction.user_credits_applied);
+  const amount = isCredit ? refund.credit : refund.cash;
+
+  try {
+    await sendCancellationWebhook({
+      booking_uuid: bookingDetails.uuid,
+      listing_name: bookingDetails.listing.name,
+      credit_refund: isCredit ? amount : 0,
+      cash_refund: isCredit ? 0 : amount,
+      user_credits_returned: refund.user_credits_returned
+    });
+
+    reloadBookingDetails();
+
+    const message = amount === 0
+      ? "You are not eligible for a refund, but you’ve received 10% back in credit for future use."
+      : isCredit
+        ? `You will receive a $${amount.toFixed(2)} credit back to your Photoloft account, available to use immediately.`
+        : `You will receive a $${amount.toFixed(2)} refund to your original payment method. Refunds can take 5–10 business days to process.`;
+
+    document.getElementById("confirm-popup").querySelector(".popup-header").textContent = "Reservation Cancelled";
+    document.getElementById("confirm-popup").querySelector(".popup-text").textContent = `Your booking has been cancelled. ${message}`;
+    showPopupById("confirm-popup");
+
+  } catch (err) {
+    alert("There was a problem cancelling your booking. Please try again.");
+  }
+}
 
 
 async function initReservationUpdate() {
