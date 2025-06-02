@@ -165,6 +165,72 @@ function populateReservationDetails(details) {
     `$${(details.transaction?.total || 0).toFixed(2)}`;
 }
 
+function calculateRefundPercent(startTimeISO) {
+  const now = luxon.DateTime.now();
+  const start = luxon.DateTime.fromISO(startTimeISO);
+  const diff = start.diff(now, "days").days;
+
+  if (diff > 10) return 1;       // 100%
+  if (diff > 5) return 0.5;      // 50%
+  if (diff > 2) return 0.25;     // 25%
+  return 0;                      // same-day or < 2 days
+}
+
+function getTimeUntil(startISO) {
+  const now = luxon.DateTime.now();
+  const start = luxon.DateTime.fromISO(startISO);
+  const diff = start.diff(now, ['days', 'hours']).toObject();
+
+  if (diff.days >= 1) return `${Math.floor(diff.days)} day${diff.days >= 2 ? 's' : ''} away`;
+  if (diff.hours >= 1) return `${Math.floor(diff.hours)} hour${diff.hours >= 2 ? 's' : ''} away`;
+  return `less than 1 hour away`;
+}
+
+function showCancellationPopup({ booking, refundPercent, creditAmount, cashAmount }) {
+  const durationText = getTimeUntil(booking.details.start);
+  const percentText = refundPercent * 100;
+
+  document.getElementById("cancel-paragraph").innerHTML =
+    `Your reservation is ${durationText}. Per the cancellation policy, you are eligible for a ${percentText}% refund.`;
+
+  document.querySelectorAll("#confirm-credit-cancel .button-text").forEach(el => {
+    el.textContent = `Confirm $${creditAmount.toFixed(2)} Credit Refund`;
+  });
+
+  document.getElementById("confirm-cash-cancel").textContent =
+    `or get $${cashAmount.toFixed(2)} back to your payment method`;
+
+  document.getElementById("cancellations").classList.add("visible");
+}
+
+async function sendCancellationWebhook({ booking, refundPercent, useCredit }) {
+  const totalPaid = booking.transaction?.total || 0;
+  const baseRefund = totalPaid * refundPercent;
+  const bonusCredit = useCredit ? baseRefund * 1.1 : 0;
+
+  const payload = {
+    booking_uuid: booking.uuid,
+    listing_name: booking.details?.listing?.name || "Unknown Listing",
+    credit_refund: useCredit ? +bonusCredit.toFixed(2) : 0,
+    cash_refund: useCredit ? 0 : +baseRefund.toFixed(2)
+  };
+
+  const response = await fetch("https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    alert("Something went wrong cancelling your booking.");
+    console.error("Webhook error:", await response.text());
+    return false;
+  }
+
+  return true;
+}
+
+
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
