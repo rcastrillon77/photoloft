@@ -245,23 +245,31 @@ initReservationUpdate();
 
 document.getElementById("actions_cancel").addEventListener("click", () => {
   const refund = getRefundAmounts(details.start, details.transaction.total, details.transaction.user_credits_applied);
-  const durationStr = refund.hoursDiff >= 24
-    ? `${Math.floor(refund.hoursDiff / 24)} days away`
-    : `${Math.floor(refund.hoursDiff)} hours away`;
 
-  document.getElementById("cancel-paragraph").innerHTML =
-    `Your reservation is ${durationStr}. Per the cancellation policy, you are eligible for a <strong>${refund.cash > 0 ? (refund.cash / details.transaction.total) * 100 : 0}%</strong> refund or a <strong>${refund.credit > 0 ? (refund.credit / details.transaction.total) * 100 : 0}%</strong> credit.`;
+  document.getElementById("cancel-paragraph").innerText = refund.message;
 
   const creditBtn = document.getElementById("confirm-credit-cancel");
   const cashBtn = document.getElementById("confirm-cash-cancel");
-  creditBtn.querySelector(".button-text").textContent = `Confirm $${refund.credit.toFixed(2)} Credit Refund`;
-  cashBtn.textContent = `or get $${refund.cash.toFixed(2)} back to your payment method`;
 
-  creditBtn.onclick = () => handleCancelBooking(true);
-  cashBtn.onclick = () => handleCancelBooking(false);
+  creditBtn.querySelector(".button-text").innerText = refund.onlyCredit
+    ? "Confirm Cancellation"
+    : `Confirm $${refund.credit_refund} Credit Refund`;
 
-  showPopupById("cancel-popup");
+  cashBtn.innerText = `or get $${refund.cash_refund} back to your payment method`;
+
+  cashBtn.classList.toggle("hidden", refund.onlyCredit);
+
+  creditBtn.onclick = async () => {
+    await processCancellation("credit", refund);
+  };
+
+  cashBtn.onclick = async () => {
+    await processCancellation("cash", refund);
+  };
+
+  openPopup("cancel-popup");
 });
+
 
 document.getElementById("actions_reschedule").addEventListener("click", () => {
   showPopupById("reschedule-popup");
