@@ -273,7 +273,7 @@ document.getElementById("actions_cancel").addEventListener("click", () => {
     await processCancellation("cash", refund);
   };
 
-  openPopup("cancel-popup");
+  showPopupById("cancel-popup");
 });
 
 
