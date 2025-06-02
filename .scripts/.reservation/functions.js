@@ -24,7 +24,7 @@ async function rebuildBookingDetails(bookingUuid) {
   const timezone = details?.listing?.timezone || 'America/Chicago'; // fallback
 
 
-  const details = {
+  details = {
     start: firstEvent.start || null,
     end: firstEvent.end || null,
     duration: firstEvent.duration || null,
