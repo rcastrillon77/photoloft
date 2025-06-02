@@ -20,10 +20,6 @@ async function rebuildBookingDetails(bookingUuid) {
   const firstEvent = events[0] || {};
   const firstLocation = locations[0] || {};
 
-  const { DateTime } = luxon;
-  const timezone = details?.listing?.timezone || 'America/Chicago'; // fallback
-
-
   details = {
     start: firstEvent.start || null,
     end: firstEvent.end || null,
