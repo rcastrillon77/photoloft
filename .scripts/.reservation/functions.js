@@ -125,7 +125,7 @@ function showPopupById(id) {
   openPopup();
 }
 
-function getRefundAmounts(startISO, totalPaid, userCreditsUsed) {
+function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   const now = luxon.DateTime.now();
   const start = luxon.DateTime.fromISO(startISO).setZone("America/Chicago");
   const diff = start.diff(now, "days").days;
@@ -158,6 +158,7 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed) {
   const user_credits_returned = userCreditsUsed * cashPercent;
   const cash_refund = Math.max(0, (totalPaid - userCreditsUsed) * cashPercent).toFixed(2);
   const credit_refund = Math.max(0, (totalPaid - userCreditsUsed) * creditPercent).toFixed(2);
+  const taxRefund = parseFloat((taxTotal * (onlyCredit ? creditPercent : cashPercent)).toFixed(2));
   const credits_reissued = Math.max(0, user_credits_returned).toFixed(2);
 
   return {
@@ -165,7 +166,8 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed) {
     credit_refund,
     credits_reissued,
     message,
-    onlyCredit
+    onlyCredit,
+    taxRefund
   };
 }
 
@@ -175,7 +177,8 @@ async function sendCancellationWebhook(type, refundData) {
     listing_name: details.listing?.name || "",
     cash_refund: type === "cash" ? parseFloat(refundData.cash_refund) : 0,
     credit_refund: type === "credit" ? parseFloat(refundData.credit_refund) : parseFloat(refundData.credits_reissued),
-    user_credits_returned: parseFloat(refundData.credits_reissued)
+    credit_reissue: parseFloat(refundData.credits_reissued),
+    tax_total: parseFloat(refundData.taxRefund)
   };
 
   const res = await fetch(CANCELLATION_WEBHOOK_URL, {
