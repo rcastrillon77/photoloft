@@ -208,13 +208,7 @@ async function processCancellation(type = "credit", refundData) {
   const amount = isCredit ? refundData.credit : refundData.cash;
 
   try {
-    await sendCancellationWebhook({
-      booking_uuid: details.uuid,
-      listing_name: details.listing.name,
-      credit_refund: isCredit ? amount : 0,
-      cash_refund: isCredit ? 0 : amount,
-      user_credits_returned: refundData.user_credits_returned
-    });
+    await sendCancellationWebhook(type, refundData);
 
     rebuildBookingDetails();
 
