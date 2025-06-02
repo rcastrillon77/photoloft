@@ -260,7 +260,7 @@ async function initReservationUpdate() {
 initReservationUpdate();
 
 document.getElementById("actions_cancel").addEventListener("click", () => {
-  const refund = getRefundAmounts(details.start, details.transaction.total, details.transaction.user_credits_applied);
+  const refund = getRefundAmounts(details.start, details.transaction.total, details.transaction.user_credits_applied, details.transaction.tax_total);
 
   document.getElementById("cancel-paragraph").innerText = refund.message;
 
