@@ -9,7 +9,7 @@ let details = null;
 const { DateTime } = luxon;
 const timezone = details?.listing?.timezone || 'America/Chicago';
 
-const CANCELLATION_WEBHOOK_URL = "https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4";
+const CANCELLATION_WEBHOOK_URL = "https://hook.us1.make.com/vl0m26yyj1pc4hzll2aplox16qmorajg";
 
 async function rebuildBookingDetails(bookingUuid) {
   const { data: bookingData, error } = await supabase
