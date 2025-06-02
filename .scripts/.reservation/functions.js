@@ -96,7 +96,7 @@ function populateReservationDetails(details) {
     DateTime.fromISO(start).setZone(timezone).toFormat('cccc, LLLL d, yyyy');
 
   document.getElementById("details_start").textContent = start.toFormat("h:mm a");
-  document.getElementById("details_end").textContent = end.toFormat("h:mm a ZZZ");
+  document.getElementById("details_end").textContent =  DateTime.fromISO(end).setZone(timezone).toFormat("h:mm a ZZZ");
 
   document.getElementById("details_duration").textContent =
     `${details.duration || '?'} Hours`;
