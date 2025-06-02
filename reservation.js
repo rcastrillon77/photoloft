@@ -184,8 +184,8 @@ function showPopupById(id) {
 }
 
 function getRefundAmounts(startTimeISO, totalPaid, creditsUsed = 0) {
-  const now = luxon.DateTime.now().setZone(bookingDetails.listing.timezone);
-  const startTime = luxon.DateTime.fromISO(startTimeISO).setZone(bookingDetails.listing.timezone);
+  const now = luxon.DateTime.now().setZone(details.listing.timezone);
+  const startTime = luxon.DateTime.fromISO(startTimeISO).setZone(details.listing.timezone);
   const hoursDiff = startTime.diff(now, "hours").hours;
 
   let cash = 0;
@@ -238,14 +238,14 @@ async function sendCancellationWebhook({ booking_uuid, listing_name, credit_refu
 }
 
 async function handleCancelBooking(isCredit = true) {
-  const transaction = bookingDetails.transaction;
-  const refund = getRefundAmounts(bookingDetails.start, transaction.total, transaction.user_credits_applied);
+  const transaction = details.transaction;
+  const refund = getRefundAmounts(details.start, transaction.total, transaction.user_credits_applied);
   const amount = isCredit ? refund.credit : refund.cash;
 
   try {
     await sendCancellationWebhook({
-      booking_uuid: bookingDetails.uuid,
-      listing_name: bookingDetails.listing.name,
+      booking_uuid: details.uuid,
+      listing_name: details.listing.name,
       credit_refund: isCredit ? amount : 0,
       cash_refund: isCredit ? 0 : amount,
       user_credits_returned: refund.user_credits_returned
