@@ -194,7 +194,7 @@ async function processCancellation(type = "credit", refundData) {
       user_credits_returned: refundData.user_credits_returned
     });
 
-    reloadBookingDetails();
+    rebuildBookingDetails();
 
     let message = "";
 
