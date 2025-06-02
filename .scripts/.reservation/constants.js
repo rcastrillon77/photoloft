@@ -53,3 +53,5 @@ window.bookingGlobals = {
     }
   }
 };
+
+const CANCELLATION_WEBHOOK_URL = "https://hook.us1.make.com/umtemq9v49b8jotoq8elw61zntvak8q4";
