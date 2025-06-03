@@ -690,6 +690,11 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
 
 }
 
+function setSliderProgress(value) {
+    const percent = ((value - MIN_DURATION) / (MAX_DURATION - MIN_DURATION)) * 100;
+    document.getElementById('duration-slider').style.setProperty('--progress', `${percent}%`);
+}
+
 async function initReservationUpdate() {
   if (!bookingUuid) return;
 
