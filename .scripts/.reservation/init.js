@@ -24,16 +24,14 @@ document.getElementById("actions_cancel").addEventListener("click", () => {
     details.transaction.user_credits_applied,
     details.transaction.tax_total
   );
+  
+  // Already sets up paragraph and button text etc.
   document.getElementById("cancel-paragraph").innerText = refund.message;
-
-  const creditBtn = document.getElementById("confirm-credit-cancel");
-  creditBtn.querySelector(".button-text").innerText = "Confirm Cancellation";
-
-  creditBtn.onclick = async () => {
-    await processCancellation("credit", refund.percent);
+  
+  document.getElementById("confirm-credit-cancel").onclick = () => {
+    processCancellation(refund);
   };
 
-  showPopupById("cancel-popup");
 });
 
 document.getElementById("actions_reschedule").addEventListener("click", () => {
