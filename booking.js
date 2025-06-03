@@ -2842,7 +2842,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const { data, error } = await supabase
                     .from("events")
                     .select("start, end")
-                    .eq("location_id", locId)
+                    .in("location_id", locId) //changed from eq to deal with array
                     .eq("status", "confirmed")
                     .gte("start", minDate.toISO())
                     .lte("end", maxDate.toISO());
