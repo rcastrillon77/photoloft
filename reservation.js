@@ -1,5 +1,5 @@
 const urlParams = new URLSearchParams(window.location.search);
-window.bookingUuid = urlParams.get("booking");
+const bookingUuid = urlParams.get("booking");
 let details = null;
 
 const { DateTime } = luxon;
