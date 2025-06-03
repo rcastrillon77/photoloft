@@ -126,7 +126,7 @@ function applyActionButtonStates(details) {
   const { status, type } = details;
 
   // Always evaluate these
-  if (status === "past") {
+  if (status === "past" || status === "cancelled") {
     ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(disable);
   } else if (status === "upcoming") {
     disable("actions_checkout");
