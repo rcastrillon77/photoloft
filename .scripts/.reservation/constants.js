@@ -1,6 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 const bookingUuid = urlParams.get("booking");
-const details = null;
+let details = null;
 
 const { DateTime } = luxon;
 const timezone = details?.listing?.timezone || 'America/Chicago';
