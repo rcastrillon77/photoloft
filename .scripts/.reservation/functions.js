@@ -21,6 +21,7 @@ async function rebuildBookingDetails(bookingUuid) {
     start: bookingData.details.start || null,
     end: bookingData.details.end || null,
     status: bookingData.status || null,
+    type: bookingData.type || null,
     duration: bookingData.details.duration || null,
     attendees: bookingData.details?.attendees || null,
     activities: bookingData.details?.activities || [],
@@ -119,13 +120,30 @@ function closePopup() {
   document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden"));
 }
 
+function applyActionButtonStates(details) {
+  const disable = id => document.getElementById(id)?.setAttribute("disabled", true);
+  const hide = id => document.getElementById(id)?.classList.add("hidden");
+
+  const { status, type } = details;
+
+  // Always evaluate these
+  if (status === "past") {
+    ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(hide);
+  } else if (status === "upcoming") {
+    disable("actions_checkout");
+    if (type === "rescheduled") {
+      disable("actions_reschedule");
+    }
+  }
+}
+
 function showPopupById(id) {
   document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
   openPopup();
 }
 
-function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
+function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal, type) {
   const now = luxon.DateTime.now();
   const start = luxon.DateTime.fromISO(startISO).setZone(timezone);
   const diffInHours = start.diff(now, "hours").hours;
@@ -133,42 +151,40 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
 
   let creditPercent = 0;
   let message = "";
-  let confirmMessage = "";
-  let onlyCredit = true;
+  let confirmationMessage = "";
 
-  if (diffInHours >= 168) {
+  if (type === "rescheduled") {
+    creditPercent = 0;
+    message = "Rescheduled bookings are not eligible for refunds.";
+    confirmationMessage = "Your booking has been sucessfully cancelled. We hope to see you again soon!";
+  } else if (diffInHours >= 168) {
     creditPercent = 1;
     message = "Since your booking is more than 7 days away, you are eligible for a 100% credit to your account.";
+    confirmationMessage = "Your booking has been cancelled. You will receive a full credit back to your account.";
   } else if (diffInHours >= 24) {
     creditPercent = 0.5;
     message = `Since your booking is in ${diffInDays} days, you are eligible for a 50% credit to your account.`;
+    confirmationMessage = `Your booking has been cancelled. You will receive a partial credit of $${(totalPaid * 0.5).toFixed(2)} to your account.`;
   } else {
     creditPercent = 0;
     message = "Since your booking is within 24 hours, you are not eligible for a credit.";
+    confirmationMessage = "Your booking has been cancelled. We hope to see you again soon!";
   }
 
-  const creditAmount = totalPaid * creditPercent;
+  const credit_refund = totalPaid * creditPercent;
   const taxRefund = taxTotal * creditPercent;
-  const reissuedCredits = userCreditsUsed * creditPercent;
-
-  if (creditPercent === 0) {
-    confirmMessage = "Your booking has been successfully cancelled. We hope to see you in one of our studios in the near future.";
-  } else if (creditAmount === 0 && reissuedCredits === 0) {
-    confirmMessage = "Your booking has been successfully cancelled. Since this booking has no payment, no credit will be issued. We hope to see you in one of our studios in the near future.";
-  } else {
-    const totalCredit = creditAmount + reissuedCredits;
-    confirmMessage = `Your booking has been successfully cancelled. You will receive a $${totalCredit.toFixed(2)} credit back to your account, available to use immediately. We hope to see you in one of our studios in the near future.`;
-  }
+  const credits_reissued = userCreditsUsed * creditPercent;
 
   return {
-    credit_refund: creditAmount.toFixed(2),
+    credit_refund: credit_refund.toFixed(2),
     taxRefund: taxRefund.toFixed(2),
-    credits_reissued: reissuedCredits.toFixed(2),
+    credits_reissued: credits_reissued.toFixed(2),
     message,
-    confirmMessage,
-    onlyCredit
+    confirmationMessage,
+    onlyCredit: true
   };
 }
+
 
 async function processCancellation(refundData) {
   try {
@@ -200,3 +216,4 @@ async function processCancellation(refundData) {
     alert("There was a problem cancelling your booking. Please try again.");
   }
 }
+
