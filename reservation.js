@@ -146,6 +146,10 @@ function applyActionButtonStates(details) {
       disable("actions_reschedule");
     }
   }
+
+  if (status === "cancelled") {
+    document.getElementById("details_status").classList.add("red");
+  }
 }
 
 function showPopupById(id) {
