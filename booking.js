@@ -1292,7 +1292,7 @@ async function fetchEventsForRange(start, end) {
       const { data, error } = await window.supabase
         .from("events")
         .select("start, end")
-        .eq("location_id", locationId)
+        .in("location_id", locationId) //changed from eq to deal with array
         .gte("start", start.toISOString())
         .lte("end", end.toISOString());
   
