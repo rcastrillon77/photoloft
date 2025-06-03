@@ -2,7 +2,7 @@ async function rebuildBookingDetails(bookingUuid) {
   const { data: bookingData, error } = await supabase
     .from("bookings")
     .select("*")
-    .eq("uuid", window.bookingUuid)
+    .eq("uuid", bookingUuid)
     .maybeSingle();
 
   if (error || !bookingData) {
@@ -127,12 +127,14 @@ function showPopupById(id) {
 
 function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   const now = luxon.DateTime.now();
-  const start = luxon.DateTime.fromISO(startISO).setZone("America/Chicago");
+  const start = luxon.DateTime.fromISO(startISO).setZone(timezone);
   const diffInHours = start.diff(now, "hours").hours;
   const diffInDays = Math.floor(diffInHours / 24);
 
   let creditPercent = 0;
   let message = "";
+  let confirmMessage = "";
+  let onlyCredit = true;
 
   if (diffInHours >= 168) {
     creditPercent = 1;
@@ -149,14 +151,25 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   const taxRefund = taxTotal * creditPercent;
   const reissuedCredits = userCreditsUsed * creditPercent;
 
+  if (creditPercent === 0) {
+    confirmMessage = "Your booking has been cancelled. While you're not eligible for a refund, we hope to see you again soon.";
+  } else if (creditAmount === 0 && reissuedCredits === 0) {
+    confirmMessage = "Your booking has been cancelled. Since this booking had no paid amount, no credit will be issued.";
+  } else {
+    const totalCredit = creditAmount + reissuedCredits;
+    confirmMessage = `Your booking has been cancelled. You will receive a $${totalCredit.toFixed(2)} credit back to your account, available to use immediately.`;
+  }
+
   return {
     credit_refund: creditAmount.toFixed(2),
     taxRefund: taxRefund.toFixed(2),
     credits_reissued: reissuedCredits.toFixed(2),
     message,
-    onlyCredit: true
+    confirmMessage,
+    onlyCredit
   };
 }
+
 
 async function sendCancellationWebhook(type, refundData) {
   const payload = {
@@ -177,21 +190,15 @@ async function sendCancellationWebhook(type, refundData) {
   return res.ok;
 }
 
-async function processCancellation(type = "credit", percent = 1) {
+async function processCancellation(refundData) {
   try {
-    const total = details.transaction.total || 0;
-    const userCreditsUsed = details.transaction.user_credits_applied || 0;
-    const creditRefund = total * percent;
-    const creditsReissued = userCreditsUsed * percent;
-    const taxRefund = details.transaction.tax_total * percent;
-
     const payload = {
       booking_uuid: bookingUuid,
       listing_name: details.listing?.name || "",
-      credit_refund: creditRefund.toFixed(2),
-      credit_reissue: creditsReissued.toFixed(2),
+      credit_refund: parseFloat(refundData.credit_refund),
+      credit_reissue: parseFloat(refundData.credits_reissued),
       cash_refund: 0,
-      tax_total: taxRefund
+      tax_total: parseFloat(refundData.taxRefund)
     };
 
     const response = await fetch(CANCELLATION_WEBHOOK_URL, {
@@ -202,11 +209,11 @@ async function processCancellation(type = "credit", percent = 1) {
 
     if (!response.ok) throw new Error("Webhook failed");
 
-    await rebuildBookingDetails();
+    await rebuildBookingDetails(bookingUuid);
 
-    document.getElementById("confirm-popup").querySelector(".popup-header").textContent = "Booking Cancelled";
-    document.getElementById("confirm-popup").querySelector(".popup-text").textContent =
-      `Your booking has been cancelled. You will receive a $${creditRefund.toFixed(2)} credit back to your account, available to be used immediately.`;
+    const popup = document.getElementById("confirm-popup");
+    popup.querySelector(".popup-header").textContent = "Booking Cancelled";
+    popup.querySelector(".popup-text").textContent = refundData.confirmMessage;
 
     showPopupById("confirm-popup");
   } catch (err) {
