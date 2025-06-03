@@ -722,6 +722,24 @@ function setSliderProgress(value) {
     document.getElementById('duration-slider').style.setProperty('--progress', `${percent}%`);
 }
 
+function getScheduleForDate(schedule, date = bookingGlobals.booking_date) {
+  const weekday = date.getDay();
+  return schedule[MEMBERSHIP]?.[weekday] || null;
+}
+
+function applyScheduleSettings(daySchedule) {
+  if (!daySchedule) return;
+
+  OPEN_TIME = parseTimeToMinutes(daySchedule.open);
+  CLOSE_TIME = parseTimeToMinutes(daySchedule.close);
+  RATE = daySchedule.rate || RATE;
+
+  const slider = document.getElementById('duration-slider');
+  if (slider) {
+      slider.max = MAX_DURATION;
+  }
+}
+
 async function initReservationUpdate() {
   if (!bookingUuid) return;
 
