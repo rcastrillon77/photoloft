@@ -22,7 +22,8 @@ document.getElementById("actions_cancel").addEventListener("click", () => {
     details.start,
     details.transaction.total,
     details.transaction.user_credits_applied,
-    details.transaction.tax_total
+    details.transaction.tax_total,
+    details.type
   );
   
   // Already sets up paragraph and button text etc.
