@@ -58,6 +58,7 @@ async function rebuildBookingDetails(bookingUuid) {
   };
 
   LISTING_UUID = bookingData.listing_id;
+  MEMBERSHIP = bookingData.user.membership;
   window.LOCATION_UUID = bookingData.location_id;
 
   const { error: updateError } = await supabase
