@@ -229,7 +229,7 @@ async function processCancellation(refundData) {
     document.getElementById("confirm-popup-header").textContent = "Booking Cancelled";
     document.getElementById("confirm-popup-paragraph").textContent = refundData.confirmMessage;
 
-    showPopupById("confirm-popup");
+    showPopupById("confirmation-popup");
   } catch (err) {
     alert("There was a problem cancelling your booking. Please try again.");
   }
