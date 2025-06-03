@@ -158,7 +158,6 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   };
 }
 
-
 async function sendCancellationWebhook(type, refundData) {
   const payload = {
     booking_uuid: bookingUuid,

@@ -171,7 +171,6 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   };
 }
 
-
 async function sendCancellationWebhook(type, refundData) {
   const payload = {
     booking_uuid: bookingUuid,
@@ -227,7 +226,6 @@ async function processCancellation(type = "credit", percent = 1) {
     alert("There was a problem cancelling your booking. Please try again.");
   }
 }
-
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
