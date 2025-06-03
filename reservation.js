@@ -244,6 +244,7 @@ async function initReservationUpdate() {
 }
 
 initReservationUpdate();
+applyActionButtonStates();
 
 // POPUP CLOSE & OPEN
 document.getElementById("popup-closer").addEventListener("click", closePopup);
