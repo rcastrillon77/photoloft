@@ -133,14 +133,13 @@ function closePopup() {
 }
 
 function applyActionButtonStates(details) {
-  const disable = id => document.getElementById(id)?.setAttribute("disabled", true);
-  const hide = id => document.getElementById(id)?.classList.add("hidden");
+  const disable = id => document.getElementById(id)?.classList.add("disable");
 
   const { status, type } = details;
 
   // Always evaluate these
   if (status === "past") {
-    ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(hide);
+    ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(disable);
   } else if (status === "upcoming") {
     disable("actions_checkout");
     if (type === "rescheduled") {
