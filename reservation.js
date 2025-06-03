@@ -225,6 +225,8 @@ async function processCancellation(refundData) {
     if (!response.ok) throw new Error("Webhook failed");
 
     details = await rebuildBookingDetails(bookingUuid);
+    populateReservationDetails(details);
+    applyActionButtonStates(details);
 
     document.getElementById("confirm-popup-header").textContent = "Booking Cancelled";
     document.getElementById("confirm-popup-paragraph").textContent = refundData.confirmationMessage;
