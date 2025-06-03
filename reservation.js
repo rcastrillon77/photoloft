@@ -141,58 +141,33 @@ function showPopupById(id) {
 function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   const now = luxon.DateTime.now();
   const start = luxon.DateTime.fromISO(startISO).setZone("America/Chicago");
-  const diff = start.diff(now, "days").days;
-  const roundedDiff = Math.floor(diff);
+  const diffInHours = start.diff(now, "hours").hours;
+  const diffInDays = Math.floor(diffInHours / 24);
 
-  let cashPercent = 0;
   let creditPercent = 0;
   let message = "";
-  let onlyCredit = false;
 
-  if (diff >= 10) {
-    cashPercent = 1;
+  if (diffInHours >= 168) {
     creditPercent = 1;
-    message = `Since your booking is over 10 days away, you are eligible for a 100% credit to your account or a full refund to your original payment method.`;
-  } else if (diff >= 5) {
-    cashPercent = 0.5;
-    creditPercent = 0.6;
-    message = `Since your booking is in ${roundedDiff} days, you are eligible for a 50% refund or 60% credit to your account.`;
-  } else if (diff >= 2) {
-    cashPercent = 0.25;
-    creditPercent = 0.35;
-    message = `Since your booking is in ${roundedDiff} days, you are eligible for a 25% refund or 35% credit to your account.`;
+    message = "Since your booking is more than 7 days away, you are eligible for a 100% credit to your account.";
+  } else if (diffInHours >= 24) {
+    creditPercent = 0.5;
+    message = `Since your booking is in ${diffInDays} days, you are eligible for a 50% credit to your account.`;
   } else {
-    cashPercent = 0;
-    creditPercent = 0.1;
-    message = `Since your booking is today, you are not eligible for a refund. We will issue a 10% credit to your account available to use immediately.`;
-    onlyCredit = true;
+    creditPercent = 0;
+    message = "Since your booking is within 24 hours, you are not eligible for a credit.";
   }
 
-  const user_credits_returned = userCreditsUsed * cashPercent;
-  const cash_refund = (totalPaid - userCreditsUsed) * cashPercent;
-  const credit_refund = (totalPaid - userCreditsUsed) * creditPercent;
-  const taxRefund = taxTotal * (onlyCredit ? creditPercent : cashPercent);
-  const credits_reissued = user_credits_returned;
-
-  console.log("💰 Refund Calculation Debug:");
-  console.log("⏱ Time until booking (rounded days):", roundedDiff);
-  console.log("🧾 Total paid:", totalPaid);
-  console.log("🎟️ User credits used:", userCreditsUsed);
-  console.log("💸 Cash refund %:", cashPercent);
-  console.log("💳 Credit refund %:", creditPercent);
-  console.log("🧮 Cash refund calculated:", cash_refund);
-  console.log("💵 Credit refund calculated:", credit_refund);
-  console.log("🏦 Credits reissued:", credits_reissued);
-  console.log("🧾 Tax refund:", taxRefund);
-  console.log("📩 Refund message:", message);
+  const creditAmount = (totalPaid - userCreditsUsed) * creditPercent;
+  const taxRefund = taxTotal * creditPercent;
+  const reissuedCredits = userCreditsUsed * creditPercent;
 
   return {
-    cash_refund: cash_refund.toFixed(2),
-    credit_refund: credit_refund.toFixed(2),
-    credits_reissued: credits_reissued.toFixed(2),
+    credit_refund: creditAmount.toFixed(2),
+    taxRefund: taxRefund.toFixed(2),
+    credits_reissued: reissuedCredits.toFixed(2),
     message,
-    onlyCredit,
-    taxRefund: parseFloat(taxRefund.toFixed(2))
+    onlyCredit: true
   };
 }
 
@@ -216,33 +191,43 @@ async function sendCancellationWebhook(type, refundData) {
   return res.ok;
 }
 
-async function processCancellation(type = "credit", refundData) {
-  const isCredit = type === "credit";
-  const amount = isCredit ? refundData.credit : refundData.cash;
-
+async function processCancellation(type = "credit", percent = 1) {
   try {
-    await sendCancellationWebhook(type, refundData);
+    const total = details.transaction.total || 0;
+    const userCreditsUsed = details.transaction.user_credits_applied || 0;
+    const creditRefund = userCreditsUsed * percent;
+    const creditsReissued = userCreditsUsed * percent;
+    const taxRefund = details.transaction.tax_total * percent;
 
-    rebuildBookingDetails();
+    const payload = {
+      booking_uuid: bookingUuid,
+      listing_name: details.listing?.name || "",
+      credit_refund: creditRefund.toFixed(2),
+      credit_reissue: creditsReissued.toFixed(2),
+      cash_refund: 0,
+      tax_total: taxRefund
+    };
 
-    let message = "";
+    const response = await fetch(CANCELLATION_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-    if (refundData.cash === 0 && refundData.credit > 0) {
-      message = `You’ve received a $${refundData.credit.toFixed(2)} credit, available to use immediately.`;
-    } else if (isCredit) {
-      message = `You will receive a $${refundData.credit.toFixed(2)} credit back to your Photoloft account, available to use immediately.`;
-    } else {
-      message = `You will receive a $${refundData.cash.toFixed(2)} refund to your original payment method. Refunds can take 5–10 business days to process.`;
-    }
+    if (!response.ok) throw new Error("Webhook failed");
+
+    await rebuildBookingDetails();
 
     document.getElementById("confirm-popup").querySelector(".popup-header").textContent = "Booking Cancelled";
-    document.getElementById("confirm-popup").querySelector(".popup-text").textContent = `Your booking has been cancelled. ${message}`;
-    showPopupById("confirm-popup");
+    document.getElementById("confirm-popup").querySelector(".popup-text").textContent =
+      `Your booking has been cancelled. You will receive a $${creditRefund.toFixed(2)} credit back to your account, available to be used immediately.`;
 
+    showPopupById("confirm-popup");
   } catch (err) {
     alert("There was a problem cancelling your booking. Please try again.");
   }
 }
+
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
