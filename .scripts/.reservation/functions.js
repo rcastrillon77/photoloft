@@ -145,7 +145,7 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
     message = "Since your booking is within 24 hours, you are not eligible for a credit.";
   }
 
-  const creditAmount = (totalPaid - userCreditsUsed) * creditPercent;
+  const creditAmount = totalPaid * creditPercent;
   const taxRefund = taxTotal * creditPercent;
   const reissuedCredits = userCreditsUsed * creditPercent;
 
