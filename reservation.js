@@ -406,45 +406,6 @@ async function initBookingConfig(listingId) {
       window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
       window.bookingGlobals.final_rate = FULL_RATE;
 
-      // PULL ACTIVITIES
-      const { data: activitiesData, error: activitiesError } = await window.supabase
-      .from("listings")
-      .select("activities, details")
-      .eq("uuid", listingId)
-      .single();
-
-      if (activitiesError || !activitiesData) {
-      console.error("❌ Failed to fetch booking types:", activitiesError);
-      } else {
-          const activityArray = activitiesData.activities || [];
-
-          window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
-
-          bookingTypes = {};
-          for (const activity of activityArray) {
-              if (activity?.title && activity?.id) {
-                  bookingTypes[activity.title] = { ...activity };
-              }
-          }
-          console.log("✅ bookingTypes:", bookingTypes);
-
-          const capacityConfig = activitiesData.details?.capacity || {};
-          window.capacitySettings = {
-              min: capacityConfig.min ?? 1,
-              max: capacityConfig.max ?? 20,
-              interval: capacityConfig.interval ?? 1,
-              allowMore: capacityConfig["allow-more"] ?? false,
-              maxMessage: capacityConfig["max-message"] ?? null
-          };
-
-          attendeeCount = Math.max(attendeeCount, window.capacitySettings.min);
-          maxAttendees = window.capacitySettings.max;
-          countDisplay.textContent = attendeeCount;
-          updateAttendeesHiddenField(attendeeCount);
-          updateAttendeeButtons();
-          console.log("👥 Loaded capacity:", window.listingCapacity);
-      }
-
       console.log("🧩 Booking Config:", {
           MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
           BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
