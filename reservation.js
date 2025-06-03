@@ -11,12 +11,10 @@ if (!bookingUuid) {
 }
 
 async function rebuildBookingDetails(bookingUuid) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const bookingUuid = urlParams.get("booking");
   const { data: bookingData, error } = await supabase
     .from("bookings")
     .select("*")
-    .eq("uuid", bookingUuid)
+    .eq("uuid", window.bookingUuid)
     .maybeSingle();
 
   if (error || !bookingData) {
