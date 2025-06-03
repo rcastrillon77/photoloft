@@ -215,7 +215,7 @@ async function processCancellation(refundData) {
     details = await rebuildBookingDetails(bookingUuid);
 
     document.getElementById("confirm-popup-header").textContent = "Booking Cancelled";
-    document.getElementById("confirm-popup-paragraph").textContent = refundData.confirmMessage;
+    document.getElementById("confirm-popup-paragraph").textContent = refundData.confirmationMessage;
 
     showPopupById("confirmation-popup");
   } catch (err) {
