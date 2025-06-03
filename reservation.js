@@ -237,7 +237,361 @@ async function processCancellation(refundData) {
   }
 }
 
+// =============================== //
+// ====== RESCHEDULE SUPPORT ===== //
+// =============================== //
 
+async function setupRescheduleFlow() {
+  if (!details) return;
+
+  preloadRescheduleGlobals();
+
+  await initBookingConfig(LISTING_UUID, window.LOCATION_UUID);
+  await initSliderSection();
+  initCalendar();
+}
+
+function preloadRescheduleGlobals() {
+  const start = luxon.DateTime.fromISO(details.start, { zone: window.TIMEZONE });
+  const duration = details.duration || 60;
+  const booking_date = start.toJSDate();
+  const booking_start = start.hour * 60 + start.minute;
+
+  window.bookingGlobals = {
+    booking_date,
+    booking_start,
+    booking_duration: duration,
+    booking_end: booking_start + duration,
+    selected_start_time: (Math.floor(booking_start / 60) * 100 + (booking_start % 60)).toString().padStart(4, '0'),
+    final_rate: details.transaction.final_rate || 100,
+    base_rate: details.transaction.base_rate || 100,
+    subtotal: (duration / 60) * (details.transaction.final_rate || 100),
+    rate_label: details.transaction.rate_label || '',
+    attendees: details.attendees || 1,
+    taxRate: details.transaction.tax_rate || 0,
+    taxTotal: details.transaction.tax_total || 0,
+    total: details.transaction.total || 0
+  };
+}
+
+document.getElementById("confirm-new-booking").addEventListener("click", async () => {
+  const g = window.bookingGlobals;
+  const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
+  const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
+
+  const payload = {
+    booking_uuid: bookingUuid,
+    new_start: bookingStart.toISO(),
+    new_end: bookingEnd.toISO(),
+    duration: g.booking_duration,
+    attendees: g.attendees || 1
+  };
+
+  try {
+    const response = await fetch("https://hook.us1.make.com/YOUR-RESCHEDULE-ENDPOINT", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) throw new Error("Reschedule failed");
+
+    details = await rebuildBookingDetails(bookingUuid);
+    populateReservationDetails(details);
+    applyActionButtonStates(details);
+
+    document.getElementById("confirm-popup-header").textContent = "Booking Rescheduled";
+    document.getElementById("confirm-popup-paragraph").textContent = "Your booking has been moved to the new time.";
+    showPopupById("confirmation-popup");
+
+  } catch (err) {
+    alert("There was a problem rescheduling your booking. Please try again.");
+  }
+});
+
+document.getElementById("actions_reschedule").addEventListener("click", () => {
+  showPopupById("reschedule-popup");
+  setupRescheduleFlow();
+});
+
+async function initBookingConfig(listingId, locationId) {
+  try {
+  // --- Pull Listing Details ---
+      const { data: listingData, error: listingError } = await window.supabase
+      .from("listings")
+      .select("schedule, location_id")
+      .eq("uuid", listingId)
+      .single();
+
+      if (listingError || !listingData) {
+          console.error("❌ Failed to fetch listing schedule:", listingError);
+          return;
+      }
+  
+      const schedule = listingData.schedule || {};
+      const rules = schedule['booking-rules'] || {};
+      window.listingSchedule = schedule;
+      window.bookingGlobals.bookingRules = rules;
+  
+      MIN_DURATION = rules.minimum ?? 1;
+      MAX_DURATION = rules.max ?? 4;
+      INTERVAL = rules.interval ?? 0.5;
+      EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
+      DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
+      BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
+
+      window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
+      window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
+
+      const today = new Date();
+      const weekday = today.getDay();
+      const todaySchedule = schedule[MEMBERSHIP]?.[weekday];
+  
+      if (todaySchedule) {
+          OPEN_TIME = parseTimeToMinutes(todaySchedule.open);
+          CLOSE_TIME = parseTimeToMinutes(todaySchedule.close);
+          FULL_RATE = todaySchedule.rate;
+          FINAL_RATE = FULL_RATE;
+      }
+  
+      const startStr = rules.start;
+      const endStr = rules.end;
+      const now = new Date();
+  
+      minDate = startStr ? new Date(startStr) : now;
+      if (minDate < now) minDate = now;
+  
+      maxDate = endStr ? new Date(endStr) : new Date(now.getTime() + BOOKING_WINDOW_DAYS * 86400000);
+
+      window.bookingMinDate = minDate;
+      window.bookingMaxDate = maxDate;
+
+      window.bookingGlobals.booking_date = now;
+      window.bookingGlobals.booking_start = OPEN_TIME;
+      window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
+      window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
+      window.bookingGlobals.final_rate = FULL_RATE;
+
+      // PULL ACTIVITIES
+      const { data: activitiesData, error: activitiesError } = await window.supabase
+      .from("listings")
+      .select("activities, details")
+      .eq("uuid", listingId)
+      .single();
+
+      if (activitiesError || !activitiesData) {
+      console.error("❌ Failed to fetch booking types:", activitiesError);
+      } else {
+          const activityArray = activitiesData.activities || [];
+
+          window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
+
+          bookingTypes = {};
+          for (const activity of activityArray) {
+              if (activity?.title && activity?.id) {
+                  bookingTypes[activity.title] = { ...activity };
+              }
+          }
+          console.log("✅ bookingTypes:", bookingTypes);
+
+          const capacityConfig = activitiesData.details?.capacity || {};
+          window.capacitySettings = {
+              min: capacityConfig.min ?? 1,
+              max: capacityConfig.max ?? 20,
+              interval: capacityConfig.interval ?? 1,
+              allowMore: capacityConfig["allow-more"] ?? false,
+              maxMessage: capacityConfig["max-message"] ?? null
+          };
+
+          attendeeCount = Math.max(attendeeCount, window.capacitySettings.min);
+          maxAttendees = window.capacitySettings.max;
+          countDisplay.textContent = attendeeCount;
+          updateAttendeesHiddenField(attendeeCount);
+          updateAttendeeButtons();
+          console.log("👥 Loaded capacity:", window.listingCapacity);
+      }
+
+      console.log("🧩 Booking Config:", {
+          MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
+          BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
+          minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
+      });
+
+      // --- Pull Events ---
+      const eventsData = await fetchEventsForRange(minDate, maxDate);
+      window.bookingEvents = eventsData;
+      console.log("📅 Booking Events:", window.bookingEvents);
+      
+      
+      // --- Pull Special Rates ---
+          const { data: ratesData, error: ratesError } = await window.supabase
+          .from("special_rates")
+          .select("start, end, title, rate")
+          .eq("listing_id", listingId);
+
+          if (ratesError) {
+              console.error("❌ Failed to fetch special rates:", ratesError);
+          } else {
+              window.specialRates = {};
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+
+              for (const entry of ratesData) {
+                  const start = new Date(entry.start);
+                  const end = new Date(entry.end);
+                  const current = new Date(start);
+
+                  while (current <= end) {
+                      const dateStr = current.toISOString().split("T")[0];
+                      const dayOfWeek = current.getDay();
+                      const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
+
+                      if (membershipRate !== undefined) {
+                          window.specialRates[dateStr] = {
+                              title: entry.title,
+                              amount: membershipRate
+                          };
+                      }
+
+                      current.setDate(current.getDate() + 1);
+                  }
+              }
+
+              console.log("💸 Loaded specialRates →", window.specialRates);
+          }
+      } catch (err) {
+      console.error("🚨 Unexpected error initializing booking config:", err);
+  }
+}
+
+async function initSliderSection() {
+  document.querySelector('.extended-time').classList.add('shrunk');
+  document.getElementById('no-timeslots-message')?.classList.add('hidden');
+
+  const slider = document.getElementById('duration-slider');
+  slider.min = MIN_DURATION;
+  slider.max = MAX_DURATION;
+  slider.step = INTERVAL;
+  slider.value = DEFAULT_DURATION;
+
+  setSliderProgress(DEFAULT_DURATION);
+
+  const minPercent = (MIN_DURATION / MAX_DURATION) * 100;
+  document.querySelector('.range-slider-min')?.style.setProperty('width', `${minPercent}%`);
+
+  await generateStartTimeOptions();
+  generateExtendedTimeOptions();
+  highlightSelectedDate();
+  updateMaxAvailableButton();
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-CA');
+  document.getElementById('date-picker')?.setAttribute('value', dateStr);
+}
+
+function initCalendar() {
+  const prevBtn = document.getElementById("prev-month");
+  const nextBtn = document.getElementById("next-month");
+  const monthDisplay = document.getElementById("current-month");
+
+  if (!prevBtn || !nextBtn || !monthDisplay) {
+      console.error("❌ Custom header elements NOT found!");
+      return;
+  }
+
+  console.log("✅ Custom header found");
+
+  const calendar = flatpickr("#date-picker", {
+      inline: true,
+      dateFormat: "m-d-Y",
+      minDate: window.bookingMinDate,
+      maxDate: window.bookingMaxDate,
+      locale: { firstDayOfWeek: 0 },
+      showMonths: 1,
+
+      onReady(selectedDates, dateStr, instance) {
+          window.flatpickrCalendar = instance;
+          updateCustomHeader(instance);
+          setTimeout(() => highlightSelectedDate(), 0);
+          setTimeout(() => disableUnavailableDates(), 0);
+      },
+
+      onMonthChange(selectedDates, dateStr, instance) {
+          updateCustomHeader(instance);
+          highlightSelectedDate();
+          generateStartTimeOptions(true); 
+      },
+
+      onYearChange(selectedDates, dateStr, instance) {
+          highlightSelectedDate();
+          generateStartTimeOptions(true); 
+      },
+
+      onChange(selectedDates) {
+          const selectedDate = selectedDates[0];
+          if (!selectedDate || !(selectedDate instanceof Date)) return;
+          
+          window.bookingGlobals.booking_date = new Date(selectedDate);
+          
+          generateStartTimeOptions(false);
+          requestAnimationFrame(() => disableUnavailableDates());
+          generateExtendedTimeOptions();
+          updateMaxAvailableButton();
+          updateBookingSummary();
+          highlightSelectedDate();
+      }
+      
+  });
+
+  function updateCustomHeader(instance) {
+      const monthNames = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+      ];
+      monthDisplay.textContent = monthNames[instance.currentMonth];
+
+      const min = new Date(instance.config.minDate);
+      const max = new Date(instance.config.maxDate);
+      const y = instance.currentYear;
+      const m = instance.currentMonth;
+
+      prevBtn.classList.toggle("disabled", y === min.getFullYear() && m <= min.getMonth());
+      nextBtn.classList.toggle("disabled", y === max.getFullYear() && m >= max.getMonth());
+  }
+
+  prevBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!prevBtn.classList.contains("disabled")) calendar.changeMonth(-1);
+  });
+
+  nextBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (!nextBtn.classList.contains("disabled")) calendar.changeMonth(1);
+  });
+
+  checkScrollHelperVisibility();
+}
+
+function generateExtendedTimeOptions() {
+      const container = document.querySelector('.extended-time .pill-button-flex-container');
+  const previouslySelected = document.querySelector('input[name="extended-time"]:checked')?.value;
+
+  container.innerHTML = '';
+
+  EXTENDED_OPTIONS.forEach(opt => {
+      const value = opt;
+      const label = `${opt} Hours`;
+      const isSelected = value.toString() === previouslySelected;
+
+      container.innerHTML += `
+      <label class="radio-option-container${isSelected ? ' selected' : ''}">
+          <input type="radio" name="extended-time" class="radio-option-button" value="${value}" ${isSelected ? 'checked' : ''}>
+          <span class="radio-option-label">${label}</span>
+      </label>`;
+  });
+
+  attachRadioStyling();
+}
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
