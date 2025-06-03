@@ -3,6 +3,7 @@ const bookingUuid = urlParams.get("booking");
 let details = null;
 
 LISTING_UUID = null;
+MEMBERSHIP = null;
 window.LOCATION_UUID = [];
 
 const { DateTime } = luxon;
