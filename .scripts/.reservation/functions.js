@@ -181,7 +181,7 @@ async function processCancellation(type = "credit", percent = 1) {
   try {
     const total = details.transaction.total || 0;
     const userCreditsUsed = details.transaction.user_credits_applied || 0;
-    const creditRefund = userCreditsUsed * percent;
+    const creditRefund = total * percent;
     const creditsReissued = userCreditsUsed * percent;
     const taxRefund = details.transaction.tax_total * percent;
 
