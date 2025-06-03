@@ -212,11 +212,10 @@ async function processCancellation(refundData) {
 
     if (!response.ok) throw new Error("Webhook failed");
 
-    await rebuildBookingDetails(bookingUuid);
+    details = await rebuildBookingDetails(bookingUuid);
 
-    const popup = document.getElementById("confirm-popup");
-    popup.querySelector(".popup-header").textContent = "Booking Cancelled";
-    popup.querySelector(".popup-text").textContent = refundData.confirmMessage;
+    document.getElementById("confirm-popup-header").textContent = "Booking Cancelled";
+    document.getElementById("confirm-popup-paragraph").textContent = refundData.confirmMessage;
 
     showPopupById("confirm-popup");
   } catch (err) {
