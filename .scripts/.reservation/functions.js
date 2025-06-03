@@ -152,12 +152,12 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
   const reissuedCredits = userCreditsUsed * creditPercent;
 
   if (creditPercent === 0) {
-    confirmMessage = "Your booking has been cancelled. While you're not eligible for a refund, we hope to see you again soon.";
+    confirmMessage = "Your booking has been successfully cancelled. We hope to see you in one of our studios in the near future.";
   } else if (creditAmount === 0 && reissuedCredits === 0) {
-    confirmMessage = "Your booking has been cancelled. Since this booking had no paid amount, no credit will be issued.";
+    confirmMessage = "Your booking has been successfully cancelled. Since this booking has no payment, no credit will be issued. We hope to see you in one of our studios in the near future.";
   } else {
     const totalCredit = creditAmount + reissuedCredits;
-    confirmMessage = `Your booking has been cancelled. You will receive a $${totalCredit.toFixed(2)} credit back to your account, available to use immediately.`;
+    confirmMessage = `Your booking has been successfully cancelled. You will receive a $${totalCredit.toFixed(2)} credit back to your account, available to use immediately. We hope to see you in one of our studios in the near future.`;
   }
 
   return {
@@ -168,26 +168,6 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal) {
     confirmMessage,
     onlyCredit
   };
-}
-
-
-async function sendCancellationWebhook(type, refundData) {
-  const payload = {
-    booking_uuid: bookingUuid,
-    listing_name: details.listing?.name || "",
-    cash_refund: type === "cash" ? parseFloat(refundData.cash_refund) : 0,
-    credit_refund: type === "credit" ? parseFloat(refundData.credit_refund) : parseFloat(refundData.credits_reissued),
-    credit_reissue: parseFloat(refundData.credits_reissued),
-    tax_total: parseFloat(refundData.taxRefund)
-  };
-
-  const res = await fetch(CANCELLATION_WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  return res.ok;
 }
 
 async function processCancellation(refundData) {
