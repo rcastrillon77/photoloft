@@ -4,6 +4,7 @@ let details = null;
 
 LISTING_UUID = null;
 MEMBERSHIP = null;
+PREPAID_HOURS = window.supabaseUser?.prepaid || 0;
 // === Booking Constants (Populated from Supabase)
 
 let MIN_DURATION = 1;
