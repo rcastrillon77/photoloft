@@ -240,11 +240,11 @@ async function initReservationUpdate() {
   }
 
   populateReservationDetails(details);
+  applyActionButtonStates(details);
   console.log("✅ Reservation populated.");
 }
 
 initReservationUpdate();
-applyActionButtonStates();
 
 // POPUP CLOSE & OPEN
 document.getElementById("popup-closer").addEventListener("click", closePopup);
