@@ -26,9 +26,10 @@ document.getElementById("actions_cancel").addEventListener("click", () => {
     details.transaction.tax_total,
     details.type
   );
-  
-  // Already sets up paragraph and button text etc.
+
   document.getElementById("cancel-paragraph").innerText = refund.message;
+
+  showPopupById("cancel-popup");
   
   document.getElementById("confirm-credit-cancel").onclick = () => {
     processCancellation(refund);
