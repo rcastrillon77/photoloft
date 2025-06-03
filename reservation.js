@@ -150,6 +150,10 @@ function applyActionButtonStates(details) {
   if (status === "cancelled") {
     document.getElementById("details_status").classList.add("red");
   }
+
+  if (status === "active") {
+    document.getElementById("booking-timer").classList.remove("hidden");
+  } 
 }
 
 function showPopupById(id) {
