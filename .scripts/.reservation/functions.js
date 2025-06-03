@@ -404,7 +404,7 @@ async function initBookingConfig(listingId) {
                               title: entry.title,
                               amount: membershipRate
                           };
-                      } 
+                      }
 
                       current.setDate(current.getDate() + 1);
                   }
