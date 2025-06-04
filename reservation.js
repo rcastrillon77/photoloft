@@ -1273,7 +1273,7 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
 function formatTime(minutes) {
   const time = luxon.DateTime.fromObject(
       { hour: Math.floor(minutes / 60), minute: minutes % 60 },
-      { zone: window.TIMEZONE }
+      { zone: timezone }
   );
 
   return time.toFormat("h:mm a"); // returns "2:30 PM"
