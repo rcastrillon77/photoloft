@@ -1220,6 +1220,34 @@ function getMaxAvailableDurationForDate(date) {
   return maxBlock; // returns minutes
 }
 
+function checkScrollHelperVisibility() {
+  const helper = document.getElementById("summary-scroll-helper");
+  if (!helper) return;
+
+  const activeSection = document.querySelector(".step-container:not(.hidden)");
+  if (!activeSection) return;
+
+  // Determine scrollable container
+  const isMobile = window.innerWidth <= 991; // Tablet and below
+  const scrollable = isMobile
+    ? activeSection
+    : activeSection.querySelector(".expanded");
+
+  if (!scrollable) return;
+
+  const scrollTop = scrollable.scrollTop;
+  const scrollHeight = scrollable.scrollHeight;
+  const clientHeight = scrollable.clientHeight;
+
+  const atBottom = scrollTop + clientHeight >= scrollHeight - 32; // buffer to account for rounding
+
+  if (atBottom) {
+    helper.classList.add("hide");
+  } else {
+    helper.classList.remove("hide");
+  }
+}
+
 async function initReservationUpdate() {
   if (!bookingUuid) return;
 
