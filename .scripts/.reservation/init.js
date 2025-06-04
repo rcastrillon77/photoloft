@@ -39,6 +39,7 @@ document.getElementById("actions_cancel").addEventListener("click", () => {
 
 document.getElementById("actions_reschedule").addEventListener("click", () => {
   showPopupById("reschedule-popup");
+  setupRescheduleFlow();
 });
 
 document.getElementById("cancel-contact-trigger").addEventListener("click", () => {
