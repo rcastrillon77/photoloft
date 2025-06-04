@@ -1237,6 +1237,12 @@ function formatTime(minutes) {
 }
 
 async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
+
+console.log("📅 Running markHeldTimeSlotsForDay");
+console.log("🆔 LISTING_UUID:", LISTING_UUID);
+console.log("🗓️ booking_date:", bookingGlobals.booking_date);
+console.log("🗺️ window.LOCATION_UUID:", window.LOCATION_UUID);
+
   const zone = window.TIMEZONE;
   const selectedDate = luxon.DateTime.fromJSDate(date, { zone });
   const startOfDay = selectedDate.startOf('day').toISO();
@@ -1249,6 +1255,7 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
   : [window.LOCATION_UUID];
 
 for (const locId of locationIds) {
+  console.log("🔁 Querying locId:", locId);
   const { data, error } = await window.supabase
     .from('temp_events')
     .select('start_time, end_time, created_at, expires_at')
