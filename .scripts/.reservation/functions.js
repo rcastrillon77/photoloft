@@ -1235,3 +1235,84 @@ function formatTime(minutes) {
 
   return time.toFormat("h:mm a"); // returns "2:30 PM"
 }
+
+async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
+  const zone = window.TIMEZONE;
+  const selectedDate = luxon.DateTime.fromJSDate(date, { zone });
+  const startOfDay = selectedDate.startOf('day').toISO();
+  const endOfDay = selectedDate.endOf('day').toISO();
+
+  let holds = [];
+
+  for (const locId of window.LOCATION_UUID) {
+      const { data, error } = await window.supabase
+          .from('temp_events')
+          .select('start_time, end_time, created_at, expires_at')
+          .eq('listing_id', LISTING_UUID)
+          .eq('location_id', locId)
+          .gte('start_time', startOfDay)
+          .lte('end_time', endOfDay);
+
+      if (error) {
+          console.error(`❌ Failed to fetch holds for location ${locId}:`, error);
+          continue;
+      }
+
+      holds = holds.concat(data || []);
+  }
+
+  const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
+  if (!radios.length) return;
+
+  const before = window.BUFFER_BEFORE ?? 0;
+  const after = window.BUFFER_AFTER ?? 0;
+
+  holds.forEach(hold => {
+      const holdStart = luxon.DateTime.fromISO(hold.start_time, { zone });
+      const holdEnd = luxon.DateTime.fromISO(hold.end_time, { zone });
+      const holdStartMinutes = holdStart.hour * 60 + holdStart.minute;
+      const holdEndMinutes = holdEnd.hour * 60 + holdEnd.minute;
+      const total = luxon.DateTime.fromISO(hold.expires_at).diff(luxon.DateTime.fromISO(hold.created_at), 'seconds').seconds;
+      const remaining = luxon.DateTime.fromISO(hold.expires_at).diffNow('seconds').seconds;
+      const percent = Math.min(100, Math.max(0, 100 * (1 - (remaining / total))));
+      const expires = luxon.DateTime.fromISO(hold.expires_at, { zone });
+
+      if (expires < luxon.DateTime.now().setZone(zone)) return;
+
+      radios.forEach(input => {
+          const value = input.value;
+          const hours = parseInt(value.slice(0, 2), 10);
+          const minutes = parseInt(value.slice(2), 10);
+          const rawStart = hours * 60 + minutes;
+          const rawEnd = rawStart + window.bookingGlobals.booking_duration;
+          const slotStart = rawStart - before;
+          const slotEnd = rawEnd + after;
+
+          const overlaps = slotStart < holdEndMinutes && slotEnd > holdStartMinutes;
+
+          const container = input.closest('.radio-option-container');
+          if (!overlaps || !container) return;
+
+          if (!container.classList.contains('on-hold')) {
+              container.classList.add('on-hold');
+          }
+
+          if (!container.querySelector('.radio-progress')) {
+              const progress = document.createElement('div');
+              progress.className = 'radio-progress';
+              progress.style.width = `${percent}%`;
+              progress.style.transition = `width ${remaining}s linear`;
+              container.appendChild(progress);
+              setTimeout(() => progress.style.width = '100%', 0);
+          }
+
+          setTimeout(() => {
+              if (window.refreshTimeout) clearTimeout(window.refreshTimeout);
+              window.refreshTimeout = setTimeout(() => {
+                  refreshStartTimeOptions();
+                  window.refreshTimeout = null;
+              }, 250);
+          }, remaining * 1000);
+      });
+  });
+}
