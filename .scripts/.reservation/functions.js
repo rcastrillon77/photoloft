@@ -1143,3 +1143,36 @@ function hasAvailableStartTimesFor(date) {
 
   return false;
 }
+
+function getMaxAvailableDurationForDate(date) {
+  const schedule = getScheduleForDate(window.listingSchedule, date);
+  if (!schedule) return 0;
+
+  const open = parseTimeToMinutes(schedule.open);
+  const close = parseTimeToMinutes(schedule.close);
+  const bookingDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
+  const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+
+  const isToday = bookingDateLuxon.hasSame(now, 'day');
+  const currentMinutes = now.hour * 60 + now.minute;
+
+  const eventsForDay = window.bookingEvents.filter(e =>
+      luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === bookingDateLuxon.toISODate()
+  );
+
+  let maxBlock = 0;
+
+  for (let t = open; t <= close - INTERVAL * 60; t += INTERVAL * 60) {
+      if (isToday && t < currentMinutes) continue;
+
+      let end = t;
+      while (end + INTERVAL * 60 <= close && isTimeSlotAvailable(end, INTERVAL * 60, eventsForDay)) {
+          end += INTERVAL * 60;
+      }
+
+      const block = end - t;
+      if (block > maxBlock) maxBlock = block;
+  }
+
+  return maxBlock; // returns minutes
+}
