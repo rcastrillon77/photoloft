@@ -1360,6 +1360,16 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
   });
 }
 
+function getEventMinutesRange(event) {
+  const start = luxon.DateTime.fromISO(event.start, { zone: window.TIMEZONE });
+  const end = luxon.DateTime.fromISO(event.end, { zone: window.TIMEZONE });
+
+  return {
+      start: start.hour * 60 + start.minute,
+      end: end.hour * 60 + end.minute
+  };
+}
+
 async function initReservationUpdate() {
   if (!bookingUuid) return;
 
