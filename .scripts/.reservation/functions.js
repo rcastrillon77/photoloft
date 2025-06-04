@@ -259,7 +259,6 @@ function preloadRescheduleGlobals() {
     base_rate: details.transaction.base_rate || 100,
     subtotal: (duration / 60) * (details.transaction.final_rate || 100),
     rate_label: details.transaction.rate_label || '',
-    attendees: details.attendees || 1,
     taxRate: details.transaction.tax_rate || 0,
     taxTotal: details.transaction.tax_total || 0,
     total: details.transaction.total || 0
@@ -276,7 +275,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
     new_start: bookingStart.toISO(),
     new_end: bookingEnd.toISO(),
     duration: g.booking_duration,
-    attendees: g.attendees || 1
   };
 
   try {
@@ -657,4 +655,491 @@ function applyScheduleSettings(daySchedule) {
   if (slider) {
       slider.max = MAX_DURATION;
   }
+}
+
+async function fetchEventsForRange(start, end) {
+  const allEvents = [];
+
+  for (const locationId of window.LOCATION_UUID || []) {
+    const { data, error } = await window.supabase
+      .from("events")
+      .select("start, end")
+      .eq("location_id", locationId) //changed from eq to deal with array
+      .gte("start", start.toISOString())
+      .lte("end", end.toISOString());
+
+    if (error) {
+      console.error(`❌ Failed to fetch events for location ${locationId}:`, error);
+      continue;
+    }
+
+    allEvents.push(...(data || []));
+  }
+
+  return allEvents;
+} 
+
+async function findNextAvailableDate(maxDays = 30) {
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate());
+
+  console.log(`📅 Starting date search from: ${startDate.toDateString()}`);
+
+  for (let i = 0; i < maxDays; i++) {
+      const testDate = new Date(startDate);
+      testDate.setDate(startDate.getDate() + i);
+
+      console.log(`🔄 Checking date: ${testDate.toDateString()}`);
+
+      const isAvailable = hasAvailableStartTimesFor(testDate);
+      console.log(`📅 Availability for ${testDate.toDateString()}: ${isAvailable ? "✅ Available" : "❌ Not Available"}`);
+
+      if (isAvailable) {
+          console.log(`✅ Found available date: ${testDate.toDateString()}`);
+          console.log(`📅 Setting bookingGlobals.booking_date to: ${testDate.toDateString()}`);
+
+          window.bookingGlobals.booking_date = testDate;
+
+          if (window.flatpickrCalendar) {
+              console.log(`🗓️ Updating calendar input to: ${testDate.toDateString()}`);
+              window.flatpickrCalendar.setDate(testDate, true);
+          } else {
+              console.warn(`⚠️ flatpickrCalendar is not initialized yet.`);
+          }
+
+          // Adjust the date format for the query selector
+          const formattedDate = testDate.toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric'
+          }).replace(/\s+/g, ' ').trim();
+
+          console.log(`🔍 Waiting for the DOM to update...`);
+
+          // Wait for DOM to update before clicking
+          setTimeout(() => {
+              console.log(`🔍 Looking for date element with aria-label: "${formattedDate}" after delay`);
+
+              const dateElement = document.querySelector(`[aria-label="${formattedDate}"]`);
+              console.log(`🔍 Query result for [aria-label="${formattedDate}"]:`, dateElement);
+
+              if (dateElement) {
+                  console.log(`✅ Clicking on date: ${formattedDate}`);
+                  dateElement.click();
+              } else {
+                  console.warn(`🚫 No clickable date element found for: "${formattedDate}" after delay.`);
+                  console.log(`🛠️ Dumping all aria-label elements:`);
+                  document.querySelectorAll('[aria-label]').forEach(el => {
+                      console.log(`- ${el.getAttribute('aria-label')}`);
+                  });
+              }
+          }, 300);  // Adding a 300ms delay to ensure DOM updates
+
+          return testDate;
+      }
+  }
+
+  console.warn("❌ No available slots found in the next 30 days");
+  return null;
+}
+
+function disableUnavailableDates() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  document.querySelectorAll('.flatpickr-day').forEach(day => {
+      const dateObj = day.dateObj;
+      if (!dateObj) return;
+
+      const dayStart = new Date(dateObj);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const min = new Date(window.bookingMinDate);
+      const max = new Date(window.bookingMaxDate);
+      min.setHours(0, 0, 0, 0);
+      max.setHours(0, 0, 0, 0);
+
+      const isPast = dayStart < min;
+      const isBeyondWindow = dayStart > max;
+      const isUnavailable = !hasAvailableStartTimesFor(dateObj);
+
+      const shouldDisable = isPast || isBeyondWindow || isUnavailable;
+
+      if (shouldDisable) {
+          day.classList.add('flatpickr-disabled');
+          day.removeAttribute('aria-label');
+          day.removeAttribute('tabindex');
+      } else {
+          day.classList.remove('flatpickr-disabled');
+      }
+  });
+}
+
+function highlightSelectedDate() {
+  const selectedDateStr = bookingGlobals.booking_date.toISOString().split("T")[0];
+
+  document.querySelectorAll('.flatpickr-day').forEach(day => {
+      const dateStr = day.dateObj?.toISOString().split("T")[0];
+      if (!dateStr) return;
+
+      day.classList.toggle('selected', dateStr === selectedDateStr);
+  });
+}
+
+function updateMaxAvailableButton() {
+  const el = document.getElementById('max-available');
+  if (!el) return;
+
+  const max = getMaxAvailableDurationForDate(bookingGlobals.booking_date); // in minutes
+  const hoursDecimal = max / 60;
+  const validOptions = [];
+
+  for (let h = MIN_DURATION; h <= MAX_DURATION; h += INTERVAL) {
+      validOptions.push(parseFloat(h.toFixed(2)));
+  }
+
+  EXTENDED_OPTIONS.forEach(opt => {
+      if (!validOptions.includes(opt)) validOptions.push(opt);
+  });
+
+  const allowed = validOptions
+  .filter(opt => opt * 60 <= max)
+  .sort((a, b) => b - a); // highest first
+
+  const bestOption = allowed[0];
+
+  if (!bestOption) {
+      el.textContent = `No valid duration available`;
+      el.dataset.minutes = '';
+      el.classList.add('disabled');
+      return;
+  }
+
+  const displayStr = `${bestOption % 1 === 0 ? bestOption : bestOption.toFixed(1)} Hour${bestOption === 1 ? '' : 's'}`;
+
+  const dateStr = bookingGlobals.booking_date.toLocaleDateString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric'
+  });
+
+  el.textContent = `Max available for ${dateStr} is ${displayStr}`;
+  el.dataset.minutes = (bestOption * 60).toString();
+  el.classList.remove('disabled');
+}
+
+function updateBookingSummary() {
+  const bookingDateEl = document.getElementById('booking-total-date');
+  const bookingTimeEl = document.getElementById('booking-total-time');
+  const bookingPriceEl = document.getElementById('booking-total-price');
+  const discountEl = document.getElementById('booking-total-discount');
+  const discountedTotalEl = document.getElementById('booking-total-discounted-total');
+  const totalHoursEl = document.getElementById('booking-total-hours');
+  const totalRateEl = document.getElementById('booking-total-rate');
+  const wrapperEl = document.getElementById('slots-timezone-wrapper');
+  const slotsTzEl = document.getElementById('slots-timezone');
+
+  const {
+      booking_date,
+      booking_start,
+      booking_end,
+      booking_duration,
+      membership_level = 'non-member'
+  } = window.bookingGlobals;
+
+  const hoursDecimal = booking_duration / 60;
+  const hoursDisplay = (hoursDecimal % 1 === 0)
+      ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hr' : 'Hrs'}`
+      : `${hoursDecimal.toFixed(1)} Hrs`;
+  if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
+
+  const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
+  const todayLuxon = luxon.DateTime.now().setZone(window.TIMEZONE);
+  const isToday = bookingDateLuxon.hasSame(todayLuxon, 'day');
+  const dateKey = booking_date.toISOString().split("T")[0];
+  const special = window.specialRates?.[dateKey];
+
+  // 🧾 Always compare to non-member base rate
+  const nonMemberSchedule = getScheduleForDate(window.listingSchedule, booking_date, 'non-member');
+  const baseRate = nonMemberSchedule?.rate ?? FULL_RATE;
+
+  // 🔑 Actual member rate
+  const memberSchedule = getScheduleForDate(window.listingSchedule, booking_date, membership_level);
+  let finalRate = memberSchedule?.rate ?? baseRate;
+  let rateLabel = '';
+  let discountAmount = 0;
+
+  // ⭐️ Special rate overrides all
+  if (special) {
+      finalRate = special.amount;
+      rateLabel = special.title || "Special Rate";
+      discountEl.textContent = rateLabel;
+      discountEl.classList.remove("hidden");
+  }
+  // 📆 Same-day rate
+  else if (isToday && memberSchedule) {
+      const sameDayKey = 'same-day-rate' in memberSchedule ? 'same-day-rate' : 'same-day';
+      if (sameDayKey in memberSchedule && memberSchedule[sameDayKey] !== undefined) {
+          finalRate = memberSchedule[sameDayKey];
+          rateLabel = "Same-day Discount";
+          discountEl.textContent = rateLabel;
+          discountEl.classList.remove("hidden");
+      } else {
+          discountEl.classList.add("hidden");
+      }
+  }
+  // 🧍 Membership fallback label
+  else {
+      discountEl.classList.add("hidden");
+      if (membership_level !== 'non-member') {
+          rateLabel = formatMembershipLabel(membership_level);
+      } else {
+          rateLabel = "Non-member";
+      }
+  }
+
+  if (totalRateEl) totalRateEl.textContent = `$${finalRate}`;
+
+  const baseTotal = hoursDecimal * baseRate;
+  const discountedTotal = hoursDecimal * finalRate;
+  discountAmount = baseTotal - discountedTotal;
+
+  // 💾 Store in bookingGlobals
+  window.bookingGlobals.base_rate = baseRate;
+  window.bookingGlobals.final_rate = finalRate;
+  window.bookingGlobals.subtotal = discountedTotal;
+  console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updateBookingSummary`);
+  window.bookingGlobals.rate_label = rateLabel;
+
+  const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
+  const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
+
+  // 🕓 Timezone label
+  const longName = startTime.offsetNameLong;
+  const shortName = startTime.offsetNameShort;
+
+  if (slotsTzEl && wrapperEl) {
+      const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
+      const hasTimes = radios.length > 0;
+
+      if (hasTimes) {
+          slotsTzEl.textContent = `${longName} (${shortName}) ${window.TIMEZONE}`;
+          wrapperEl.classList.remove('hidden');
+      } else {
+          wrapperEl.classList.add('hidden');
+      }
+  }
+
+  bookingDateEl.textContent = booking_date.toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  bookingTimeEl.textContent = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
+
+  bookingPriceEl.textContent = `$${discountedTotal.toFixed(2)}`;
+  if (discountAmount > 0) {
+      discountedTotalEl.textContent = `$${baseTotal.toFixed(2)}`;
+      discountedTotalEl.classList.remove('hidden');
+  } else {
+      discountedTotalEl.classList.add('hidden');
+  }
+
+  console.log("📅 updateBookingSummary bookingGlobals.booking_date", booking_date);
+  console.log("📅 updateBookingSummary Luxon date:", bookingDateLuxon.toISO());
+}
+
+function renderStartTimeOptions(startTimes) {
+  const container = document.getElementById('booking-start-time-options');
+  const noTimesMessage = document.getElementById('no-timeslots-message');
+  const summaryEl = document.getElementById('booking-summary-wrapper');
+  container.innerHTML = '';
+
+  const radiosHTML = startTimes.map((minutes) => {
+      const value = minutesToTimeValue(minutes);
+      const label = formatTime(minutes);
+      return `
+      <label class="radio-option-container">
+          <input type="radio" name="start-time" id="${value}" class="radio-option-button" value="${value}">
+          <span class="radio-option-label">${label}</span>
+      </label>`;
+  }).join('');
+
+  container.innerHTML = radiosHTML;
+
+  const radios = container.querySelectorAll('input[type=radio]');
+  const containers = container.querySelectorAll('.radio-option-container');
+
+  // Wait for markHeldTimeSlotsForDay to finish first before continuing logic
+  return markHeldTimeSlotsForDay(bookingGlobals.booking_date).then(() => {
+      const validRadios = Array.from(radios).filter(r =>
+          !r.closest('.radio-option-container')?.classList.contains('on-hold')
+      );
+
+      if (!validRadios.length) {
+          const totalRadios = radios.length;
+          const heldRadios = Array.from(radios).filter(r =>
+              r.closest('.radio-option-container')?.classList.contains('on-hold')
+          ).length;
+      
+          if (heldRadios === totalRadios) {
+              noTimesMessage.textContent = "No time slots available for this duration — all options are currently on hold.";
+          } else {
+              noTimesMessage.textContent = "No available time slots match your selected duration.";
+          }
+      
+          noTimesMessage.classList.remove('hidden');
+          summaryEl?.classList.add('hidden');
+          return false;
+      } else {
+          noTimesMessage?.classList.add('hidden');
+          summaryEl?.classList.remove('hidden');
+      }
+
+      const { selected_start_time } = window.bookingGlobals;
+      const selectedMinutes = selected_start_time
+      ? parseInt(selected_start_time.substring(0, 2)) * 60 + parseInt(selected_start_time.substring(2))
+      : null;
+
+      let closestDiff = Infinity;
+      let closestValue = null;
+
+      startTimes.forEach((minutes) => {
+          const diff = Math.abs(minutes - selectedMinutes);
+          if (diff < closestDiff) {
+              closestDiff = diff;
+              closestValue = minutesToTimeValue(minutes);
+          }
+      });
+
+      const selectedRadio =
+      validRadios.find((r) => r.value === selected_start_time) ||
+      validRadios.find((r) => r.value === closestValue) ||
+      validRadios[0];
+
+      if (selectedRadio) {
+          selectedRadio.checked = true;
+          window.bookingGlobals.selected_start_time = selectedRadio.value;
+
+          const [h, m] = selectedRadio.value.match(/.{1,2}/g).map(Number);
+          const start = h * 60 + m;
+          window.bookingGlobals.booking_start = start;
+          window.bookingGlobals.booking_end = start + window.bookingGlobals.booking_duration;
+
+          updateBookingSummary();
+          selectedRadio.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+
+      attachRadioStyling();
+      return true;
+  });
+}
+
+function attachRadioStyling() {
+  const radios = document.querySelectorAll('.radio-option-button');
+  
+  radios.forEach((radio) => {
+      const groupName = radio.name;
+  
+      radio.addEventListener('change', () => {
+  
+          radios.forEach((btn) => {
+              if (btn.name === groupName) {
+                  btn.closest('.radio-option-container')?.classList.remove('selected');
+              }
+          });
+  
+      radio.closest('.radio-option-container')?.classList.add('selected');
+      });
+  
+      if (radio.checked) {
+       radio.closest('.radio-option-container')?.classList.add('selected');
+      }
+  });
+  }
+
+  function parseTimeToMinutes(timeStr) {
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+}
+
+function minutesToTimeValue(minutes) {
+  return (Math.floor(minutes / 60) * 100 + (minutes % 60)).toString().padStart(4, '0');
+}
+
+function getAvailableStartTimes(eventsForDay) {
+    const startTimes = [];
+    const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const rawNow = now.hour * 60 + now.minute;
+    const interval = INTERVAL * 60;
+    const currentMinutes = Math.ceil(rawNow / interval) * interval;
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(bookingGlobals.booking_date, { zone: window.TIMEZONE });
+    const isToday = bookingDateLuxon.hasSame(now, 'day');
+    const duration = bookingGlobals.booking_duration;
+    
+    const earliest = OPEN_TIME;
+    const latest   = CLOSE_TIME - duration;
+
+    for (let t = earliest; t <= latest; t += INTERVAL * 60) {
+        const readable = formatTime(t);
+
+        if (t < OPEN_TIME) continue;  
+
+        if (isToday) {
+            console.log(`🧪 Slot: ${t} (${formatTime(t)}) vs Current: ${currentMinutes} (${formatTime(currentMinutes)})`);
+            if (t < currentMinutes) {
+              console.log(`⛔ Skipping ${formatTime(t)} because it's before ${formatTime(currentMinutes)}`);
+            } else {
+              console.log(`✅ Keeping ${formatTime(t)}`);
+            }
+        }
+          
+
+        if (isToday && t < currentMinutes) continue;
+        
+        const slotStart = t - BUFFER_BEFORE;
+        const slotEnd   = t + duration + BUFFER_AFTER;
+        if (eventsForDay.some(ev => {
+        const { start, end } = getEventMinutesRange(ev);
+        return start < slotEnd && end > slotStart;
+        })) continue;
+
+        startTimes.push(t);
+    }
+
+
+    console.log("🔍 TIMEZONE:", window.TIMEZONE);
+    console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
+    console.log("📆 isToday:", isToday);
+    console.log("⏱️ Current Minutes:", currentMinutes);
+    console.log("🕓 Duration:", duration);
+    console.log("🕒 OPEN:", OPEN_TIME, "CLOSE:", CLOSE_TIME);
+    console.log("🛑 BUFFERS:", BUFFER_BEFORE, BUFFER_AFTER);
+
+    return startTimes;
+}
+
+function hasAvailableStartTimesFor(date) {
+  const schedule = getScheduleForDate(window.listingSchedule, date);
+  if (!schedule) return false;
+
+  const open = parseTimeToMinutes(schedule.open);
+  const close = parseTimeToMinutes(schedule.close);
+  const duration = window.bookingGlobals.booking_duration;
+
+  const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+  const testDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
+  const isToday = testDateLuxon.hasSame(now, 'day');
+  const currentMinutes = now.hour * 60 + now.minute;
+
+  const selectedDateStr = testDateLuxon.toISODate();
+  const eventsForDay = window.bookingEvents.filter(e =>
+      luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+  );
+
+  const maxStart = close - duration;
+  for (let t = open; t <= maxStart; t += INTERVAL * 60) {
+      if (isToday && t < currentMinutes) continue;
+      if (isTimeSlotAvailable(t, duration, eventsForDay)) return true;
+  }
+
+  return false;
 }
