@@ -342,10 +342,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   }
 });
 
-document.getElementById("actions_reschedule").addEventListener("click", () => {
-  showPopupById("reschedule-popup");
-  setupRescheduleFlow();
-});
 
 async function initBookingConfig(listingId) {
   try {
