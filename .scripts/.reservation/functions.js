@@ -238,8 +238,6 @@ async function setupRescheduleFlow() {
   if (!details) return;
 
   preloadRescheduleGlobals();
-
-  await loadListingConfig(LISTING_UUID);
   await initBookingConfig(LISTING_UUID);
   await initSliderSection();
   initCalendar();
