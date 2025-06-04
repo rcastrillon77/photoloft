@@ -1270,6 +1270,15 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
   return true;
 }
 
+function formatTime(minutes) {
+  const time = luxon.DateTime.fromObject(
+      { hour: Math.floor(minutes / 60), minute: minutes % 60 },
+      { zone: window.TIMEZONE }
+  );
+
+  return time.toFormat("h:mm a"); // returns "2:30 PM"
+}
+
 async function initReservationUpdate() {
   if (!bookingUuid) return;
 
