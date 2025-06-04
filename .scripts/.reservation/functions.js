@@ -1259,7 +1259,6 @@ for (const locId of locationIds) {
   const { data, error } = await window.supabase
     .from('temp_events')
     .select('start_time, end_time, created_at, expires_at')
-    .eq('listing_id', LISTING_UUID)
     .contains('location_id', locId)
     .gte('start_time', startOfDay)
     .lte('end_time', endOfDay);
