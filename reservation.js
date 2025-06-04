@@ -103,7 +103,7 @@ async function rebuildBookingDetails(bookingUuid) {
   LISTING_UUID = bookingData.listing_id;
   MEMBERSHIP = bookingData.details.user?.membership;
   window.LOCATION_UUID = bookingData.location_id;
-  let timezone = bookingData.details.listing.timezone;
+  timezone = bookingData.details.listing.timezone;
 
   const { error: updateError } = await supabase
     .from("bookings")
@@ -1243,6 +1243,31 @@ function checkScrollHelperVisibility() {
   } else {
     helper.classList.remove("hide");
   }
+}
+
+function isTimeSlotAvailable(startTime, duration, eventsForDay) {
+  const endTime = startTime + duration;
+  const bufferBefore = window.BUFFER_BEFORE ?? 0;
+  const bufferAfter = window.BUFFER_AFTER ?? 0;
+  const requestedStart = Math.max(startTime - bufferBefore, OPEN_TIME);
+  const requestedEnd = Math.min(endTime + bufferAfter, CLOSE_TIME);
+
+  console.log(`\n⏱️ Checking availability with buffer for start: ${requestedStart} → end: ${requestedEnd}`);
+
+  for (const event of eventsForDay) {
+      const { start, end } = getEventMinutesRange(event);
+      console.log(`📅 Comparing with event: ${event.start} - ${event.end} → (${start} to ${end})`);
+
+      const overlaps = start < requestedEnd && end > requestedStart;
+
+      if (overlaps) {
+          console.log("❌ Conflict detected (buffer respected)");
+          return false;
+      }
+  }
+
+  console.log("✅ No conflict (buffer respected)");
+  return true;
 }
 
 async function initReservationUpdate() {
