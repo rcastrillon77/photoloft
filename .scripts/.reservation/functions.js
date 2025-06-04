@@ -1335,3 +1335,14 @@ function getEventMinutesRange(event) {
       end: end.hour * 60 + end.minute
   };
 }
+
+function updateDurationDisplay(duration) {
+  const hours = Math.floor(duration / 60);
+  const minutes = duration % 60;
+
+  document.getElementById('duration-hours').textContent = hours;
+  document.getElementById('duration-minutes').textContent = minutes.toString().padStart(2, '0');
+
+  const unit = hours === 1 ? 'Hr' : 'Hrs';
+  document.getElementById('duration-unit').textContent = unit;
+}
