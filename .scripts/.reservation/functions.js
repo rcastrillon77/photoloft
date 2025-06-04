@@ -661,7 +661,7 @@ async function fetchEventsForRange(start, end) {
     const { data, error } = await window.supabase
       .from("events")
       .select("start, end")
-      .eq("location_id", locationId) //changed from eq to deal with array
+      .eq("location_id", locationId)
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
 
@@ -1244,22 +1244,26 @@ async function markHeldTimeSlotsForDay(date = bookingGlobals.booking_date) {
 
   let holds = [];
 
-  for (const locId of window.LOCATION_UUID) {
-      const { data, error } = await window.supabase
-          .from('temp_events')
-          .select('start_time, end_time, created_at, expires_at')
-          .eq('listing_id', LISTING_UUID)
-          .in('location_id', locId)
-          .gte('start_time', startOfDay)
-          .lte('end_time', endOfDay);
+  const locationIds = Array.isArray(window.LOCATION_UUID)
+  ? window.LOCATION_UUID
+  : [window.LOCATION_UUID];
 
-      if (error) {
-          console.error(`❌ Failed to fetch holds for location ${locId}:`, error);
-          continue;
-      }
+for (const locId of locationIds) {
+  const { data, error } = await window.supabase
+    .from('temp_events')
+    .select('start_time, end_time, created_at, expires_at')
+    .eq('listing_id', LISTING_UUID)
+    .eq('location_id', locId)
+    .gte('start_time', startOfDay)
+    .lte('end_time', endOfDay);
 
-      holds = holds.concat(data || []);
+  if (error) {
+    console.error(`❌ Failed to fetch holds for location ${locId}:`, error);
+    continue;
   }
+
+  holds = holds.concat(data || []);
+}
 
   const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
   if (!radios.length) return;
