@@ -60,7 +60,7 @@ async function rebuildBookingDetails(bookingUuid) {
   LISTING_UUID = bookingData.listing_id;
   MEMBERSHIP = bookingData.details.user?.membership;
   window.LOCATION_UUID = bookingData.location_id;
-  timezone = bookingData.details.listing.timezone;
+  let timezone = bookingData.details.listing.timezone;
 
   const { error: updateError } = await supabase
     .from("bookings")
