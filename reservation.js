@@ -101,8 +101,9 @@ async function rebuildBookingDetails(bookingUuid) {
   };
 
   LISTING_UUID = bookingData.listing_id;
-  MEMBERSHIP = bookingData.user?.membership;
+  MEMBERSHIP = bookingData.details.user?.membership;
   window.LOCATION_UUID = bookingData.location_id;
+  timezone = bookingData.listing.timezone;
 
   const { error: updateError } = await supabase
     .from("bookings")
@@ -287,7 +288,7 @@ async function setupRescheduleFlow() {
 }
 
 function preloadRescheduleGlobals() {
-  const start = luxon.DateTime.fromISO(details.start, { zone: window.TIMEZONE });
+  const start = luxon.DateTime.fromISO(details.start, { zone: timezone });
   const duration = details.duration || 60;
   const booking_date = start.toJSDate();
   const booking_start = start.hour * 60 + start.minute;
@@ -310,7 +311,7 @@ function preloadRescheduleGlobals() {
 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   const g = window.bookingGlobals;
-  const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: window.TIMEZONE }).startOf("day").plus({ minutes: g.booking_start });
+  const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: timezone }).startOf("day").plus({ minutes: g.booking_start });
   const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
 
   const payload = {
@@ -646,11 +647,11 @@ async function generateStartTimeOptions(shouldDisableDates = false) {
   highlightSelectedDate();
   updateBookingSummary();
 
-  const bookingDateLuxon = luxon.DateTime.fromJSDate(selectedDate, { zone: window.TIMEZONE });
+  const bookingDateLuxon = luxon.DateTime.fromJSDate(selectedDate, { zone: timezone });
   const selectedDateStr = bookingDateLuxon.toISODate();
 
   const eventsForDay = window.bookingEvents.filter(e =>
-      luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+      luxon.DateTime.fromISO(e.start, { zone: timezone }).toISODate() === selectedDateStr
   );
 
   const availableTimes = getAvailableStartTimes(eventsForDay);
@@ -891,8 +892,8 @@ function updateBookingSummary() {
       : `${hoursDecimal.toFixed(1)} Hrs`;
   if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
 
-  const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: window.TIMEZONE });
-  const todayLuxon = luxon.DateTime.now().setZone(window.TIMEZONE);
+  const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: timezone });
+  const todayLuxon = luxon.DateTime.now().setZone(timezone);
   const isToday = bookingDateLuxon.hasSame(todayLuxon, 'day');
   const dateKey = booking_date.toISOString().split("T")[0];
   const special = window.specialRates?.[dateKey];
@@ -961,7 +962,7 @@ function updateBookingSummary() {
       const hasTimes = radios.length > 0;
 
       if (hasTimes) {
-          slotsTzEl.textContent = `${longName} (${shortName}) ${window.TIMEZONE}`;
+          slotsTzEl.textContent = `${longName} (${shortName}) ${timezone}`;
           wrapperEl.classList.remove('hidden');
       } else {
           wrapperEl.classList.add('hidden');
@@ -1106,11 +1107,11 @@ function minutesToTimeValue(minutes) {
 
 function getAvailableStartTimes(eventsForDay) {
     const startTimes = [];
-    const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+    const now = luxon.DateTime.now().setZone(timezone);
     const rawNow = now.hour * 60 + now.minute;
     const interval = INTERVAL * 60;
     const currentMinutes = Math.ceil(rawNow / interval) * interval;
-    const bookingDateLuxon = luxon.DateTime.fromJSDate(bookingGlobals.booking_date, { zone: window.TIMEZONE });
+    const bookingDateLuxon = luxon.DateTime.fromJSDate(bookingGlobals.booking_date, { zone: timezone });
     const isToday = bookingDateLuxon.hasSame(now, 'day');
     const duration = bookingGlobals.booking_duration;
     
@@ -1145,7 +1146,7 @@ function getAvailableStartTimes(eventsForDay) {
     }
 
 
-    console.log("🔍 TIMEZONE:", window.TIMEZONE);
+    console.log("🔍 TIMEZONE:", timezone);
     console.log("🕒 Booking Date:", bookingDateLuxon.toISODate());
     console.log("📆 isToday:", isToday);
     console.log("⏱️ Current Minutes:", currentMinutes);
@@ -1164,14 +1165,14 @@ function hasAvailableStartTimesFor(date) {
   const close = parseTimeToMinutes(schedule.close);
   const duration = window.bookingGlobals.booking_duration;
 
-  const now = luxon.DateTime.now().setZone(window.TIMEZONE);
-  const testDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
+  const now = luxon.DateTime.now().setZone(timezone);
+  const testDateLuxon = luxon.DateTime.fromJSDate(date, { zone: timezone });
   const isToday = testDateLuxon.hasSame(now, 'day');
   const currentMinutes = now.hour * 60 + now.minute;
 
   const selectedDateStr = testDateLuxon.toISODate();
   const eventsForDay = window.bookingEvents.filter(e =>
-      luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === selectedDateStr
+      luxon.DateTime.fromISO(e.start, { zone: timezone }).toISODate() === selectedDateStr
   );
 
   const maxStart = close - duration;
@@ -1189,14 +1190,14 @@ function getMaxAvailableDurationForDate(date) {
 
   const open = parseTimeToMinutes(schedule.open);
   const close = parseTimeToMinutes(schedule.close);
-  const bookingDateLuxon = luxon.DateTime.fromJSDate(date, { zone: window.TIMEZONE });
-  const now = luxon.DateTime.now().setZone(window.TIMEZONE);
+  const bookingDateLuxon = luxon.DateTime.fromJSDate(date, { zone: timezone });
+  const now = luxon.DateTime.now().setZone(timezone);
 
   const isToday = bookingDateLuxon.hasSame(now, 'day');
   const currentMinutes = now.hour * 60 + now.minute;
 
   const eventsForDay = window.bookingEvents.filter(e =>
-      luxon.DateTime.fromISO(e.start, { zone: window.TIMEZONE }).toISODate() === bookingDateLuxon.toISODate()
+      luxon.DateTime.fromISO(e.start, { zone: timezone }).toISODate() === bookingDateLuxon.toISODate()
   );
 
   let maxBlock = 0;
