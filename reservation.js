@@ -1286,7 +1286,7 @@ console.log("🆔 LISTING_UUID:", LISTING_UUID);
 console.log("🗓️ booking_date:", bookingGlobals.booking_date);
 console.log("🗺️ window.LOCATION_UUID:", window.LOCATION_UUID);
 
-  const zone = window.TIMEZONE;
+  const zone = timezone;
   const selectedDate = luxon.DateTime.fromJSDate(date, { zone });
   const startOfDay = selectedDate.startOf('day').toISO();
   const endOfDay = selectedDate.endOf('day').toISO();
@@ -1372,8 +1372,8 @@ for (const locId of locationIds) {
 }
 
 function getEventMinutesRange(event) {
-  const start = luxon.DateTime.fromISO(event.start, { zone: window.TIMEZONE });
-  const end = luxon.DateTime.fromISO(event.end, { zone: window.TIMEZONE });
+  const start = luxon.DateTime.fromISO(event.start, { zone: timezone });
+  const end = luxon.DateTime.fromISO(event.end, { zone: timezone });
 
   return {
       start: start.hour * 60 + start.minute,
