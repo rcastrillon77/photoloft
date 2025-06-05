@@ -142,16 +142,16 @@ function populateReservationDetails(details) {
   `;
 
   document.getElementById("details_date").textContent =
-    DateTime.fromISO(start).setZone(timezone).toFormat('cccc, LLLL d, yyyy');
+    DateTime.fromISO(start).setZone(timezone).toFormat('cccc LLLL d, yyyy');
 
   document.getElementById("details_start").textContent = start.toFormat("h:mm a");
   document.getElementById("details_end").textContent =  end.toFormat("h:mm a ZZZZ")
 
   document.getElementById("details_duration").textContent =
-    `${details.duration || '?'} Hours`;
+    details.duration + (details.duration > 1 ? " Hours" : " Hour");
 
   document.getElementById("details_attendees").textContent =
-    `${details.attendees || '?'} People`;
+    details.attendees + (details.attendees > 1 ? " People" : " Person");
 
   document.getElementById("details_paid").textContent =
     `$${(details.transaction?.total || 0).toFixed(2)}`;
@@ -914,8 +914,9 @@ function updateBookingSummary() {
   const end = start.plus({ mintutes: g.booking_duration });
 
   const newDate = start.toFormat("cccc LLLL d, yyyy");
-  const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a")}`;
-  const newDuration = `${(g.booking_duration / 60).toFixed(1)} Hours`;
+  const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a ZZZZ")}`;
+  const newDurationTotal = (g.booking_duration / 60).toFixed(1);
+  const newDuration =  newDurationTotal + (newDurationTotal > 1 ? " Hours" : " Hour");
   const newRate = `$${g.final_rate.toFixed(2)}/Hr`;
 
   // 📅 DATE
