@@ -345,7 +345,7 @@ function preloadRescheduleGlobals() {
   const booking_start = start.hour * 60 + start.minute;
 
   window.bookingGlobals = {
-    booking_date,
+    booking_date: luxon.DateTime.fromISO(details.start).toJSDate(),
     booking_start,
     booking_duration: duration,
     booking_end: booking_start + duration,
@@ -396,6 +396,9 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
 
 async function initBookingConfig(listingId) {
+  console.log("💡 bookingGlobals.booking_date =", window.bookingGlobals?.booking_date);
+  console.log("📆 Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
+
   try {
   // --- Pull Listing Details ---
       const { data: listingData, error: listingError } = await window.supabase
@@ -424,19 +427,17 @@ async function initBookingConfig(listingId) {
       window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
       window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
 
-      const selectedDate = window.bookingGlobals?.booking_date || new Date();
-      const weekday = selectedDate.getDay();
+      const selectedDate = window.bookingGlobals?.booking_date;
+      const weekday = selectedDate?.getDay?.();
       const selectedSchedule = schedule[MEMBERSHIP]?.[weekday];
 
-  
       if (selectedSchedule) {
         OPEN_TIME = parseTimeToMinutes(selectedSchedule.open);
         CLOSE_TIME = parseTimeToMinutes(selectedSchedule.close);
         FULL_RATE = selectedSchedule.rate;
         FINAL_RATE = FULL_RATE;
       }
-      
-  
+
       const startStr = rules.start;
       const endStr = rules.end;
       const now = new Date();
