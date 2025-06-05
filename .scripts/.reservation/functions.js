@@ -418,7 +418,6 @@ async function initBookingConfig(listingId) {
 
       const startStr = rules.start;
       const endStr = rules.end;
-      const now = new Date();
   
       minDate = startStr ? new Date(startStr) : now;
       if (minDate < now) minDate = now;
@@ -427,12 +426,6 @@ async function initBookingConfig(listingId) {
 
       window.bookingMinDate = minDate;
       window.bookingMaxDate = maxDate;
-
-      window.bookingGlobals.booking_date = now;
-      window.bookingGlobals.booking_start = OPEN_TIME;
-      window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
-      window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
-      window.bookingGlobals.base_rate = FULL_RATE; 
 
       console.log("🧩 Booking Config:", {
           MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
