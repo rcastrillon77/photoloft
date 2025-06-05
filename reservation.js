@@ -954,6 +954,7 @@ function updateMaxAvailableButton() {
 function updateBookingSummary() {
   const g = window.bookingGlobals;
   const zone = timezone;
+  document.getElementById('slots-timezone');
 
   const start = luxon.DateTime.fromJSDate(g.booking_date, { zone }).startOf('day').plus({ minutes: g.booking_start });
   const end = start.plus({ minutes: g.booking_duration });
@@ -969,6 +970,11 @@ function updateBookingSummary() {
   const originalTime = `${originalStart.toFormat("h:mm a")} to ${originalEnd.toFormat("h:mm a ZZZZ")}`;
   const originalDuration = parseFloat(details.duration);
   const originalRate = parseFloat(details.transaction.base_rate);
+
+  const longName = start.offsetNameLong;
+  const shortName = start.offsetNameShort;
+  document.getElementById('slots-timezone').textContent = `${longName} (${shortName})`;
+          
 
   // 📅 DATE
   document.getElementById("summary-date-new").textContent = newDate;
