@@ -410,7 +410,7 @@ async function initBookingConfig(listingId) {
       }
   
       const schedule = listingData.schedule || {};
-      const rules = schedule['booking-rules'] || {};
+      const rules = schedule['booking-rules'] || {}; 
       window.listingSchedule = schedule;
       window.bookingGlobals.bookingRules = rules;
   
