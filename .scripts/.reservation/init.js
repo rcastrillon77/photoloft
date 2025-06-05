@@ -10,6 +10,8 @@ async function initReservationUpdate() {
   populateReservationDetails(details);
   applyActionButtonStates(details);
   console.log("✅ Reservation populated.");
+  console.log("INITIALIZING RESCHEDULE");
+  setupRescheduleFlow();
 }
 
 initReservationUpdate();
@@ -45,7 +47,6 @@ document.getElementById("cancel-contact-trigger").addEventListener("click", () =
 // RESCHEDULE
 document.getElementById("actions_reschedule").addEventListener("click", () => {
   showPopupById("reschedule-popup");
-  setupRescheduleFlow();
 });
 
 document.getElementById('duration-slider')?.addEventListener('input', (e) => {
