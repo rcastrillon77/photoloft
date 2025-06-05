@@ -275,14 +275,19 @@ async function setupRescheduleFlow(details) {
     const slider = document.getElementById("duration-slider");
     if (slider) {
       slider.value = durationHours;
+      console.log(`setupRescheduleFlow: slider.value = ${slider.value}`);
       setSliderProgress(durationHours);
+      console.log(`setupRescheduleFlow: durationHours = ${durationHours}`);
       window.bookingGlobals.booking_duration = durationHours * 60;
+      console.log(`setupRescheduleFlow: window.bookingGlobals.booking_duration = ${window.bookingGlobals.booking_duration}`);
     }
   
     console.log("setupRescheduleFlow: running selecting time slot");
     // Pre-select time
     const timeVal = start.toFormat("HHmm");
+    console.log(`setupRescheduleFlow: timeVal = ${timeVal}`);
     const radioToSelect = document.querySelector(`input[name="start-time"][value="${timeVal}"]`);
+    console.log(`setupRescheduleFlow: radioToSelect = ${radioToSelect}`);
     if (radioToSelect) {
       radioToSelect.checked = true;
       radioToSelect.dispatchEvent(new Event("change", { bubbles: true }));
