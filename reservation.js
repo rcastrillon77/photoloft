@@ -1571,7 +1571,7 @@ async function initReservationUpdate() {
   console.log("✅ Reservation populated.");
 }
 
-initReservationUpdate();
+await initReservationUpdate();
 console.log("INITIALIZING RESCHEDULE");
 setupRescheduleFlow();
 
