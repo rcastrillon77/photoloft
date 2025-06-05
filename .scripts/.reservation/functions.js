@@ -323,7 +323,7 @@ async function initBookingConfig(listingId) {
       MAX_DURATION = rules.max ?? 4;
       INTERVAL = rules.interval ?? 0.5;
       EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
-      DEFAULT_DURATION = 1 //rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
+      DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
       BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
 
       window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
