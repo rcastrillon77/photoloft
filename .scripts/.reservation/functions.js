@@ -351,7 +351,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   }
 });
 
-
 async function initBookingConfig(listingId) {
   try {
   // --- Pull Listing Details ---
@@ -365,29 +364,34 @@ async function initBookingConfig(listingId) {
           console.error("❌ Failed to fetch listing schedule:", listingError);
           return;
       }
-  
+      console.log("INITBOOKINGCONFIG: Listing Data", listingData);
+
       const schedule = listingData.schedule || {};
       const rules = schedule['booking-rules'] || {}; 
       window.listingSchedule = schedule;
       window.bookingGlobals.bookingRules = rules;
+
+      console.log("INITBOOKINGCONFIG: Rules", rules);
   
       MIN_DURATION = rules.minimum ?? 1;
       MAX_DURATION = rules.max ?? 4;
       INTERVAL = rules.interval ?? 0.5;
       EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
       DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
-      BOOKING_WINDOW_DAYS = rules['booking-window']?.[details.user.membership] ?? 60;
+      BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
 
       window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
       window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
+
+      console.log("INITBOOKINGCONFIG: Booking Variables Set");
 
       const selectedDate = window.bookingGlobals?.booking_date;
       const weekday = selectedDate?.getDay?.();
       const selectedSchedule = schedule[MEMBERSHIP]?.[weekday];
 
       if (selectedDate instanceof Date) {
-        console.log("💡 bookingGlobals.booking_date =", selectedDate);
-        console.log("📆 Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
+        console.log("INITBOOKINGCONFIG: booking_date =", selectedDate);
+        console.log("INITBOOKINGCONFIG: Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
       } else {
         console.warn("⚠️ bookingGlobals.booking_date is not a valid Date:", selectedDate);
       }
@@ -397,8 +401,20 @@ async function initBookingConfig(listingId) {
         OPEN_TIME = parseTimeToMinutes(selectedSchedule.open);
         CLOSE_TIME = parseTimeToMinutes(selectedSchedule.close);
         FULL_RATE = selectedSchedule.rate;
-        FINAL_RATE = FULL_RATE;
+      
+        window.bookingGlobals.base_rate = FULL_RATE; // Reference for display + discount calc
+      
+        const isoDateStr = selectedDate?.toISOString?.().split("T")[0];
+        const specialRateEntry = window.specialRates?.[isoDateStr];
+      
+        if (specialRateEntry?.amount !== undefined) {
+          console.log(`🎯 Overriding final_rate due to special rate on ${isoDateStr}`);
+          window.bookingGlobals.final_rate = specialRateEntry.amount;
+        } else {
+          window.bookingGlobals.final_rate = FULL_RATE; // Only set if no override
+        }
       }
+      
 
       const startStr = rules.start;
       const endStr = rules.end;
@@ -416,7 +432,7 @@ async function initBookingConfig(listingId) {
       window.bookingGlobals.booking_start = OPEN_TIME;
       window.bookingGlobals.booking_end = OPEN_TIME + DEFAULT_DURATION * 60;
       window.bookingGlobals.booking_duration = DEFAULT_DURATION * 60;
-      window.bookingGlobals.final_rate = FULL_RATE;
+      window.bookingGlobals.base_rate = FULL_RATE; 
 
       console.log("🧩 Booking Config:", {
           MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
