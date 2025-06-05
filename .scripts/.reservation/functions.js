@@ -122,7 +122,7 @@ function openPopup() {
 function closePopup() {
   document.getElementById("popup-container").classList.add("hide");
   document.body.classList.remove("no-scroll");
-  document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden"));
+  setTimeout(document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden")), 400);
 }
 
 function applyActionButtonStates(details) {
