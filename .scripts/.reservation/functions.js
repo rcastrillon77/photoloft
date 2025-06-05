@@ -388,6 +388,9 @@ async function initBookingConfig(listingId) {
       const weekday = selectedDate?.getDay?.();
       const selectedSchedule = schedule[MEMBERSHIP]?.[weekday];
 
+      console.log("💡 bookingGlobals.booking_date =", window.bookingGlobals?.booking_date);
+      console.log("📆 Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
+
       if (selectedSchedule) {
         OPEN_TIME = parseTimeToMinutes(selectedSchedule.open);
         CLOSE_TIME = parseTimeToMinutes(selectedSchedule.close);
