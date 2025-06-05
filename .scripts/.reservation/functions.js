@@ -31,7 +31,7 @@ async function rebuildBookingDetails(bookingUuid) {
       last_name: bookingData.details.user?.last_name || "",
       email: bookingData.details.user?.email || "",
       phone: bookingData.details.user?.phone || "",
-      membership: bookingData.details.user?.membership || "guest"
+      membership: bookingData.details.user?.membership || "non-member"
     },
     listing: bookingData.details?.listing || {
       name: bookingData.details.listing?.name || "",
@@ -379,7 +379,7 @@ async function initBookingConfig(listingId) {
       INTERVAL = rules.interval ?? 0.5;
       EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
       DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
-      BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
+      BOOKING_WINDOW_DAYS = rules['booking-window']?.[details.user.membership] ?? 60;
 
       window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
       window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
