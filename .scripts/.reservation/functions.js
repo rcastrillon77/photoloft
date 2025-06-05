@@ -235,12 +235,40 @@ async function processCancellation(refundData) {
 // =============================== //
 
 async function setupRescheduleFlow() {
+  
   if (!details) return;
 
   preloadRescheduleGlobals();
   await initBookingConfig(LISTING_UUID);
   await initSliderSection();
   initCalendar();
+
+  setTimeout(() => {
+    const start = luxon.DateTime.fromISO(details.start, { zone: window.TIMEZONE });
+    const durationHours = (details.duration || 60) / 60;
+  
+    // Calendar selection
+    if (window.flatpickrCalendar) {
+      window.flatpickrCalendar.setDate(start.toJSDate(), true); // triggers change
+    }
+  
+    // Set slider
+    const slider = document.getElementById("duration-slider");
+    if (slider) {
+      slider.value = durationHours;
+      setSliderProgress(durationHours);
+      window.bookingGlobals.booking_duration = durationHours * 60;
+    }
+  
+    // Pre-select time
+    const timeVal = start.toFormat("HHmm");
+    const radioToSelect = document.querySelector(`input[name="start-time"][value="${timeVal}"]`);
+    if (radioToSelect) {
+      radioToSelect.checked = true;
+      radioToSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }, 1500); // Wait for UI elements to render before applying selection
+
 }
 
 function preloadRescheduleGlobals() {
@@ -824,13 +852,10 @@ function updateMaxAvailableButton() {
 }
 
 function updateBookingSummary() {
-  const bookingDateEl = document.getElementById('booking-total-date');
-  const bookingTimeEl = document.getElementById('booking-total-time');
-  const bookingPriceEl = document.getElementById('booking-total-price');
-  const discountEl = document.getElementById('booking-total-discount');
-  const discountedTotalEl = document.getElementById('booking-total-discounted-total');
-  const totalHoursEl = document.getElementById('booking-total-hours');
-  const totalRateEl = document.getElementById('booking-total-rate');
+  const bookingDateEl = document.getElementById('summary-date-new');
+  const bookingTimeEl = document.getElementById('summary-time-new');
+  const totalHoursEl = document.getElementById('summary-duration-new');
+  const totalRateEl = document.getElementById('summary-rate-new');
   const wrapperEl = document.getElementById('slots-timezone-wrapper');
   const slotsTzEl = document.getElementById('slots-timezone');
 
@@ -868,8 +893,6 @@ function updateBookingSummary() {
   if (special) {
       finalRate = special.amount;
       rateLabel = special.title || "Special Rate";
-      discountEl.textContent = rateLabel;
-      discountEl.classList.remove("hidden");
   }
   // 📆 Same-day rate
   else if (isToday && memberSchedule) {
@@ -877,15 +900,10 @@ function updateBookingSummary() {
       if (sameDayKey in memberSchedule && memberSchedule[sameDayKey] !== undefined) {
           finalRate = memberSchedule[sameDayKey];
           rateLabel = "Same-day Discount";
-          discountEl.textContent = rateLabel;
-          discountEl.classList.remove("hidden");
-      } else {
-          discountEl.classList.add("hidden");
       }
   }
   // 🧍 Membership fallback label
   else {
-      discountEl.classList.add("hidden");
       if (membership_level !== 'non-member') {
           rateLabel = formatMembershipLabel(membership_level);
       } else {
@@ -931,13 +949,6 @@ function updateBookingSummary() {
 
   bookingTimeEl.textContent = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
 
-  bookingPriceEl.textContent = `$${discountedTotal.toFixed(2)}`;
-  if (discountAmount > 0) {
-      discountedTotalEl.textContent = `$${baseTotal.toFixed(2)}`;
-      discountedTotalEl.classList.remove('hidden');
-  } else {
-      discountedTotalEl.classList.add('hidden');
-  }
 
   console.log("📅 updateBookingSummary bookingGlobals.booking_date", booking_date);
   console.log("📅 updateBookingSummary Luxon date:", bookingDateLuxon.toISO());
@@ -1500,6 +1511,25 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
     proceedWithReschedule();
   }
 });
+
+function displayReschedulePricing(results) {
+  const summaryEl = document.getElementById("reschedule-summary");
+
+  if (!results.requiresPayment) {
+    summaryEl.classList.add("hidden"); // or `display: none` via style
+    return;
+  }
+
+  summaryEl.classList.remove("hidden");
+  document.getElementById("reschedule-subtotal").textContent = `$${results.subtotal.toFixed(2)}`;
+  document.getElementById("reschedule-discounts").textContent = `-$${results.discountTotal.toFixed(2)}`;
+  document.getElementById("reschedule-credits").textContent = `-$${results.userCredits.toFixed(2)}`;
+  document.getElementById("reschedule-tax").textContent = `$${results.taxes.toFixed(2)}`;
+  document.getElementById("reschedule-total").textContent = `$${results.finalTotal.toFixed(2)}`;
+  document.getElementById("reschedule-difference-message").textContent =
+    `You will be charged $${results.difference.toFixed(2)} to confirm this reschedule.`;
+}
+
 
 
 // ADD CHARGE
