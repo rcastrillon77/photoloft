@@ -708,27 +708,28 @@ async function fetchEventsForRange(start, end) {
   const allEvents = [];
 
   for (const locationId of window.LOCATION_UUID || []) {
-    const query = window.supabase
+    let query = window.supabase
       .from("events")
       .select("uuid, start, end")
       .eq("location_id", locationId)
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
-
-    // ✂️ Ignore current booking's events to avoid conflict
-    if (details?.event_id?.length) {
-      query.not("uuid", "in", `(${details.event_id.map(id => `"${id}"`).join(",")})`);
+  
+    // Exclude this booking's event(s) if present
+    if (Array.isArray(details?.event_id) && details.event_id.length > 0) {
+      query = query.not("uuid", "in", details.event_id);
     }
-
+  
     const { data, error } = await query;
-
+  
     if (error) {
       console.error(`❌ Failed to fetch events for location ${locationId}:`, error);
       continue;
     }
-
+  
     allEvents.push(...(data || []));
   }
+  
 
   return allEvents;
 }
