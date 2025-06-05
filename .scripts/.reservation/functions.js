@@ -1384,6 +1384,10 @@ function updateDurationDisplay(duration) {
 
 // RESCHEDULE CALCULATIONS
 
+function roundDecimals(num) {
+  return Math.round(num * 100) / 100;
+}
+
 async function calculateRescheduleTotals(details, bookingGlobals) {
   const hours = bookingGlobals.booking_duration / 60;
   const baseRate = bookingGlobals.base_rate;
@@ -1556,17 +1560,342 @@ function displayReschedulePricing(results) {
   msgEl.textContent = `The new date and time you selected require an additional payment of $${results.difference.toFixed(2)} to cover the difference.`;
 }
 
+async function calculateRescheduleDelta(original, updated) {
+  const durationHours = updated.duration;
+  const baseRate = updated.transaction.base_rate;
+  const taxRate = updated.transaction.tax_rate ?? 0;
+  const discounts = original.transaction.discounts ?? [];
+  const userCredits = original.transaction.user_credits_applied ?? 0;
+  window.rescheduleSummary = { ...summary }
+
+  // Find the lowest final_rate
+  let finalRate = baseRate;
+
+  const selectedDateISO = updated.start.split("T")[0];
+  const specialRate = window.specialRates?.[selectedDateISO]?.amount;
+  if (specialRate && specialRate < finalRate) finalRate = specialRate;
+
+  if (window.bookingGlobals?.final_rate < finalRate) {
+    finalRate = window.bookingGlobals.final_rate;
+  }
+
+  // Reapply original discounts
+  let subtotal = finalRate * durationHours;
+  let discountTotal = 0;
+
+  for (const d of discounts) {
+    if (d?.type === "currency") {
+      discountTotal += d.amount;
+    } else if (d?.type === "percent") {
+      discountTotal += subtotal * (d.amount / 100);
+    } else if (d?.type === "rate" && d.amount < finalRate) {
+      const rateDiff = finalRate - d.amount;
+      discountTotal += rateDiff * durationHours;
+      finalRate = d.amount;
+    }
+  }
+
+  subtotal = Math.max(0, subtotal - discountTotal);
+
+  const taxTotal = parseFloat(((subtotal * (taxRate / 100)) || 0).toFixed(2));
+  let total = subtotal + taxTotal;
+
+  const creditUsed = Math.min(userCredits, total);
+  total = parseFloat((total - creditUsed).toFixed(2));
+
+  const originalTotal = original.transaction.total;
+
+  const requiresPayment = total > originalTotal;
+
+  const summary = {
+    subtotal: roundDecimals(subtotal),
+    tax_total: roundDecimals(taxTotal),
+    discount_total: roundDecimals(discountTotal),
+    user_credits_applied: creditUsed,
+    total: roundDecimals(total),
+    base_rate: baseRate,
+    final_rate: finalRate
+  };
+
+  return { requiresPayment, summary };
+}
+
+async function handleReschedulePreview() {
+  const updated = buildNewBookingDetails(); // a function we'll define below
+  const original = window.details; // already loaded from Supabase
+
+  const { requiresPayment, summary } = await calculateRescheduleDelta(original, updated);
+
+  // Update summary UI
+  updateRescheduleSummaryUI(summary, requiresPayment);
+
+  // Update confirm button state
+  const confirmBtn = document.getElementById("confirm-new-booking");
+  confirmBtn.classList.remove("disabled");
+  confirmBtn.setAttribute("data-requires-payment", requiresPayment);
+
+  // Update both .button-texts
+  const newText = requiresPayment ? "Continue to Payment" : "Confirm Reschedule";
+  confirmBtn.querySelectorAll(".button-text").forEach(el => el.textContent = newText);
+}
+
+function buildNewBookingDetails() {
+  const g = window.bookingGlobals;
+  const zone = timezone;
+  const start = luxon.DateTime.fromJSDate(g.booking_date, { zone }).startOf('day').plus({ minutes: g.booking_start });
+  const end = start.plus({ minutes: g.booking_duration });
+  const duration = g.booking_duration / 60;
+
+  return {
+    start: start.toISO(),
+    end: end.toISO(),
+    duration,
+    attendees: window.details.attendees,
+    listing: window.details.listing,
+    user: window.details.user,
+    activities: window.details.activities,
+    transaction: {
+      base_rate: g.base_rate,
+      final_rate: g.final_rate,
+      tax_rate: window.details.transaction.tax_rate,
+      discounts: window.details.transaction.discounts ?? [],
+      user_credits_applied: window.details.transaction.user_credits_applied ?? 0
+    }
+  };
+}
+
+function updateRescheduleSummaryUI(summary, show) {
+  document.getElementById("summary-due-subtotal").textContent = `$${summary.subtotal.toFixed(2)}`;
+  document.getElementById("summary-due-tax").textContent = `$${summary.tax_total.toFixed(2)}`;
+  document.getElementById("summary-due-total").textContent = `$${summary.total.toFixed(2)}`;
+
+  document.getElementById("reschedule-summary").classList.toggle("hidden", !show);
+}
+
+document.getElementById("confirm-new-booking").addEventListener("click", async () => {
+  if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
+
+  const updated = buildNewBookingDetails();
+  const original = window.details;
+  const { requiresPayment, summary } = await calculateRescheduleDelta(original, updated);
+
+  if (requiresPayment) {
+    const lineItem = "Rescheduled Booking";
+    const payload = {
+      line_item: lineItem,
+      subtotal: summary.subtotal,
+      tax_rate: summary.tax_rate,
+      tax_total: summary.tax_total,
+      total: summary.total,
+      booking_id: window.details.uuid,
+      user_id: window.details.user.uuid,
+      payment_method: "default", // override if user picks another PM
+      user_credits_applied: summary.user_credits_applied
+    };
+
+    addChargeHandler(payload, async (transactionId) => {
+      await triggerRescheduleWebhook(original, updated, transactionId);
+    });
+  } else {
+    await triggerRescheduleWebhook(original, updated, null);
+  }
+});
+
+async function triggerRescheduleWebhook(original, updated, transactionId = null) {
+  const payload = {
+    booking_id: window.details.uuid,
+    start: updated.start,
+    end: updated.end,
+    duration: updated.duration,
+    listing_name: updated.listing?.name || "",
+    details: {
+      ...updated,
+      original_booking: {
+        start: original.start,
+        end: original.end,
+        duration: original.duration,
+        reschedule_transaction: transactionId
+          ? {
+              id: transactionId,
+              subtotal: window.rescheduleSummary?.subtotal || 0,
+              tax_total: window.rescheduleSummary?.tax_total || 0,
+              discount_total: window.rescheduleSummary?.discount_total || 0,
+              user_credits_applied: window.rescheduleSummary?.user_credits_applied || 0,
+              total: window.rescheduleSummary?.total || 0
+            }
+          : null
+      }
+    }
+  };
+
+  console.log("📤 Sending reschedule payload:", payload);
+
+  const response = await fetch("https://hook.us1.make.com/1u50fjmrgwuc5z8dbb1m1ip1qo9ulg03", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    console.error("❌ Reschedule webhook failed", await response.text());
+    alert("Something went wrong processing your reschedule. Please try again.");
+    return;
+  }
+
+  const result = await response.json();
+  console.log("✅ Reschedule success:", result);
+
+  // Refresh UI
+  const newDetails = await rebuildBookingDetails(window.details.uuid);
+  if (newDetails) {
+    window.details = newDetails;
+    showPopup("Booking updated successfully!", true); // or your confetti popup logic
+  }
+}
+
+
 // ADD CHARGE
 function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
+  const popup = document.querySelector(".add-carge");
+  const overlay = document.querySelector(".popup");
+  const useCreditsBtn = document.querySelector("#use-credits");
+  const savedCardBtn = document.querySelector("#add-charge_original-pm");
+  const payNowBtn = document.querySelector("#pay-now-btn");
 
-  document.querySelector(".popup").classList.add("background");
-  document.querySelector(".add-charge").classList.remove("hidden");
+  const summaryLine = document.getElementById("add-charge_line-item");
+  const summaryLinePrice = document.getElementById("add-charge_line-item-price");
+  const taxRateEl = document.getElementById("add-charge_tax-rate");
+  const taxTotalEl = document.getElementById("add-charge_taxes");
+  const totalEl = document.getElementById("add-charge_total");
+  const savedCardText = savedCardBtn.querySelectorAll(".button-text");
 
-  console.log("💳 Triggering charge:", { lineItem, subtotal, taxTotal, total });
+  const creditAmountRaw = window.details.transaction?.user_credits_applied || 0;
+  let creditsToApply = 0;
+  let useCredits = false;
 
-  // Simulate success:
-  setTimeout(() => {
-    console.log("✅ Charge successful");
-    onSuccess(); // trigger reschedule logic
-  }, 1000);
+  // Display popup
+  popup.classList.remove("hidden");
+  overlay.classList.add("background");
+
+  // Set initial values
+  summaryLine.textContent = lineItem;
+  summaryLinePrice.textContent = `$${subtotal.toFixed(2)}`;
+  taxRateEl.textContent = `${(window.details.transaction?.tax_rate || 0).toFixed(2)}%`;
+  taxTotalEl.textContent = `$${taxTotal.toFixed(2)}`;
+  totalEl.textContent = `$${total.toFixed(2)}`;
+  savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
+
+  // Toggle credits
+  useCreditsBtn.onclick = () => {
+    useCredits = !useCredits;
+    useCreditsBtn.classList.toggle("outline");
+    useCreditsBtn.classList.toggle("green");
+
+    creditsToApply = useCredits ? Math.min(creditAmountRaw, total) : 0;
+    const newTotal = parseFloat((total - creditsToApply).toFixed(2));
+    totalEl.textContent = `$${newTotal.toFixed(2)}`;
+    savedCardText.forEach(t => t.textContent = `Pay $${newTotal.toFixed(2)} with Saved Card`);
+
+    // Store for later
+    useCreditsBtn.dataset.applied = useCredits ? "true" : "false";
+  };
+
+  // Pay with saved card
+  savedCardBtn.onclick = async (e) => {
+    e.preventDefault();
+    savedCardBtn.classList.add("disabled");
+    savedCardBtn.querySelector(".button-text").textContent = "Processing...";
+
+    const userId = window.details.user_id;
+    const bookingId = window.details.uuid;
+    const paymentMethod = "default"; // you can replace with actual method if needed
+    const finalCredits = useCredits ? creditsToApply : 0;
+    const finalTotal = parseFloat((total - finalCredits).toFixed(2));
+
+    const payload = {
+      line_item: lineItem,
+      subtotal,
+      tax_total: taxTotal,
+      total: finalTotal,
+      user_credits_applied: finalCredits,
+      user_id: userId,
+      booking_id: bookingId,
+      payment_method: paymentMethod
+    };
+
+    try {
+      const res = await fetch("https://hook.us1.make.com/b7m5qiaw6udii3xpalks2jxjljms6elj", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const { transaction_id } = await res.json();
+      console.log("✅ Charge complete:", transaction_id);
+
+      popup.classList.add("hidden");
+      overlay.classList.remove("background");
+
+      if (onSuccess) onSuccess(transaction_id);
+    } catch (err) {
+      console.error("❌ Error during charge:", err);
+      alert("Payment failed. Try again.");
+      savedCardBtn.classList.remove("disabled");
+      savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
+    }
+  };
+
+  // Pay with new card
+  payNowBtn.onclick = async () => {
+    if (payNowBtn.classList.contains("disabled")) return;
+
+    payNowBtn.classList.add("disabled");
+    payNowBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Processing...");
+
+    // ⚠️ Insert Stripe integration here to handle actual card input and get payment method/token
+    // Placeholder response:
+    const userId = window.details.user_id;
+    const bookingId = window.details.uuid;
+    const finalCredits = useCredits ? creditsToApply : 0;
+    const finalTotal = parseFloat((total - finalCredits).toFixed(2));
+
+    const payload = {
+      line_item: lineItem,
+      subtotal,
+      tax_total: taxTotal,
+      total: finalTotal,
+      user_credits_applied: finalCredits,
+      user_id: userId,
+      booking_id: bookingId,
+      payment_method: "new_card"
+    };
+
+    try {
+      const res = await fetch("https://hook.us1.make.com/b7m5qiaw6udii3xpalks2jxjljms6elj", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const { transaction_id } = await res.json();
+      console.log("✅ New card charge complete:", transaction_id);
+
+      popup.classList.add("hidden");
+      overlay.classList.remove("background");
+
+      if (onSuccess) onSuccess(transaction_id);
+    } catch (err) {
+      console.error("❌ Error with new card:", err);
+      alert("Payment failed. Try again.");
+    } finally {
+      payNowBtn.classList.remove("disabled");
+      payNowBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Pay with Card");
+    }
+  };
 }
