@@ -918,7 +918,7 @@ function updateBookingSummary() {
   const newDate = start.toFormat("cccc LLLL d, yyyy");
   const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a ZZZZ")}`;
   const newDuration = parseFloat((g.booking_duration / 60).toFixed(2));
-  const newRate = parseFloat(g.base_rate).toFixed(2);
+  const newRate = parseFloat(g.base_rate);
 
   const originalStart = luxon.DateTime.fromISO(details.start, { zone });
   const originalEnd = luxon.DateTime.fromISO(details.end, { zone });
