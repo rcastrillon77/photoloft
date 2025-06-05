@@ -920,15 +920,15 @@ function updateBookingSummary() {
 
   // ⏰ TIME
   document.getElementById("summary-time-new").textContent = newTime;
-  if (newTime !== document.getElementById("summary-time-old").textContent) {
-    document.getElementById("summary-time-old").classList.add("cross-out");
+  if (newTime !== document.getElementById("summary-time-original").textContent) {
+    document.getElementById("summary-time-original").classList.add("cross-out");
     document.getElementById("summary-time-new").classList.remove("hide");
   }
 
   // ⏳ DURATION
   document.getElementById("summary-durartion-new").textContent = newDuration;
-  if (newDuration !== document.getElementById("summary-duration-old").textContent) {
-    document.getElementById("summary-duration-old").classList.add("cross-out");
+  if (newDuration !== document.getElementById("summary-duration-original").textContent) {
+    document.getElementById("summary-duration-original").classList.add("cross-out");
     document.getElementById("summary-durartion-new").classList.remove("hide");
   }
 }
