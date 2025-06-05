@@ -968,7 +968,7 @@ function updateBookingSummary() {
   const originalDate = originalStart.toFormat("cccc LLLL d, yyyy");
   const originalTime = `${originalStart.toFormat("h:mm a")} to ${originalEnd.toFormat("h:mm a ZZZZ")}`;
   const originalDuration = parseFloat(details.duration);
-  const originalRate = parseFloat(details.transaction.base_rate).toFixed(2);
+  const originalRate = parseFloat(details.transaction.base_rate);
 
   // 📅 DATE
   document.getElementById("summary-date-new").textContent = newDate;
