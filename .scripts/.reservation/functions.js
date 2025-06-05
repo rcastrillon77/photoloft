@@ -725,9 +725,13 @@ async function fetchEventsForRange(start, end) {
     if (error) {
       console.error(`❌ Failed to fetch events for location ${locationId}:`, error);
       continue;
+    } else{
+      console.log(`fetchEventsForRange: Events for location ${locationId}:`, data);
+      console.log(`fetchEventsForRange: Excluded UUIDs:`, details?.event_id);
     }
   
     allEvents.push(...(data || []));
+  
   }
   
 
