@@ -903,19 +903,27 @@ function updateMaxAvailableButton() {
 
 function updateBookingSummary() {
   const g = window.bookingGlobals;
-  const start = luxon.DateTime.fromJSDate(g.booking_date, { zone: timezone })
-    .startOf("day")
-    .plus({ minutes: g.booking_start });
+  const zone = window.TIMEZONE;
+  const start = luxon.DateTime.fromJSDate(g.booking_date, { zone }).startOf('day').plus({ minutes: g.booking_start });
   const end = start.plus({ minutes: g.booking_duration });
+
   const newDate = start.toFormat("cccc LLLL d, yyyy");
   const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a")}`;
   const newDuration = `${(g.booking_duration / 60).toFixed(1)} Hours`;
+  const newRate = `$${g.final_rate.toFixed(2)}/Hr`;
 
-  // 📆 DATE
+  // 📅 DATE
   document.getElementById("summary-date-new").textContent = newDate;
   if (newDate !== document.getElementById("summary-date-original").textContent) {
     document.getElementById("summary-date-original").classList.add("cross-out");
     document.getElementById("summary-date-new").classList.remove("hide");
+  }
+
+  // 💸 RATE
+  document.getElementById("summary-rate-new").textContent = newRate;
+  if (newRate !== document.getElementById("summary-rate-original").textContent) {
+    document.getElementById("summary-rate-original").classList.add("cross-out");
+    document.getElementById("summary-rate-new").classList.remove("hide");
   }
 
   // ⏰ TIME
@@ -932,6 +940,7 @@ function updateBookingSummary() {
     document.getElementById("summary-durartion-new").classList.remove("hide");
   }
 }
+
 
 
 function renderStartTimeOptions(startTimes) {
