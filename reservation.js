@@ -318,12 +318,10 @@ async function setupRescheduleFlow(details) {
     const slider = document.getElementById("duration-slider");
     if (slider) {
       slider.value = durationHours;
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
       console.log(`setupRescheduleFlow: slider.value = ${slider.value}`);
-      setSliderProgress(durationHours);
-      console.log(`setupRescheduleFlow: durationHours = ${durationHours}`);
-      window.bookingGlobals.booking_duration = durationHours * 60;
-      console.log(`setupRescheduleFlow: window.bookingGlobals.booking_duration = ${window.bookingGlobals.booking_duration}`);
     }
+    
   
     console.log("setupRescheduleFlow: running selecting time slot");
     // Pre-select time
