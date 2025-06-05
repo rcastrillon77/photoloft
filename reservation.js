@@ -286,34 +286,34 @@ async function processCancellation(refundData) {
 async function setupRescheduleFlow() {
   
   if (!details) {
-    console("setupRescheduleFlow: no details");
+    console.log("setupRescheduleFlow: no details");
     return;
   };
   
-  console("setupRescheduleFlow: running preloadRescheduleGlobals");
+  console.log("setupRescheduleFlow: running preloadRescheduleGlobals");
   preloadRescheduleGlobals();
-  console("setupRescheduleFlow: running initBookingConfig");
+  console.log("setupRescheduleFlow: running initBookingConfig");
   await initBookingConfig(LISTING_UUID);
-  console("setupRescheduleFlow: running initSliderSection");
+  console.log("setupRescheduleFlow: running initSliderSection");
   await initSliderSection();
-  console("setupRescheduleFlow: running initCalendar");
+  console.log("setupRescheduleFlow: running initCalendar");
   initCalendar();
 
-  console("setupRescheduleFlow: running timeout");
+  console.log("setupRescheduleFlow: running timeout");
   setTimeout(() => {
-    console("setupRescheduleFlow: running setting up constants");
+    console.log("setupRescheduleFlow: running setting up constants");
     const start = luxon.DateTime.fromISO(details.start, { zone: tomezone });
-    console(`setupRescheduleFlow: start = ${start}`);
+    console.log(`setupRescheduleFlow: start = ${start}`);
     const durationHours = details.duration;
-    console(`setupRescheduleFlow: durationHours = ${durationHours}`);
+    console.log(`setupRescheduleFlow: durationHours = ${durationHours}`);
 
-    console("setupRescheduleFlow: setting calendar");
+    console.log("setupRescheduleFlow: setting calendar");
     // Calendar selection
     if (window.flatpickrCalendar) {
       window.flatpickrCalendar.setDate(start.toJSDate(), true); // triggers change
     }
   
-    console("setupRescheduleFlow: running setting up slider");
+    console.log("setupRescheduleFlow: running setting up slider");
     // Set slider
     const slider = document.getElementById("duration-slider");
     if (slider) {
@@ -322,7 +322,7 @@ async function setupRescheduleFlow() {
       window.bookingGlobals.booking_duration = durationHours * 60;
     }
   
-    console("setupRescheduleFlow: running selecting time slot");
+    console.log("setupRescheduleFlow: running selecting time slot");
     // Pre-select time
     const timeVal = start.toFormat("HHmm");
     const radioToSelect = document.querySelector(`input[name="start-time"][value="${timeVal}"]`);
