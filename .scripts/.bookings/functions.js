@@ -854,7 +854,7 @@ function updateBookingSummary() {
         const hasTimes = radios.length > 0;
 
         if (hasTimes) {
-            slotsTzEl.textContent = `${longName} (${shortName}) ${window.TIMEZONE}`;
+            slotsTzEl.textContent = `${longName} (${shortName})`;
             wrapperEl.classList.remove('hidden');
         } else {
             wrapperEl.classList.add('hidden');
