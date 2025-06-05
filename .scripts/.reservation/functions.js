@@ -898,7 +898,7 @@ function updateBookingSummary() {
   const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a ZZZZ")}`;
   const newDurationTotal = (g.booking_duration / 60).toFixed(1);
   const newDuration = parseFloat(newDurationTotal) + (parseFloat(newDurationTotal) === 1 ? " Hour" : " Hours");
-  const newRate = `$${g.final_rate.toFixed(1)}/Hr`;
+  const newRate = `$${g.final_rate}/Hr`;
 
   // 📅 DATE
   document.getElementById("summary-date-new").textContent = newDate;
