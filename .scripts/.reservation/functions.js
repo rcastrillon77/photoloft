@@ -259,7 +259,7 @@ async function setupRescheduleFlow(details) {
   console.log("setupRescheduleFlow: running timeout");
   setTimeout(() => {
     console.log("setupRescheduleFlow: running setting up constants");
-    const start = luxon.DateTime.fromISO(details.start, { zone: tomezone });
+    const start = luxon.DateTime.fromISO(details.start, { zone: timezone });
     console.log(`setupRescheduleFlow: start = ${start}`);
     const durationHours = details.duration;
     console.log(`setupRescheduleFlow: durationHours = ${durationHours}`);
