@@ -68,7 +68,7 @@ async function rebuildBookingDetails(bookingUuid) {
     duration: bookingData.details.duration || null,
     attendees: bookingData.details?.attendees || null,
     activities: bookingData.details?.activities || [],
-    event_id: bookingData.event_id || [],
+    event_id: bookingData.event_id || [], 
     user: {
       first_name: bookingData.details.user?.first_name || "",
       last_name: bookingData.details.user?.last_name || "",
