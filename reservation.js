@@ -578,7 +578,7 @@ function initCalendar() {
       
         window.bookingGlobals.booking_date = new Date(selectedDate);
       
-        await initBookingConfig(LISTING_UUID); // 👈 recalculate rate based on selected date
+        await initBookingConfig(LISTING_UUID);
       
         generateStartTimeOptions(false);
         requestAnimationFrame(() => disableUnavailableDates());
