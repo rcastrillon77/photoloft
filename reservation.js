@@ -294,7 +294,7 @@ async function setupRescheduleFlow() {
 
   setTimeout(() => {
     const start = luxon.DateTime.fromISO(details.start, { zone: window.TIMEZONE });
-    const durationHours = (details.duration || 60) / 60;
+    const durationHours = (details.duration || 60);
   
     // Calendar selection
     if (window.flatpickrCalendar) {
@@ -909,9 +909,9 @@ function updateMaxAvailableButton() {
 
 function updateBookingSummary() {
   const g = window.bookingGlobals;
-  const zone = window.TIMEZONE;
+  const zone = timezone;
   const start = luxon.DateTime.fromJSDate(g.booking_date, { zone }).startOf('day').plus({ minutes: g.booking_start });
-  const end = start.plus({ minutes: g.booking_duration });
+  const end = start.plus({ mintutes: g.booking_duration });
 
   const newDate = start.toFormat("cccc LLLL d, yyyy");
   const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a")}`;
