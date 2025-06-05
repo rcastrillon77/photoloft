@@ -424,16 +424,18 @@ async function initBookingConfig(listingId) {
       window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
       window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
 
-      const today = new Date();
-      const weekday = today.getDay();
-      const todaySchedule = schedule[MEMBERSHIP]?.[weekday];
+      const selectedDate = window.bookingGlobals?.booking_date || new Date();
+      const weekday = selectedDate.getDay();
+      const selectedSchedule = schedule[MEMBERSHIP]?.[weekday];
+
   
-      if (todaySchedule) {
-          OPEN_TIME = parseTimeToMinutes(todaySchedule.open);
-          CLOSE_TIME = parseTimeToMinutes(todaySchedule.close);
-          FULL_RATE = todaySchedule.rate;
-          FINAL_RATE = FULL_RATE;
+      if (selectedSchedule) {
+        OPEN_TIME = parseTimeToMinutes(selectedSchedule.open);
+        CLOSE_TIME = parseTimeToMinutes(selectedSchedule.close);
+        FULL_RATE = selectedSchedule.rate;
+        FINAL_RATE = FULL_RATE;
       }
+      
   
       const startStr = rules.start;
       const endStr = rules.end;
