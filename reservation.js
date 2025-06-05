@@ -940,19 +940,22 @@ function updateBookingSummary() {
   const newDate = start.toFormat("cccc LLLL d, yyyy");
   const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a ZZZZ")}`;
   const newDurationTotal = (g.booking_duration / 60).toFixed(1);
-  const newDuration =  newDurationTotal + (newDurationTotal > 1 ? " Hours" : " Hour");
-  const newRate = `$${g.final_rate.toFixed(2)}/Hr`;
+  const newDuration = parseFloat(newDurationTotal) + (parseFloat(newDurationTotal) === 1 ? " Hour" : " Hours");
+  const newRate = `$${g.final_rate.toFixed(1)}/Hr`;
 
   // 📅 DATE
   document.getElementById("summary-date-new").textContent = newDate;
-  if (newDate !== document.getElementById("summary-date-original").textContent) {
+  const oldDate = document.getElementById("summary-date-original").textContent.trim();
+  if (newDate.trim() !== oldDate) {
     document.getElementById("summary-date-original").classList.add("cross-out");
     document.getElementById("summary-date-new").classList.remove("hide");
   }
 
   // 💸 RATE
   document.getElementById("summary-rate-new").textContent = newRate;
-  if (newRate !== document.getElementById("summary-rate-original").textContent) {
+  const oldRate = document.getElementById("summary-rate-original").textContent.replace(/[^\d.]/g, '');
+  const newRateValue = g.final_rate.toFixed(2);
+  if (oldRate !== newRateValue) {
     document.getElementById("summary-rate-original").classList.add("cross-out");
     document.getElementById("summary-rate-new").classList.remove("hide");
   }
