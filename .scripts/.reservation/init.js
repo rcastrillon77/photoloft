@@ -10,11 +10,11 @@ async function initReservationUpdate() {
   populateReservationDetails(details);
   applyActionButtonStates(details);
   console.log("✅ Reservation populated.");
+  console.log("INITIALIZING RESCHEDULE");
+  setupRescheduleFlow(details);
 }
 
-await initReservationUpdate();
-console.log("INITIALIZING RESCHEDULE");
-setupRescheduleFlow();
+initReservationUpdate();
 
 // POPUP CLOSE & OPEN
 document.getElementById("popup-closer").addEventListener("click", closePopup);
