@@ -240,7 +240,7 @@ async function processCancellation(refundData) {
 // ====== RESCHEDULE SUPPORT ===== //
 // =============================== //
 
-async function setupRescheduleFlow() {
+async function setupRescheduleFlow(details) {
   
   if (!details) {
     console.log("setupRescheduleFlow: no details");
