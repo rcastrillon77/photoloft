@@ -891,48 +891,66 @@ function updateMaxAvailableButton() {
 function updateBookingSummary() {
   const g = window.bookingGlobals;
   const zone = timezone;
+
   const start = luxon.DateTime.fromJSDate(g.booking_date, { zone }).startOf('day').plus({ minutes: g.booking_start });
   const end = start.plus({ minutes: g.booking_duration });
 
   const newDate = start.toFormat("cccc LLLL d, yyyy");
   const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a ZZZZ")}`;
-  const newDurationTotal = (g.booking_duration / 60).toFixed(1);
-  const newDuration = parseFloat(newDurationTotal) + (parseFloat(newDurationTotal) === 1 ? " Hour" : " Hours");
-  const newRate = `$${g.final_rate}/Hr`;
+  const newDuration = parseFloat((g.booking_duration / 60).toFixed(2));
+  const newRate = parseFloat(g.final_rate).toFixed(2);
+
+  const originalStart = luxon.DateTime.fromISO(details.start, { zone });
+  const originalEnd = luxon.DateTime.fromISO(details.end, { zone });
+  const originalDate = originalStart.toFormat("cccc LLLL d, yyyy");
+  const originalTime = `${originalStart.toFormat("h:mm a")} to ${originalEnd.toFormat("h:mm a ZZZZ")}`;
+  const originalDuration = parseFloat(details.duration);
+  const originalRate = parseFloat(details.transaction.final_rate).toFixed(2);
 
   // 📅 DATE
   document.getElementById("summary-date-new").textContent = newDate;
-  const oldDate = document.getElementById("summary-date-original").textContent.trim();
-  if (newDate.trim() !== oldDate) {
+  if (newDate !== originalDate) {
     document.getElementById("summary-date-original").classList.add("cross-out");
     document.getElementById("summary-date-new").classList.remove("hide");
+  } else {
+    document.getElementById("summary-date-original").classList.remove("cross-out");
+    document.getElementById("summary-date-new").classList.add("hide");
   }
 
   // 💸 RATE
-  document.getElementById("summary-rate-new").textContent = newRate;
-  const oldRate = document.getElementById("summary-rate-original").textContent.replace(/[^\d.]/g, '');
-  const newRateValue = g.final_rate.toFixed(2);
-  if (oldRate !== newRateValue) {
+  document.getElementById("summary-rate-new").textContent = `$${newRate}/Hr`;
+  if (newRate !== originalRate) {
     document.getElementById("summary-rate-original").classList.add("cross-out");
     document.getElementById("summary-rate-new").classList.remove("hide");
+  } else {
+    document.getElementById("summary-rate-original").classList.remove("cross-out");
+    document.getElementById("summary-rate-new").classList.add("hide");
   }
 
   // ⏰ TIME
   document.getElementById("summary-time-new").textContent = newTime;
-  if (newTime !== document.getElementById("summary-time-original").textContent) {
+  if (newTime !== originalTime) {
     document.getElementById("summary-time-original").classList.add("cross-out");
     document.getElementById("summary-time-new").classList.remove("hide");
+  } else {
+    document.getElementById("summary-time-original").classList.remove("cross-out");
+    document.getElementById("summary-time-new").classList.add("hide");
   }
 
   // ⏳ DURATION
-  document.getElementById("summary-durartion-new").textContent = newDuration;
-  if (newDuration !== document.getElementById("summary-duration-original").textContent) {
+  const newDurationStr = `${newDuration % 1 === 0 ? newDuration : newDuration.toFixed(1)} ${newDuration === 1 ? "Hour" : "Hours"}`;
+  const originalDurationStr = `${originalDuration % 1 === 0 ? originalDuration : originalDuration.toFixed(1)} ${originalDuration === 1 ? "Hour" : "Hours"}`;
+
+  document.getElementById("summary-durartion-new").textContent = newDurationStr;
+
+  if (newDuration !== originalDuration) {
     document.getElementById("summary-duration-original").classList.add("cross-out");
     document.getElementById("summary-durartion-new").classList.remove("hide");
+  } else {
+    document.getElementById("summary-duration-original").classList.remove("cross-out");
+    document.getElementById("summary-durartion-new").classList.add("hide");
   }
 }
-
-
 
 function renderStartTimeOptions(startTimes) {
   const container = document.getElementById('booking-start-time-options');
