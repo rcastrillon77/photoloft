@@ -366,7 +366,7 @@ async function initBookingConfig(listingId) {
       MAX_DURATION = rules.max ?? 4;
       INTERVAL = rules.interval ?? 0.5;
       EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
-      DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
+      DEFAULT_DURATION = 1 //rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
       BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
 
       window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
@@ -1388,6 +1388,176 @@ function updateDurationDisplay(duration) {
 
   const unit = hours === 1 ? 'Hr' : 'Hrs';
   document.getElementById('duration-unit').textContent = unit;
+}
+
+// RESCHEDULE CALCULATIONS
+
+async function calculateRescheduleTotals(details, bookingGlobals) {
+  const hours = bookingGlobals.booking_duration / 60;
+  const baseRate = bookingGlobals.base_rate;
+  const bookingDate = bookingGlobals.booking_date;
+
+  const discountSummary = details.transaction.discounts || [];
+  const originalTotal = details.transaction.total || 0;
+  const userCredits = details.transaction.user_credits_applied || 0;
+  const taxRate = details.transaction.tax_rate || 0;
+
+  const { results: validDiscounts, subtotalAfterDiscounts, totalDiscount } =
+    await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
+
+  const creditAdjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
+  const taxes = creditAdjustedSubtotal * (taxRate / 100);
+  const finalTotal = creditAdjustedSubtotal + taxes;
+  const difference = finalTotal - originalTotal;
+
+  return {
+    baseRate,
+    hours,
+    subtotal: baseRate * hours,
+    discounts: validDiscounts,
+    discountTotal: totalDiscount,
+    userCredits,
+    taxRate,
+    taxes: roundDecimals(taxes),
+    finalTotal: roundDecimals(finalTotal),
+    originalTotal: roundDecimals(originalTotal),
+    difference: roundDecimals(difference),
+    requiresPayment: difference > 0.01
+  };
+}
+
+async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
+  const certUuids = certSummaries.map(c => c.uuid);
+  const { data: fullCerts, error } = await window.supabase
+    .from("certificates")
+    .select("*")
+    .in("uuid", certUuids);
+
+  if (error) {
+    console.error("❌ Failed to re-fetch certificates:", error);
+    return { results: [], totalDiscount: 0, subtotalAfterDiscounts: baseRate * hours };
+  }
+
+  let total = baseRate * hours;
+  let newRate = baseRate;
+  let rateUsed = false;
+  const results = [];
+
+  for (const summary of certSummaries) {
+    const cert = fullCerts.find(c => c.uuid === summary.uuid);
+    if (!cert) continue;
+
+    const { code, uuid, type, amount, rules = {} } = cert;
+
+    if (rules?.dates?.type === "reservation") {
+      const start = new Date(rules.dates.start);
+      const end = new Date(rules.dates.end);
+      if (newDate < start || newDate > end) continue;
+    }
+
+    const threshold = rules.threshold;
+    if (threshold) {
+      const val = threshold.amount ?? 0;
+      const passes = threshold.type === "currency"
+        ? baseRate * hours >= val
+        : hours * 60 >= val;
+      if (!passes) continue;
+    }
+
+    let discountAmount = 0;
+    if (type === "rate") {
+      if (rateUsed) continue;
+      if (newRate > amount) {
+        discountAmount = (newRate - amount) * hours;
+        newRate = amount;
+        rateUsed = true;
+      } else continue;
+    } else if (type === "minutes") {
+      discountAmount = (amount * newRate) / 60;
+    } else if (type === "currency") {
+      discountAmount = amount;
+    } else if (type === "percent") {
+      discountAmount = total * (amount / 100);
+    }
+
+    if (rules?.limit && discountAmount > rules.limit) {
+      discountAmount = rules.limit;
+    }
+
+    if (discountAmount > total) discountAmount = total;
+
+    total -= discountAmount;
+    results.push({ code, uuid, amount: roundDecimals(discountAmount) });
+  }
+
+  return {
+    results,
+    subtotalAfterDiscounts: roundDecimals(total),
+    totalDiscount: roundDecimals(baseRate * hours - total)
+  };
+}
+
+document.getElementById("confirm-new-booking").addEventListener("click", async () => {
+  const pricing = await calculateRescheduleTotals(details, window.bookingGlobals);
+  const bookingStart = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE })
+    .startOf("day")
+    .plus({ minutes: window.bookingGlobals.booking_start });
+  const bookingEnd = bookingStart.plus({ minutes: window.bookingGlobals.booking_duration });
+
+  const payload = {
+    booking_uuid: bookingUuid,
+    new_start: bookingStart.toISO(),
+    new_end: bookingEnd.toISO(),
+    duration: window.bookingGlobals.booking_duration
+  };
+
+  const proceedWithReschedule = async () => {
+    const response = await fetch("https://hook.us1.make.com/YOUR-RESCHEDULE-ENDPOINT", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) return alert("❌ Reschedule failed.");
+
+    document.getElementById("confirm-popup-header").textContent = "Booking Rescheduled";
+    document.getElementById("confirm-popup-paragraph").textContent = pricing.requiresPayment
+      ? "Your booking has been moved. The additional charge was processed successfully."
+      : "Your booking has been moved to the new time.";
+    showPopupById("confirmation-popup");
+
+    details = await rebuildBookingDetails(bookingUuid);
+    populateReservationDetails(details);
+    applyActionButtonStates(details);
+  };
+
+  if (pricing.requiresPayment) {
+    addChargeHandler({
+      lineItem: "Rescheduling Balance",
+      subtotal: pricing.finalTotal - pricing.taxes,
+      taxTotal: pricing.taxes,
+      total: pricing.finalTotal,
+      onSuccess: proceedWithReschedule
+    });
+  } else {
+    proceedWithReschedule();
+  }
+});
+
+
+// ADD CHARGE
+function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
+
+  document.querySelector(".popup").classList.add("background");
+  document.querySelector(".add-charge").classList.remove("hidden");
+
+  console.log("💳 Triggering charge:", { lineItem, subtotal, taxTotal, total });
+
+  // Simulate success:
+  setTimeout(() => {
+    console.log("✅ Charge successful");
+    onSuccess(); // trigger reschedule logic
+  }, 1000);
 }
 
 async function initReservationUpdate() {
