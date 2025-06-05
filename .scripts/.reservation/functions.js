@@ -279,7 +279,7 @@ async function setupRescheduleFlow() {
 
 function preloadRescheduleGlobals() {
   const start = luxon.DateTime.fromISO(details.start, { zone: timezone });
-  const duration = details.duration || 60;
+  const duration = details.duration * 60;
   const booking_date = start.toJSDate();
   const booking_start = start.hour * 60 + start.minute;
 
