@@ -458,7 +458,6 @@ async function initBookingConfig(listingId) {
         }
       }
       
-
       const startStr = rules.start;
       const endStr = rules.end;
   
