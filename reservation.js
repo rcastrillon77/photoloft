@@ -396,9 +396,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
 
 async function initBookingConfig(listingId) {
-  console.log("💡 bookingGlobals.booking_date =", window.bookingGlobals?.booking_date);
-  console.log("📆 Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
-
   try {
   // --- Pull Listing Details ---
       const { data: listingData, error: listingError } = await window.supabase
