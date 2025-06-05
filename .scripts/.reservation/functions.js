@@ -114,7 +114,7 @@ function populateReservationDetails(details) {
     `$${(details.transaction?.total || 0).toFixed(2)}`;
 
 
-  document.getElementById("summary-date-original").textContent = DateTime.fromISO(start).setZone(timezone).toFormat('LLLL d, yyyy');
+  document.getElementById("summary-date-original").textContent = DateTime.fromISO(start).setZone(timezone).toFormat('cccc LLLL d, yyyy');
   document.getElementById("summary-time-original").textContent = start.toFormat("h:mm a") + " to " + end.toFormat("h:mm a ZZZZ");
   document.getElementById("summary-duration-original").textContent = details.duration + (details.duration > 1 ? " Hours" : " Hour");
   document.getElementById("summary-rate-original").textContent = `$${details.transaction.final_rate} per Hour`;
