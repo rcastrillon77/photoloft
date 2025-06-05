@@ -396,131 +396,133 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
 async function initBookingConfig(listingId) {
   try {
-  // --- Pull Listing Details ---
-      const { data: listingData, error: listingError } = await window.supabase
+    // --- Pull Listing Details ---
+    const { data: listingData, error: listingError } = await window.supabase
       .from("listings")
       .select("schedule, location_id")
       .eq("uuid", listingId)
       .single();
 
-      if (listingError || !listingData) {
-          console.error("❌ Failed to fetch listing schedule:", listingError);
-          return;
-      }
-      console.log("INITBOOKINGCONFIG: Listing Data", listingData);
+    if (listingError || !listingData) {
+      console.error("❌ Failed to fetch listing schedule:", listingError);
+      return;
+    }
+    console.log("INITBOOKINGCONFIG: Listing Data", listingData);
 
-      const schedule = listingData.schedule || {};
-      const rules = schedule['booking-rules'] || {}; 
-      window.listingSchedule = schedule;
-      window.bookingGlobals.bookingRules = rules;
+    const schedule = listingData.schedule || {};
+    const rules = schedule['booking-rules'] || {};
+    window.listingSchedule = schedule;
+    window.bookingGlobals.bookingRules = rules;
 
-      console.log("INITBOOKINGCONFIG: Rules", rules);
-  
-      MIN_DURATION = rules.minimum ?? 1;
-      MAX_DURATION = rules.max ?? 4;
-      INTERVAL = rules.interval ?? 0.5;
-      EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
-      DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
-      BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
+    console.log("INITBOOKINGCONFIG: Rules", rules);
 
-      window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
-      window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
+    // Booking rule defaults
+    MIN_DURATION = rules.minimum ?? 1;
+    MAX_DURATION = rules.max ?? 4;
+    INTERVAL = rules.interval ?? 0.5;
+    EXTENDED_OPTIONS = rules['extended-options'] ?? EXTENDED_OPTIONS;
+    DEFAULT_DURATION = rules.default ?? ((MIN_DURATION + MAX_DURATION) / 2);
+    BOOKING_WINDOW_DAYS = rules['booking-window']?.[MEMBERSHIP] ?? 60;
 
-      console.log("INITBOOKINGCONFIG: Booking Variables Set");
+    window.BUFFER_BEFORE = rules["buffer-before"] ?? 0;
+    window.BUFFER_AFTER = rules["buffer-after"] ?? 0;
 
-      const selectedDate = window.bookingGlobals?.booking_date;
-      const weekday = selectedDate?.getDay?.();
-      const selectedSchedule = schedule[MEMBERSHIP]?.[weekday];
+    console.log("INITBOOKINGCONFIG: Booking Variables Set");
 
-      if (selectedDate instanceof Date) {
-        console.log("INITBOOKINGCONFIG: booking_date =", selectedDate);
-        console.log("INITBOOKINGCONFIG: Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
-      } else {
-        console.warn("⚠️ bookingGlobals.booking_date is not a valid Date:", selectedDate);
-      }
-      
+    const selectedDate = window.bookingGlobals?.booking_date;
+    const weekday = selectedDate?.getDay?.();
+    const selectedSchedule = schedule[MEMBERSHIP]?.[weekday];
 
-      if (selectedSchedule) {
-        OPEN_TIME = parseTimeToMinutes(selectedSchedule.open);
-        CLOSE_TIME = parseTimeToMinutes(selectedSchedule.close);
-        FULL_RATE = selectedSchedule.rate;
-      
-        window.bookingGlobals.base_rate = FULL_RATE; // Reference for display + discount calc
-      
-        const isoDateStr = selectedDate?.toISOString?.().split("T")[0];
-        const specialRateEntry = window.specialRates?.[isoDateStr];
-      
-        if (specialRateEntry?.amount !== undefined) {
-          console.log(`🎯 Overriding final_rate due to special rate on ${isoDateStr}`);
-          window.bookingGlobals.final_rate = specialRateEntry.amount;
-        } else {
-          window.bookingGlobals.final_rate = FULL_RATE; // Only set if no override
+    if (selectedDate instanceof Date) {
+      console.log("INITBOOKINGCONFIG: booking_date =", selectedDate);
+      console.log("INITBOOKINGCONFIG: Selected weekday =", weekday, "→ rate =", selectedSchedule?.rate);
+    } else {
+      console.warn("⚠️ bookingGlobals.booking_date is not a valid Date:", selectedDate);
+    }
+
+    if (selectedSchedule) {
+      OPEN_TIME = parseTimeToMinutes(selectedSchedule.open);
+      CLOSE_TIME = parseTimeToMinutes(selectedSchedule.close);
+      FULL_RATE = selectedSchedule.rate;
+
+      // ✅ Set base_rate for UI comparison — final_rate will be set later
+      window.bookingGlobals.base_rate = FULL_RATE;
+    }
+
+    // Date range setup
+    const now = new Date();
+    let minDate = rules.start ? new Date(rules.start) : now;
+    if (minDate < now) minDate = now;
+
+    const maxDate = rules.end ? new Date(rules.end) : new Date(now.getTime() + BOOKING_WINDOW_DAYS * 86400000);
+
+    window.bookingMinDate = minDate;
+    window.bookingMaxDate = maxDate;
+
+    console.log("🧩 Booking Config:", {
+      MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
+      BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
+      minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
+    });
+
+    // --- Pull Events ---
+    const eventsData = await fetchEventsForRange(minDate, maxDate);
+    window.bookingEvents = eventsData;
+    console.log("📅 Booking Events:", window.bookingEvents);
+
+    // --- Pull Special Rates ---
+    const { data: ratesData, error: ratesError } = await window.supabase
+      .from("special_rates")
+      .select("start, end, title, rate")
+      .eq("listing_id", listingId);
+
+    if (ratesError) {
+      console.error("❌ Failed to fetch special rates:", ratesError);
+    } else {
+      window.specialRates = {};
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      for (const entry of ratesData) {
+        const start = new Date(entry.start);
+        const end = new Date(entry.end);
+        const current = new Date(start);
+
+        while (current <= end) {
+          const dateStr = current.toISOString().split("T")[0];
+          const dayOfWeek = current.getDay();
+          const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
+
+          if (membershipRate !== undefined) {
+            window.specialRates[dateStr] = {
+              title: entry.title,
+              amount: membershipRate
+            };
+          }
+
+          current.setDate(current.getDate() + 1);
         }
       }
-      
-      const startStr = rules.start;
-      const endStr = rules.end;
-  
-      minDate = startStr ? new Date(startStr) : now;
-      if (minDate < now) minDate = now;
-  
-      maxDate = endStr ? new Date(endStr) : new Date(now.getTime() + BOOKING_WINDOW_DAYS * 86400000);
 
-      window.bookingMinDate = minDate;
-      window.bookingMaxDate = maxDate;
+      console.log("💸 Loaded specialRates →", window.specialRates);
+    }
 
-      console.log("🧩 Booking Config:", {
-          MIN_DURATION, MAX_DURATION, INTERVAL, DEFAULT_DURATION, EXTENDED_OPTIONS,
-          BOOKING_WINDOW_DAYS, OPEN_TIME, CLOSE_TIME, FULL_RATE,
-          minDate, maxDate, MEMBERSHIP, PREPAID_HOURS
-      });
+    // ✅ Set final_rate here — AFTER specialRates are available
+    const isoDateStr = selectedDate?.toISOString?.().split("T")[0];
+    const specialRateEntry = window.specialRates?.[isoDateStr];
 
-      // --- Pull Events ---
-      const eventsData = await fetchEventsForRange(minDate, maxDate);
-      window.bookingEvents = eventsData;
-      console.log("📅 Booking Events:", window.bookingEvents);
-      
-      
-      // --- Pull Special Rates ---
-          const { data: ratesData, error: ratesError } = await window.supabase
-          .from("special_rates")
-          .select("start, end, title, rate")
-          .eq("listing_id", listingId);
+    if (specialRateEntry?.amount !== undefined) {
+      console.log(`🎯 Overriding final_rate due to special rate on ${isoDateStr}`);
+      window.bookingGlobals.final_rate = specialRateEntry.amount;
+    } else {
+      window.bookingGlobals.final_rate = FULL_RATE;
+    }
 
-          if (ratesError) {
-              console.error("❌ Failed to fetch special rates:", ratesError);
-          } else {
-              window.specialRates = {};
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-
-              for (const entry of ratesData) {
-                  const start = new Date(entry.start);
-                  const end = new Date(entry.end);
-                  const current = new Date(start);
-
-                  while (current <= end) {
-                      const dateStr = current.toISOString().split("T")[0];
-                      const dayOfWeek = current.getDay();
-                      const membershipRate = entry.rate?.[dayOfWeek]?.[MEMBERSHIP];
-
-                      if (membershipRate !== undefined) {
-                          window.specialRates[dateStr] = {
-                              title: entry.title,
-                              amount: membershipRate
-                          };
-                      }
-
-                      current.setDate(current.getDate() + 1);
-                  }
-              }
-
-              console.log("💸 Loaded specialRates →", window.specialRates);
-          }
-      } catch (err) {
-      console.error("🚨 Unexpected error initializing booking config:", err);
+  } catch (err) {
+    console.error("🚨 Unexpected error initializing booking config:", err);
   }
 }
+
 
 async function initSliderSection() {
   document.querySelector('.extended-time').classList.add('shrunk');
