@@ -659,7 +659,7 @@ async function fetchEventsForRange(start, end) {
   for (const locationId of window.LOCATION_UUID || []) {
     const { data, error } = await window.supabase
       .from("events")
-      .select("start, end")
+      .select("uuid, start, end")
       .eq("location_id", locationId)
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
