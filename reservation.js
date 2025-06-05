@@ -573,20 +573,19 @@ function initCalendar() {
       },
 
       onChange: async function(selectedDates) {
-
-          const selectedDate = selectedDates[0];
-          if (!selectedDate || !(selectedDate instanceof Date)) return;
-          
-          window.bookingGlobals.booking_date = new Date(selectedDate);
-
-          await initBookingConfig(LISTING_UUID);
-
-          generateStartTimeOptions(false);
-          requestAnimationFrame(() => disableUnavailableDates());
-          generateExtendedTimeOptions();
-          updateMaxAvailableButton();
-          updateBookingSummary();
-          highlightSelectedDate();
+        const selectedDate = selectedDates[0];
+        if (!selectedDate || !(selectedDate instanceof Date)) return;
+      
+        window.bookingGlobals.booking_date = new Date(selectedDate);
+      
+        await initBookingConfig(LISTING_UUID); // 👈 recalculate rate based on selected date
+      
+        generateStartTimeOptions(false);
+        requestAnimationFrame(() => disableUnavailableDates());
+        generateExtendedTimeOptions();
+        updateMaxAvailableButton();
+        updateBookingSummary();
+        highlightSelectedDate();
       }
       
   });
