@@ -761,7 +761,8 @@ async function fetchEventsForRange(start, end) {
   
     // Exclude this booking's event(s) if present
     if (Array.isArray(details?.event_id) && details.event_id.length > 0) {
-      query = query.not("uuid", "in", details.event_id);
+      const uuidList = `(${details.event_id.join(",")})`;
+      query = query.not("uuid", "in", uuidList);
     }
   
     const { data, error } = await query;
