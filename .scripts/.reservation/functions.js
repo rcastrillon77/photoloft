@@ -250,8 +250,8 @@ async function setupRescheduleFlow() {
   initCalendar();
 
   setTimeout(() => {
-    const start = luxon.DateTime.fromISO(details.start, { zone: window.TIMEZONE });
-    const durationHours = (details.duration || 60);
+    const start = luxon.DateTime.fromISO(details.start, { zone: tomezone });
+    const durationHours = details.duration;
   
     // Calendar selection
     if (window.flatpickrCalendar) {
@@ -1420,7 +1420,7 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   const pricing = await calculateRescheduleTotals(details, window.bookingGlobals);
-  const bookingStart = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: window.TIMEZONE })
+  const bookingStart = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: timezone })
     .startOf("day")
     .plus({ minutes: window.bookingGlobals.booking_start });
   const bookingEnd = bookingStart.plus({ minutes: window.bookingGlobals.booking_duration });
