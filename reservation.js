@@ -572,12 +572,15 @@ function initCalendar() {
           generateStartTimeOptions(true); 
       },
 
-      onChange(selectedDates) {
+      onChange: async function(selectedDates) {
+
           const selectedDate = selectedDates[0];
           if (!selectedDate || !(selectedDate instanceof Date)) return;
           
           window.bookingGlobals.booking_date = new Date(selectedDate);
-          
+
+          await initBookingConfig(LISTING_UUID);
+
           generateStartTimeOptions(false);
           requestAnimationFrame(() => disableUnavailableDates());
           generateExtendedTimeOptions();
