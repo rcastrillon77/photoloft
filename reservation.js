@@ -728,12 +728,19 @@ async function fetchEventsForRange(start, end) {
   const allEvents = [];
 
   for (const locationId of window.LOCATION_UUID || []) {
-    const { data, error } = await window.supabase
+    const query = window.supabase
       .from("events")
       .select("uuid, start, end")
       .eq("location_id", locationId)
       .gte("start", start.toISOString())
       .lte("end", end.toISOString());
+
+    // ✂️ Ignore current booking's events to avoid conflict
+    if (details?.event_id?.length) {
+      query.not("uuid", "in", `(${details.event_id.map(id => `"${id}"`).join(",")})`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error(`❌ Failed to fetch events for location ${locationId}:`, error);
@@ -744,7 +751,7 @@ async function fetchEventsForRange(start, end) {
   }
 
   return allEvents;
-} 
+}
 
 async function findNextAvailableDate(maxDays = 30) {
   const today = new Date();
@@ -895,107 +902,37 @@ function updateMaxAvailableButton() {
 }
 
 function updateBookingSummary() {
-  const bookingDateEl = document.getElementById('summary-date-new');
-  const bookingTimeEl = document.getElementById('summary-time-new');
-  const totalHoursEl = document.getElementById('summary-duration-new');
-  const totalRateEl = document.getElementById('summary-rate-new');
-  const wrapperEl = document.getElementById('slots-timezone-wrapper');
-  const slotsTzEl = document.getElementById('slots-timezone');
+  const g = window.bookingGlobals;
+  const start = luxon.DateTime.fromJSDate(g.booking_date, { zone: timezone })
+    .startOf("day")
+    .plus({ minutes: g.booking_start });
+  const end = start.plus({ minutes: g.booking_duration });
+  const newDate = start.toFormat("cccc LLLL d, yyyy");
+  const newTime = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a")}`;
+  const newDuration = `${(g.booking_duration / 60).toFixed(1)} Hours`;
 
-  const {
-      booking_date,
-      booking_start,
-      booking_end,
-      booking_duration,
-      membership_level = 'non-member'
-  } = window.bookingGlobals;
-
-  const hoursDecimal = booking_duration / 60;
-  const hoursDisplay = (hoursDecimal % 1 === 0)
-      ? `${hoursDecimal} ${hoursDecimal === 1 ? 'Hr' : 'Hrs'}`
-      : `${hoursDecimal.toFixed(1)} Hrs`;
-  if (totalHoursEl) totalHoursEl.textContent = hoursDisplay;
-
-  const bookingDateLuxon = luxon.DateTime.fromJSDate(booking_date, { zone: timezone });
-  const todayLuxon = luxon.DateTime.now().setZone(timezone);
-  const isToday = bookingDateLuxon.hasSame(todayLuxon, 'day');
-  const dateKey = booking_date.toISOString().split("T")[0];
-  const special = window.specialRates?.[dateKey];
-
-  // 🧾 Always compare to non-member base rate
-  const nonMemberSchedule = getScheduleForDate(window.listingSchedule, booking_date, 'non-member');
-  const baseRate = nonMemberSchedule?.rate ?? FULL_RATE;
-
-  // 🔑 Actual member rate
-  const memberSchedule = getScheduleForDate(window.listingSchedule, booking_date, membership_level);
-  let finalRate = memberSchedule?.rate ?? baseRate;
-  let rateLabel = '';
-  let discountAmount = 0;
-
-  // ⭐️ Special rate overrides all
-  if (special) {
-      finalRate = special.amount;
-      rateLabel = special.title || "Special Rate";
-  }
-  // 📆 Same-day rate
-  else if (isToday && memberSchedule) {
-      const sameDayKey = 'same-day-rate' in memberSchedule ? 'same-day-rate' : 'same-day';
-      if (sameDayKey in memberSchedule && memberSchedule[sameDayKey] !== undefined) {
-          finalRate = memberSchedule[sameDayKey];
-          rateLabel = "Same-day Discount";
-      }
-  }
-  // 🧍 Membership fallback label
-  else {
-      if (membership_level !== 'non-member') {
-          rateLabel = formatMembershipLabel(membership_level);
-      } else {
-          rateLabel = "Non-member";
-      }
+  // 📆 DATE
+  document.getElementById("summary-date-new").textContent = newDate;
+  if (newDate !== document.getElementById("summary-date-original").textContent) {
+    document.getElementById("summary-date-original").classList.add("cross-out");
+    document.getElementById("summary-date-new").classList.remove("hide");
   }
 
-  if (totalRateEl) totalRateEl.textContent = `$${finalRate}`;
-
-  const baseTotal = hoursDecimal * baseRate;
-  const discountedTotal = hoursDecimal * finalRate;
-  discountAmount = baseTotal - discountedTotal;
-
-  // 💾 Store in bookingGlobals
-  window.bookingGlobals.base_rate = baseRate;
-  window.bookingGlobals.final_rate = finalRate;
-  window.bookingGlobals.subtotal = discountedTotal;
-  console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updateBookingSummary`);
-  window.bookingGlobals.rate_label = rateLabel;
-
-  const startTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_start });
-  const endTime = bookingDateLuxon.startOf("day").plus({ minutes: booking_end });
-
-  // 🕓 Timezone label
-  const longName = startTime.offsetNameLong;
-  const shortName = startTime.offsetNameShort;
-
-  if (slotsTzEl && wrapperEl) {
-      const radios = document.querySelectorAll('#booking-start-time-options input[type="radio"]');
-      const hasTimes = radios.length > 0;
-
-      if (hasTimes) {
-          slotsTzEl.textContent = `${longName} (${shortName}) ${timezone}`;
-          wrapperEl.classList.remove('hidden');
-      } else {
-          wrapperEl.classList.add('hidden');
-      }
+  // ⏰ TIME
+  document.getElementById("summary-time-new").textContent = newTime;
+  if (newTime !== document.getElementById("summary-time-old").textContent) {
+    document.getElementById("summary-time-old").classList.add("cross-out");
+    document.getElementById("summary-time-new").classList.remove("hide");
   }
 
-  bookingDateEl.textContent = booking_date.toLocaleDateString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
-
-  bookingTimeEl.textContent = `${startTime.toFormat('h:mm a')} to ${endTime.toFormat('h:mm a')} ${shortName}`;
-
-
-  console.log("📅 updateBookingSummary bookingGlobals.booking_date", booking_date);
-  console.log("📅 updateBookingSummary Luxon date:", bookingDateLuxon.toISO());
+  // ⏳ DURATION
+  document.getElementById("summary-durartion-new").textContent = newDuration;
+  if (newDuration !== document.getElementById("summary-duration-old").textContent) {
+    document.getElementById("summary-duration-old").classList.add("cross-out");
+    document.getElementById("summary-durartion-new").classList.remove("hide");
+  }
 }
+
 
 function renderStartTimeOptions(startTimes) {
   const container = document.getElementById('booking-start-time-options');
@@ -1557,23 +1494,23 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
 function displayReschedulePricing(results) {
   const summaryEl = document.getElementById("reschedule-summary");
+  const msgEl = document.getElementById("reschedule-difference-message");
 
   if (!results.requiresPayment) {
-    summaryEl.classList.add("hidden"); // or `display: none` via style
+    summaryEl.classList.add("hidden");
     return;
   }
 
   summaryEl.classList.remove("hidden");
+
   document.getElementById("reschedule-subtotal").textContent = `$${results.subtotal.toFixed(2)}`;
-  document.getElementById("reschedule-discounts").textContent = `-$${results.discountTotal.toFixed(2)}`;
-  document.getElementById("reschedule-credits").textContent = `-$${results.userCredits.toFixed(2)}`;
+  document.getElementById("reschedule-discounts").textContent = `- $${results.discountTotal.toFixed(2)}`;
+  document.getElementById("reschedule-credits").textContent = `- $${results.userCredits.toFixed(2)}`;
   document.getElementById("reschedule-tax").textContent = `$${results.taxes.toFixed(2)}`;
   document.getElementById("reschedule-total").textContent = `$${results.finalTotal.toFixed(2)}`;
-  document.getElementById("reschedule-difference-message").textContent =
-    `You will be charged $${results.difference.toFixed(2)} to confirm this reschedule.`;
+
+  msgEl.textContent = `The new date and time you selected require an additional payment of $${results.difference.toFixed(2)} to cover the difference.`;
 }
-
-
 
 // ADD CHARGE
 function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
