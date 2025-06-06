@@ -1482,8 +1482,8 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
 
   // Delta calculations
   const deltaSubtotal = Math.max(roundDecimals(subtotalAfterDiscounts - originalSubtotal), 0);
-  const deltaDiscount = roundDecimals(totalDiscount);
-  const deltaCredits = roundDecimals(userCredits);
+  const deltaDiscount = totalDiscount - (details.transaction.discount_total || 0);
+  const deltaCredits = userCredits - (details.transaction.user_credits_applied || 0);
   const deltaTax = roundDecimals(taxes - originalTaxes);
   const deltaTotal = roundDecimals(difference);
 
@@ -1500,16 +1500,23 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   bookingGlobals.reschedule_summary = {
     baseRate,
     hours,
-    deltaSubtotal,
-    deltaDiscount,
-    deltaCredits,
-    taxRate,
-    deltaTax,
-    deltaTotal,
+    subtotal: baseRate * hours,
     discounts: validDiscounts,
-    requiresPayment: deltaTotal > 0.5,
-    difference: deltaTotal
+    discountTotal: totalDiscount,
+    userCredits,
+    taxRate,
+    taxes: roundDecimals(taxes),
+    finalTotal: roundDecimals(finalTotal),
+    originalTotal: roundDecimals(originalTotal),
+    difference: roundDecimals(difference),
+    requiresPayment: difference > 0.5,
+    deltaSubtotal: roundDecimals(baseRate * hours - details.transaction.subtotal),
+    deltaDiscount: roundDecimals(deltaDiscount),
+    deltaCredits: roundDecimals(deltaCredits),
+    deltaTax: roundDecimals(deltaTax),
+    deltaTotal: roundDecimals(difference)
   };
+  
 
   bookingGlobals.difference = deltaTotal;
   bookingGlobals.requiresPayment = deltaTotal > 0.5;
