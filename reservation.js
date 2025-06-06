@@ -1474,7 +1474,8 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("🧮 Total Discount Amount:", totalDiscount);
 
   const creditAdjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
-  const taxes = creditAdjustedSubtotal * (taxRate / 100);
+  const taxes = creditAdjustedSubtotal * (taxRate / 100); // new total taxes
+  const originalTaxes = details.transaction.tax_total || 0;
   const finalTotal = creditAdjustedSubtotal + taxes;
   const difference = finalTotal - originalTotal;
 
@@ -1482,7 +1483,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   const deltaSubtotal = Math.max(roundDecimals(subtotalAfterDiscounts - originalSubtotal), 0);
   const deltaDiscount = roundDecimals(totalDiscount);
   const deltaCredits = roundDecimals(userCredits);
-  const deltaTax = roundDecimals(taxes);
+  const deltaTax = roundDecimals(taxes - originalTaxes);
   const deltaTotal = roundDecimals(difference);
 
   console.log("💳 Subtotal After Credits:", creditAdjustedSubtotal);
