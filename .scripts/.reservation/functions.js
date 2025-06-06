@@ -1452,14 +1452,14 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     finalTotal: roundDecimals(finalTotal),
     originalTotal: roundDecimals(originalTotal),
     difference: roundDecimals(difference),
-    requiresPayment: difference > 0.01
+    requiresPayment: difference > 0.5
   };
 
   renderRescheduleSummary(window.bookingGlobals.reschedule_summary);
 
   // Also flatten key fields if needed for easy access
   bookingGlobals.difference = roundDecimals(difference);
-  bookingGlobals.requiresPayment = difference > 0.01;
+  bookingGlobals.requiresPayment = difference > 0.5;
   bookingGlobals.final_total = roundDecimals(finalTotal);
 
   console.log("🧠 bookingGlobals.reschedule_summary:", bookingGlobals.reschedule_summary);
