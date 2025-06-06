@@ -1412,74 +1412,43 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("📅 Booking Date:", bookingDate);
 
   const discountSummary = details.transaction.discounts || [];
-  const originalTotal = details.transaction.total || 0;
-  const originalSubtotal = details.transaction.subtotal || 0;
   const userCredits = details.transaction.user_credits_applied || 0;
   const taxRate = details.transaction.tax_rate || 0;
 
   console.log("🏷️ Discount Summary:", discountSummary);
-  console.log("💰 Original Total:", originalTotal);
-  console.log("📊 Original Subtotal:", originalSubtotal);
   console.log("🎟️ User Credits Applied:", userCredits);
   console.log("🧾 Tax Rate:", taxRate);
 
-  const { results: validDiscounts, subtotalAfterDiscounts, totalDiscount } =
-    await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
-
+  const {
+    results: validDiscounts,
+    subtotalAfterDiscounts,
+    totalDiscount
+  } = await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
 
   console.log("✅ Valid Discounts:", validDiscounts);
   console.log("💸 Subtotal After Discounts:", subtotalAfterDiscounts);
   console.log("🧮 Total Discount Amount:", totalDiscount);
 
-  const creditAdjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
-  const taxes = creditAdjustedSubtotal * (taxRate / 100); // new total taxes
-  const originalTaxes = details.transaction.tax_total || 0;
-  const finalTotal = creditAdjustedSubtotal + taxes;
-  const difference = finalTotal - originalTotal;
+  const adjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
+  const taxes = adjustedSubtotal * (taxRate / 100);
+  const finalTotal = adjustedSubtotal + taxes;
 
-  // Delta calculations
-  const newSubtotalBeforeTax = creditAdjustedSubtotal; // already includes discounts + credits
-  const originalSubtotalBeforeTax = details.transaction.subtotal - (details.transaction.tax_total || 0);
-  const deltaSubtotal = newSubtotalBeforeTax - originalSubtotalBeforeTax;
-  const deltaDiscount = totalDiscount - (details.transaction.discount_total || 0);
-  const deltaCredits = userCredits - (details.transaction.user_credits_applied || 0);
-  const deltaTax = roundDecimals(taxes - originalTaxes);
-  const deltaTotal = roundDecimals(difference);
-
-  console.log("💳 Subtotal After Credits:", creditAdjustedSubtotal);
+  console.log("💳 Adjusted Subtotal (after discounts & credits):", adjustedSubtotal);
   console.log("💵 Taxes:", taxes);
   console.log("🧾 Final Total:", finalTotal);
-  console.log("🆚 Difference vs Original:", difference);
-  console.log("📊 Delta Subtotal:", deltaSubtotal);
-  console.log("📉 Delta Discounts:", deltaDiscount);
-  console.log("💰 Delta Credits:", deltaCredits);
-  console.log("🧾 Delta Taxes:", deltaTax, ` (${taxes} - ${originalTaxes})`);
-  console.log("💳 Total Difference:", deltaTotal);
 
   bookingGlobals.reschedule_summary = {
     baseRate,
     hours,
-    subtotal: baseRate * hours,
-    discounts: validDiscounts,
-    discountTotal: totalDiscount,
-    userCredits,
     taxRate,
+    subtotal: roundDecimals(adjustedSubtotal),
     taxes: roundDecimals(taxes),
     finalTotal: roundDecimals(finalTotal),
-    originalTotal: roundDecimals(originalTotal),
-    difference: roundDecimals(difference),
-    requiresPayment: difference > 0.5,
-    deltaSubtotal: roundDecimals(deltaSubtotal),
-    deltaDiscount: roundDecimals(deltaDiscount),
-    deltaCredits: roundDecimals(deltaCredits),
-    deltaTax: roundDecimals(deltaTax),
-    deltaTotal: roundDecimals(difference)
+    requiresPayment: finalTotal > 0.5
   };
-  
 
-  bookingGlobals.difference = deltaTotal;
-  bookingGlobals.requiresPayment = deltaTotal > 0.5;
   bookingGlobals.final_total = roundDecimals(finalTotal);
+  bookingGlobals.requiresPayment = finalTotal > 0.5;
 
   console.log("🧠 bookingGlobals.reschedule_summary:", bookingGlobals.reschedule_summary);
 
@@ -1497,14 +1466,11 @@ function renderRescheduleSummary(summary) {
   }
 
   const {
-    deltaSubtotal,
-    deltaDiscount,
-    deltaCredits,
-    deltaTax,
-    deltaTotal,
+    subtotal,
+    taxes,
+    finalTotal,
     taxRate,
-    requiresPayment,
-    difference
+    requiresPayment
   } = summary;
 
   const formatter = (amount) => {
@@ -1513,14 +1479,9 @@ function renderRescheduleSummary(summary) {
   };
 
   // Update DOM
-  document.getElementById("reschedule-subtotal").textContent = formatter(deltaSubtotal);
-  document.getElementById("reschedule-discounts").textContent = `- ${formatter(deltaDiscount)}`;
-  document.getElementById("reschedule-credits").textContent = `- ${formatter(deltaCredits)}`;
-  document.getElementById("reschedule-tax").textContent = formatter(deltaTax);
-  document.getElementById("reschedule-total").textContent = formatter(deltaTotal);
-
-  toggleLineItem("reschedule-discounts", deltaDiscount);
-  toggleLineItem("reschedule-credits", deltaCredits);
+  document.getElementById("reschedule-subtotal").textContent = formatter(subtotal);
+  document.getElementById("reschedule-tax").textContent = formatter(taxes);
+  document.getElementById("reschedule-total").textContent = formatter(finalTotal);
 
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
@@ -1528,26 +1489,25 @@ function renderRescheduleSummary(summary) {
     taxRateEl.textContent = `${taxRate}%`;
   }
 
+  // Show/hide the summary container and message
   const summaryContainer = document.getElementById("reschedule-summary");
   const messageEl = document.getElementById("reschedule-difference-message");
 
-  // Show or hide based on Stripe minimum threshold
-  if (difference > 0.5) {
+  if (requiresPayment) {
     summaryContainer.classList.remove("hidden");
     messageEl.classList.remove("hidden");
 
-    // 🔘 Update confirm button text
+    // Update button to "Continue to Payment"
     const btn = document.getElementById("confirm-new-booking");
     if (btn) {
       const btnTexts = btn.querySelectorAll(".button-text");
       btnTexts.forEach(el => el.textContent = "Continue to Payment");
     }
-
   } else {
-    summaryContainer.classList.add("hidden");
+    summaryContainer.classList.remove("hidden"); // still show total = $0 summary
     messageEl.classList.add("hidden");
 
-    // 🔘 Update confirm button text
+    // Update button to "Confirm Reschedule"
     const btn = document.getElementById("confirm-new-booking");
     if (btn) {
       const btnTexts = btn.querySelectorAll(".button-text");
@@ -1555,18 +1515,7 @@ function renderRescheduleSummary(summary) {
     }
   }
 
-  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Difference: $${difference}`);
-}
-
-function toggleLineItem(id, amount) {
-  const container = document.getElementById(id)?.closest(".line-item");
-  if (!container) return;
-
-  if (amount === 0 || amount === "0.00" || amount === "- $0.00") {
-    container.classList.add("hidden");
-  } else {
-    container.classList.remove("hidden");
-  }
+  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Total: $${finalTotal}`);
 }
 
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
