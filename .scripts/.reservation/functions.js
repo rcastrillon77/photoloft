@@ -1495,13 +1495,15 @@ function renderRescheduleSummary(summary) {
   const messageEl = document.getElementById("reschedule-difference-message");
   const btn = document.getElementById("confirm-new-booking");
 
-  summaryContainer.classList.remove("hidden");
+  summaryContainer.classList.add("hidden");
 
   if (requiresPayment) {
     messageEl.classList.remove("hidden");
+    summaryContainer.classList.remove("hidden");
     btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue to Payment");
   } else {
     messageEl.classList.add("hidden");
+    summaryContainer.classList.add("hidden");
     btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Confirm Reschedule");
   }
 
