@@ -908,7 +908,7 @@ function updateMaxAvailableButton() {
   el.classList.remove('disabled');
 }
 
-function updateBookingSummary() {
+async function updateBookingSummary() {
   const g = window.bookingGlobals;
   const zone = timezone;
   document.getElementById('slots-timezone');
@@ -976,6 +976,16 @@ function updateBookingSummary() {
     document.getElementById("summary-duration-original").classList.remove("cross-out");
     document.getElementById("summary-durartion-new").classList.add("hide");
   }
+
+  // Transaction Summary
+  try {
+    const totals = await calculateRescheduleTotals(details, window.bookingGlobals);
+    window.bookingGlobals.transactionSummary = totals;
+    console.log("📊 Transaction Summary:", totals);
+  } catch (err) {
+    console.error("❌ Failed to calculate reschedule totals:", err);
+  }
+
 }
 
 function renderStartTimeOptions(startTimes) {
@@ -1389,24 +1399,48 @@ function roundDecimals(num) {
 }
 
 async function calculateRescheduleTotals(details, bookingGlobals) {
+  console.log("📥 Starting calculateRescheduleTotals()");
+  console.log("📋 Input details.transaction:", details.transaction);
+  console.log("📋 Input bookingGlobals:", bookingGlobals);
+
   const hours = bookingGlobals.booking_duration / 60;
   const baseRate = bookingGlobals.base_rate;
   const bookingDate = bookingGlobals.booking_date;
+
+  console.log("🕒 Duration (hours):", hours);
+  console.log("💵 Base Rate:", baseRate);
+  console.log("📅 Booking Date:", bookingDate);
 
   const discountSummary = details.transaction.discounts || [];
   const originalTotal = details.transaction.total || 0;
   const userCredits = details.transaction.user_credits_applied || 0;
   const taxRate = details.transaction.tax_rate || 0;
 
+  console.log("🏷️ Discount Summary:", discountSummary);
+  console.log("💰 Original Total:", originalTotal);
+  console.log("🎟️ User Credits Applied:", userCredits);
+  console.log("🧾 Tax Rate:", taxRate);
+
   const { results: validDiscounts, subtotalAfterDiscounts, totalDiscount } =
     await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
 
+  console.log("✅ Valid Discounts:", validDiscounts);
+  console.log("💸 Subtotal After Discounts:", subtotalAfterDiscounts);
+  console.log("🧮 Total Discount Amount:", totalDiscount);
+
   const creditAdjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
+  console.log("💳 Subtotal After Credits:", creditAdjustedSubtotal);
+
   const taxes = creditAdjustedSubtotal * (taxRate / 100);
   const finalTotal = creditAdjustedSubtotal + taxes;
   const difference = finalTotal - originalTotal;
 
-  return {
+  console.log("💵 Taxes:", taxes);
+  console.log("🧾 Final Total:", finalTotal);
+  console.log("🆚 Difference vs Original:", difference);
+
+  // Set values on bookingGlobals for future use
+  bookingGlobals.reschedule_summary = {
     baseRate,
     hours,
     subtotal: baseRate * hours,
@@ -1420,7 +1454,17 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     difference: roundDecimals(difference),
     requiresPayment: difference > 0.01
   };
+
+  // Also flatten key fields if needed for easy access
+  bookingGlobals.difference = roundDecimals(difference);
+  bookingGlobals.requiresPayment = difference > 0.01;
+  bookingGlobals.final_total = roundDecimals(finalTotal);
+
+  console.log("🧠 bookingGlobals.reschedule_summary:", bookingGlobals.reschedule_summary);
+
+  return bookingGlobals.reschedule_summary;
 }
+
 
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
   const certUuids = certSummaries.map(c => c.uuid);
@@ -1540,166 +1584,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   }
 });
 
-function displayReschedulePricing(results) {
-  const summaryEl = document.getElementById("reschedule-summary");
-  const msgEl = document.getElementById("reschedule-difference-message");
-
-  if (!results.requiresPayment) {
-    summaryEl.classList.add("hidden");
-    return;
-  }
-
-  summaryEl.classList.remove("hidden");
-
-  document.getElementById("reschedule-subtotal").textContent = `$${results.subtotal.toFixed(2)}`;
-  document.getElementById("reschedule-discounts").textContent = `- $${results.discountTotal.toFixed(2)}`;
-  document.getElementById("reschedule-credits").textContent = `- $${results.userCredits.toFixed(2)}`;
-  document.getElementById("reschedule-tax").textContent = `$${results.taxes.toFixed(2)}`;
-  document.getElementById("reschedule-total").textContent = `$${results.finalTotal.toFixed(2)}`;
-
-  msgEl.textContent = `The new date and time you selected require an additional payment of $${results.difference.toFixed(2)} to cover the difference.`;
-}
-
-async function calculateRescheduleDelta(original, updated) {
-  const durationHours = updated.duration;
-  const baseRate = updated.transaction.base_rate;
-  const taxRate = updated.transaction.tax_rate ?? 0;
-  const discounts = original.transaction.discounts ?? [];
-  const userCredits = original.transaction.user_credits_applied ?? 0;
-  window.rescheduleSummary = { ...summary }
-
-  // Find the lowest final_rate
-  let finalRate = baseRate;
-
-  const selectedDateISO = updated.start.split("T")[0];
-  const specialRate = window.specialRates?.[selectedDateISO]?.amount;
-  if (specialRate && specialRate < finalRate) finalRate = specialRate;
-
-  if (window.bookingGlobals?.final_rate < finalRate) {
-    finalRate = window.bookingGlobals.final_rate;
-  }
-
-  showRescheduleSummary({
-    subtotal: 200,
-    discountTotal: 10,
-    creditsApplied: 5,
-    taxRate: 8.25,
-    taxTotal: 15.68,
-    total: 200 - 10 - 5 + 15.68 // or however you computed it
-  });  
-
-  // Reapply original discounts
-  let subtotal = finalRate * durationHours;
-  let discountTotal = 0;
-
-  for (const d of discounts) {
-    if (d?.type === "currency") {
-      discountTotal += d.amount;
-    } else if (d?.type === "percent") {
-      discountTotal += subtotal * (d.amount / 100);
-    } else if (d?.type === "rate" && d.amount < finalRate) {
-      const rateDiff = finalRate - d.amount;
-      discountTotal += rateDiff * durationHours;
-      finalRate = d.amount;
-    }
-  }
-
-  subtotal = Math.max(0, subtotal - discountTotal);
-
-  const taxTotal = parseFloat(((subtotal * (taxRate / 100)) || 0).toFixed(2));
-  let total = subtotal + taxTotal;
-
-  const creditUsed = Math.min(userCredits, total);
-  total = parseFloat((total - creditUsed).toFixed(2));
-
-  const originalTotal = original.transaction.total;
-
-  const requiresPayment = total > originalTotal;
-
-  const summary = {
-    subtotal: roundDecimals(subtotal),
-    tax_total: roundDecimals(taxTotal),
-    discount_total: roundDecimals(discountTotal),
-    user_credits_applied: creditUsed,
-    total: roundDecimals(total),
-    base_rate: baseRate,
-    final_rate: finalRate
-  };
-
-  return { requiresPayment, summary };
-}
-
-async function handleReschedulePreview() {
-  const updated = buildNewBookingDetails(); // a function we'll define below
-  const original = window.details; // already loaded from Supabase
-
-  const { requiresPayment, summary } = await calculateRescheduleDelta(original, updated);
-
-  // Update summary UI
-  updateRescheduleSummaryUI(summary, requiresPayment);
-
-  // Update confirm button state
-  const confirmBtn = document.getElementById("confirm-new-booking");
-  confirmBtn.classList.remove("disabled");
-  confirmBtn.setAttribute("data-requires-payment", requiresPayment);
-
-  // Update both .button-texts
-  const newText = requiresPayment ? "Continue to Payment" : "Confirm Reschedule";
-  confirmBtn.querySelectorAll(".button-text").forEach(el => el.textContent = newText);
-}
-
-function buildNewBookingDetails() {
-  const g = window.bookingGlobals;
-  const zone = timezone;
-  const start = luxon.DateTime.fromJSDate(g.booking_date, { zone }).startOf('day').plus({ minutes: g.booking_start });
-  const end = start.plus({ minutes: g.booking_duration });
-  const duration = g.booking_duration / 60;
-
-  return {
-    start: start.toISO(),
-    end: end.toISO(),
-    duration,
-    attendees: window.details.attendees,
-    listing: window.details.listing,
-    user: window.details.user,
-    activities: window.details.activities,
-    transaction: {
-      base_rate: g.base_rate,
-      final_rate: g.final_rate,
-      tax_rate: window.details.transaction.tax_rate,
-      discounts: window.details.transaction.discounts ?? [],
-      user_credits_applied: window.details.transaction.user_credits_applied ?? 0
-    }
-  };
-}
-
-function showRescheduleSummary({ subtotal, discountTotal, creditsApplied, taxRate, taxTotal, total }) {
-  const container = document.getElementById("reschedule-summary");
-  if (container.classList.contains("hidden")) container.classList.remove("hidden");
-
-  document.getElementById("reschedule-subtotal").textContent = `$${subtotal.toFixed(2)}`;
-  document.getElementById("reschedule-discounts").textContent = `- $${discountTotal.toFixed(2)}`;
-  document.getElementById("reschedule-credits").textContent = `- $${creditsApplied.toFixed(2)}`;
-  document.getElementById("reschedule-tax").textContent = `$${taxTotal.toFixed(2)}`;
-  document.getElementById("reschedule-total").textContent = `$${total.toFixed(2)}`;
-
-  // Optional: show or hide the explanation message
-  const msg = document.getElementById("reschedule-difference-message");
-  if (total > 0) {
-    msg.classList.remove("hidden");
-  } else {
-    msg.classList.add("hidden");
-  }
-}
-
-
-function updateRescheduleSummaryUI(summary, show) {
-  document.getElementById("summary-due-subtotal").textContent = `$${summary.subtotal.toFixed(2)}`;
-  document.getElementById("summary-due-tax").textContent = `$${summary.tax_total.toFixed(2)}`;
-  document.getElementById("summary-due-total").textContent = `$${summary.total.toFixed(2)}`;
-
-  document.getElementById("reschedule-summary").classList.toggle("hidden", !show);
-}
 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
