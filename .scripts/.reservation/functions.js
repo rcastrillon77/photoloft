@@ -1421,9 +1421,11 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   } = await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
 
   const subtotalAfterCredits = Math.max(subtotalAfterDiscounts - userCredits, 0);
-  const remainingBeforeTax = Math.max(subtotalAfterCredits - originalPaid, 0);
-  const taxes = remainingBeforeTax * (taxRate / 100);
-  const finalTotal = remainingBeforeTax + taxes;
+  const taxes = subtotalAfterCredits * (taxRate / 100);
+  const finalTotal = subtotalAfterCredits + taxes;
+
+  // Delta
+  const difference = finalTotal - originalPaidTotal;
 
   const summary = {
     baseRate,
@@ -1436,7 +1438,8 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     taxes: roundDecimals(taxes),
     finalTotal: roundDecimals(finalTotal),
     taxRate,
-    requiresPayment: finalTotal > 0.5
+    requiresPayment: finalTotal > 0.5,
+    difference
   };
 
   bookingGlobals.reschedule_summary = summary;
@@ -1466,7 +1469,8 @@ function renderRescheduleSummary(summary) {
     taxes,
     finalTotal,
     taxRate,
-    requiresPayment
+    requiresPayment,
+    difference
   } = summary;
 
   const fmt = (v) => typeof v !== "number" || isNaN(v) ? "$0.00" : `$${v.toFixed(2)}`;
@@ -1480,6 +1484,8 @@ function renderRescheduleSummary(summary) {
   document.getElementById("reschedule-subtotal").textContent = fmt(subtotal);
   document.getElementById("reschedule-tax").textContent = fmt(taxes);
   document.getElementById("reschedule-total").textContent = fmt(finalTotal);
+  document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
+  document.getElementById("reschedule-difference").textContent = `– ${fmt(difference)}`;
 
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
