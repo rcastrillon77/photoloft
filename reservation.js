@@ -1477,7 +1477,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     discountTotal: roundDecimals(totalDiscount),
     userCredits: roundDecimals(userCredits),
     originalPaid: roundDecimals(originalPaid),
-    subtotal: roundDecimals(remainingBeforeTax),
+    subtotal: roundDecimals(subtotalAfterCredits),
     taxes: roundDecimals(taxes),
     finalTotal: roundDecimals(finalTotal),
     taxRate,
