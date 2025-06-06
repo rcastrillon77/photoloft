@@ -1450,7 +1450,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("📊 Delta Subtotal:", deltaSubtotal);
   console.log("📉 Delta Discounts:", deltaDiscount);
   console.log("💰 Delta Credits:", deltaCredits);
-  console.log("🧾 Delta Taxes:", deltaTax);
+  console.log("🧾 Delta Taxes:", deltaTax, `(${taxes} - ${originalTaxes})`);
   console.log("💳 Total Difference:", deltaTotal);
 
   bookingGlobals.reschedule_summary = {
