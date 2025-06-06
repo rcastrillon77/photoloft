@@ -1495,6 +1495,8 @@ function renderRescheduleSummary(summary) {
   const messageEl = document.getElementById("reschedule-difference-message");
   const btn = document.getElementById("confirm-new-booking");
 
+  console.log("Requires Payment: ", requiresPayment);
+
   summaryContainer.classList.add("hidden");
 
   if (requiresPayment) {
