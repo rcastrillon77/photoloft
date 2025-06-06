@@ -1538,6 +1538,9 @@ function renderRescheduleSummary(summary) {
   document.getElementById("reschedule-tax").textContent = formatter(taxes);
   document.getElementById("reschedule-total").textContent = formatter(finalTotal);
 
+  toggleLineItem("reschedule-discounts", discountTotal);
+  toggleLineItem("reschedule-credits", userCredits);
+
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
   if (taxRateEl) {
@@ -1557,6 +1560,17 @@ function renderRescheduleSummary(summary) {
   }
 
   console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Difference: $${difference}`);
+}
+
+function toggleLineItem(id, amount) {
+  const container = document.getElementById(id)?.closest(".line-item");
+  if (!container) return;
+
+  if (amount === 0 || amount === "0.00") {
+    container.classList.add("hidden");
+  } else {
+    container.classList.remove("hidden");
+  }
 }
 
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
