@@ -1468,7 +1468,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   const finalTotal = subtotalAfterCredits + taxes;
 
   // Delta
-  const difference = finalTotal - originalPaidTotal;
+  const difference = finalTotal - originalPaid;
 
   const summary = {
     baseRate,
