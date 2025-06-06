@@ -1484,7 +1484,7 @@ function renderRescheduleSummary(summary) {
   document.getElementById("reschedule-tax").textContent = fmt(taxes);
   document.getElementById("reschedule-total").textContent = fmt(finalTotal);
   document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
-  document.getElementById("reschedule-difference").textContent = `– ${fmt(difference)}`;
+  document.getElementById("reschedule-difference").textContent = `${fmt(difference)}`;
 
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
