@@ -1594,7 +1594,9 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
 
     console.log(`🧪 Evaluating cert: ${cert.code}`, cert);
 
-    const { code, uuid, type, amount, rules = {} } = cert;
+    const { code, uuid, rules = {}, discount = {} } = cert;
+    const { type, amount } = discount;
+
 
     // Rule: Date Range
     if (rules?.dates?.type === "reservation") {
