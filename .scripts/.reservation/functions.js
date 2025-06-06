@@ -1426,7 +1426,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   const { results: validDiscounts, subtotalAfterDiscounts, totalDiscount } =
     await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
 
-    
+
   console.log("✅ Valid Discounts:", validDiscounts);
   console.log("💸 Subtotal After Discounts:", subtotalAfterDiscounts);
   console.log("🧮 Total Discount Amount:", totalDiscount);
@@ -1634,7 +1634,8 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
         continue;
       }
     } else if (type === "minutes") {
-      discountAmount = (amount * newRate) / 60;
+      discountAmount = (parseFloat(amount) * parseFloat(newRate)) / 60;
+      console.log(`🕒 Minute-based discount: ${amount} minutes @ $${newRate}/hr = -$${discountAmount}`);
     } else if (type === "currency") {
       discountAmount = amount;
     } else if (type === "percent") {
