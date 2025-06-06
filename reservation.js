@@ -1677,8 +1677,8 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
         continue;
       }
     } else if (type === "minutes") {
+      console.log(`🕒 Minute-based discount: ${amount} minutes @ $${newRate}/hr`);
       discountAmount = (parseFloat(amount) * parseFloat(newRate)) / 60;
-      console.log(`🕒 Minute-based discount: ${amount} minutes @ $${newRate}/hr = -$${discountAmount}`);
     } else if (type === "currency") {
       discountAmount = amount;
     } else if (type === "percent") {
