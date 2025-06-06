@@ -1552,7 +1552,7 @@ function toggleLineItem(id, amount) {
   const container = document.getElementById(id)?.closest(".line-item");
   if (!container) return;
 
-  if (amount === 0 || amount === "0.00") {
+  if (amount === 0 || amount === "0.00" || amount === "- $0.00") {
     container.classList.add("hidden");
   } else {
     container.classList.remove("hidden");
