@@ -1462,7 +1462,8 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     deltaTax,
     deltaTotal,
     discounts: validDiscounts,
-    requiresPayment: deltaTotal > 0.5
+    requiresPayment: deltaTotal > 0.5,
+    difference: deltaTotal
   };
 
   bookingGlobals.difference = deltaTotal;
