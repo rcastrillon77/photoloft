@@ -1413,11 +1413,13 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
 
   const discountSummary = details.transaction.discounts || [];
   const originalTotal = details.transaction.total || 0;
+  const originalSubtotal = details.transaction.subtotal || 0;
   const userCredits = details.transaction.user_credits_applied || 0;
   const taxRate = details.transaction.tax_rate || 0;
 
   console.log("🏷️ Discount Summary:", discountSummary);
   console.log("💰 Original Total:", originalTotal);
+  console.log("📊 Original Subtotal:", originalSubtotal);
   console.log("🎟️ User Credits Applied:", userCredits);
   console.log("🧾 Tax Rate:", taxRate);
 
@@ -1429,40 +1431,47 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("🧮 Total Discount Amount:", totalDiscount);
 
   const creditAdjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
-  console.log("💳 Subtotal After Credits:", creditAdjustedSubtotal);
-
   const taxes = creditAdjustedSubtotal * (taxRate / 100);
   const finalTotal = creditAdjustedSubtotal + taxes;
   const difference = finalTotal - originalTotal;
 
+  // Delta calculations
+  const deltaSubtotal = Math.max(roundDecimals(subtotalAfterDiscounts - originalSubtotal), 0);
+  const deltaDiscount = roundDecimals(totalDiscount);
+  const deltaCredits = roundDecimals(userCredits);
+  const deltaTax = roundDecimals(taxes);
+  const deltaTotal = roundDecimals(difference);
+
+  console.log("💳 Subtotal After Credits:", creditAdjustedSubtotal);
   console.log("💵 Taxes:", taxes);
   console.log("🧾 Final Total:", finalTotal);
   console.log("🆚 Difference vs Original:", difference);
+  console.log("📊 Delta Subtotal:", deltaSubtotal);
+  console.log("📉 Delta Discounts:", deltaDiscount);
+  console.log("💰 Delta Credits:", deltaCredits);
+  console.log("🧾 Delta Taxes:", deltaTax);
+  console.log("💳 Total Difference:", deltaTotal);
 
-  // Set values on bookingGlobals for future use
   bookingGlobals.reschedule_summary = {
     baseRate,
     hours,
-    subtotal: baseRate * hours,
-    discounts: validDiscounts,
-    discountTotal: totalDiscount,
-    userCredits,
+    deltaSubtotal,
+    deltaDiscount,
+    deltaCredits,
     taxRate,
-    taxes: roundDecimals(taxes),
-    finalTotal: roundDecimals(finalTotal),
-    originalTotal: roundDecimals(originalTotal),
-    difference: roundDecimals(difference),
-    requiresPayment: difference > 0.5
+    deltaTax,
+    deltaTotal,
+    discounts: validDiscounts,
+    requiresPayment: deltaTotal > 0.5
   };
 
-  renderRescheduleSummary(window.bookingGlobals.reschedule_summary);
-
-  // Also flatten key fields if needed for easy access
-  bookingGlobals.difference = roundDecimals(difference);
-  bookingGlobals.requiresPayment = difference > 0.5;
+  bookingGlobals.difference = deltaTotal;
+  bookingGlobals.requiresPayment = deltaTotal > 0.5;
   bookingGlobals.final_total = roundDecimals(finalTotal);
 
   console.log("🧠 bookingGlobals.reschedule_summary:", bookingGlobals.reschedule_summary);
+
+  renderRescheduleSummary(bookingGlobals.reschedule_summary);
 
   return bookingGlobals.reschedule_summary;
 }
