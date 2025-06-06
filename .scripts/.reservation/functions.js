@@ -1455,6 +1455,8 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     requiresPayment: difference > 0.01
   };
 
+  renderRescheduleSummary(window.bookingGlobals.reschedule_summary);
+
   // Also flatten key fields if needed for easy access
   bookingGlobals.difference = roundDecimals(difference);
   bookingGlobals.requiresPayment = difference > 0.01;
@@ -1465,6 +1467,54 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   return bookingGlobals.reschedule_summary;
 }
 
+function renderRescheduleSummary(summary) {
+  console.log("🧾 Rendering reschedule summary:", summary);
+
+  if (!summary) {
+    console.warn("⚠️ No summary provided to render.");
+    return;
+  }
+
+  const {
+    subtotal,
+    discountTotal,
+    userCredits,
+    taxes,
+    finalTotal,
+    taxRate,
+    difference,
+    requiresPayment
+  } = summary;
+
+  const formatter = (amount) => `$${amount.toFixed(2)}`;
+
+  // Update DOM
+  document.getElementById("reschedule-subtotal").textContent = formatter(subtotal);
+  document.getElementById("reschedule-discounts").textContent = `- ${formatter(discountTotal)}`;
+  document.getElementById("reschedule-credits").textContent = `- ${formatter(userCredits)}`;
+  document.getElementById("reschedule-tax").textContent = formatter(taxes);
+  document.getElementById("reschedule-total").textContent = formatter(finalTotal);
+
+  // Update tax rate label
+  const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
+  if (taxRateEl) {
+    taxRateEl.textContent = `${taxRate}%`;
+  }
+
+  // Only show summary if Stripe minimum threshold is met
+  const summaryContainer = document.getElementById("reschedule-summary");
+  const messageEl = document.getElementById("reschedule-difference-message");
+
+  if (difference > 0.5) {
+    summaryContainer.classList.remove("hidden");
+    messageEl.classList.remove("hidden");
+  } else {
+    summaryContainer.classList.add("hidden");
+    messageEl.classList.add("hidden");
+  }
+
+  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Difference: $${difference}`);
+}
 
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
   const certUuids = certSummaries.map(c => c.uuid);
