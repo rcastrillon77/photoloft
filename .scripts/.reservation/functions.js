@@ -1437,7 +1437,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     taxes: roundDecimals(taxes),
     finalTotal: roundDecimals(finalTotal),
     taxRate,
-    requiresPayment: finalTotal > 0.5,
+    requiresPayment: difference > 0.5,
     difference
   };
 
