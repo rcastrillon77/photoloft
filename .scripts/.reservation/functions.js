@@ -1423,8 +1423,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("🎟️ User Credits Applied:", userCredits);
   console.log("🧾 Tax Rate:", taxRate);
 
-  const { results: validDiscounts, subtotalAfterDiscounts, totalDiscount } =
-    await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
+  T
 
   console.log("✅ Valid Discounts:", validDiscounts);
   console.log("💸 Subtotal After Discounts:", subtotalAfterDiscounts);
@@ -1450,7 +1449,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("📊 Delta Subtotal:", deltaSubtotal);
   console.log("📉 Delta Discounts:", deltaDiscount);
   console.log("💰 Delta Credits:", deltaCredits);
-  console.log("🧾 Delta Taxes:", deltaTax, `(${taxes} - ${originalTaxes})`);
+  console.log("🧾 Delta Taxes:", deltaTax, ` (${taxes} - ${originalTaxes})`);
   console.log("💳 Total Difference:", deltaTotal);
 
   bookingGlobals.reschedule_summary = {
@@ -1560,6 +1559,12 @@ function toggleLineItem(id, amount) {
 }
 
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
+  console.log("🔍 Starting revalidateOriginalCerts()");
+  console.log("🧾 Incoming cert summaries:", certSummaries);
+  console.log("📅 New booking date:", newDate);
+  console.log("🕒 Booking duration (hours):", hours);
+  console.log("💰 Base rate:", baseRate);
+
   const certUuids = certSummaries.map(c => c.uuid);
   const { data: fullCerts, error } = await window.supabase
     .from("certificates")
@@ -1571,6 +1576,8 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
     return { results: [], totalDiscount: 0, subtotalAfterDiscounts: baseRate * hours };
   }
 
+  console.log("📦 Full certificates from Supabase:", fullCerts);
+
   let total = baseRate * hours;
   let newRate = baseRate;
   let rateUsed = false;
@@ -1578,33 +1585,52 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
 
   for (const summary of certSummaries) {
     const cert = fullCerts.find(c => c.uuid === summary.uuid);
-    if (!cert) continue;
+    if (!cert) {
+      console.warn(`⚠️ Certificate with UUID ${summary.uuid} not found.`);
+      continue;
+    }
+
+    console.log(`🧪 Evaluating cert: ${cert.code}`, cert);
 
     const { code, uuid, type, amount, rules = {} } = cert;
 
+    // Rule: Date Range
     if (rules?.dates?.type === "reservation") {
       const start = new Date(rules.dates.start);
       const end = new Date(rules.dates.end);
-      if (newDate < start || newDate > end) continue;
+      if (newDate < start || newDate > end) {
+        console.log(`⛔ Skipping ${code} due to date range rule.`);
+        continue;
+      }
     }
 
-    const threshold = rules.threshold;
-    if (threshold) {
-      const val = threshold.amount ?? 0;
-      const passes = threshold.type === "currency"
+    // Rule: Threshold
+    if (rules?.threshold) {
+      const val = rules.threshold.amount ?? 0;
+      const passes = rules.threshold.type === "currency"
         ? baseRate * hours >= val
         : hours * 60 >= val;
-      if (!passes) continue;
+      if (!passes) {
+        console.log(`⛔ Skipping ${code} due to threshold rule.`);
+        continue;
+      }
     }
 
+    // Calculate discount amount
     let discountAmount = 0;
     if (type === "rate") {
-      if (rateUsed) continue;
+      if (rateUsed) {
+        console.log(`⛔ Skipping ${code} because rate has already been applied.`);
+        continue;
+      }
       if (newRate > amount) {
         discountAmount = (newRate - amount) * hours;
         newRate = amount;
         rateUsed = true;
-      } else continue;
+      } else {
+        console.log(`⛔ Skipping ${code} because newRate is not higher than cert amount.`);
+        continue;
+      }
     } else if (type === "minutes") {
       discountAmount = (amount * newRate) / 60;
     } else if (type === "currency") {
@@ -1614,21 +1640,34 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
     }
 
     if (rules?.limit && discountAmount > rules.limit) {
+      console.log(`⚠️ Applying limit to ${code}: max ${rules.limit}`);
       discountAmount = rules.limit;
     }
 
-    if (discountAmount > total) discountAmount = total;
+    if (discountAmount > total) {
+      console.log(`⚠️ Trimming ${code} discount to match remaining total.`);
+      discountAmount = total;
+    }
+
+    console.log(`✅ Applied ${code}: -$${roundDecimals(discountAmount)}`);
 
     total -= discountAmount;
     results.push({ code, uuid, amount: roundDecimals(discountAmount) });
   }
 
+  const subtotalAfterDiscounts = roundDecimals(total);
+  const totalDiscount = roundDecimals(baseRate * hours - total);
+
+  console.log("📉 Final subtotal after discounts:", subtotalAfterDiscounts);
+  console.log("🏁 Total discount applied:", totalDiscount);
+
   return {
     results,
-    subtotalAfterDiscounts: roundDecimals(total),
-    totalDiscount: roundDecimals(baseRate * hours - total)
+    subtotalAfterDiscounts,
+    totalDiscount
   };
 }
+
 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   const pricing = await calculateRescheduleTotals(details, window.bookingGlobals);
