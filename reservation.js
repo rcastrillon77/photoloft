@@ -1465,6 +1465,11 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   console.log("📊 Original Subtotal:", originalSubtotal);
   console.log("🎟️ User Credits Applied:", userCredits);
   console.log("🧾 Tax Rate:", taxRate);
+
+  const { results: validDiscounts, subtotalAfterDiscounts, totalDiscount } =
+    await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
+
+    
   console.log("✅ Valid Discounts:", validDiscounts);
   console.log("💸 Subtotal After Discounts:", subtotalAfterDiscounts);
   console.log("🧮 Total Discount Amount:", totalDiscount);
