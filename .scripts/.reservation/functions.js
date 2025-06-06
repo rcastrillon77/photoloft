@@ -1579,6 +1579,15 @@ async function calculateRescheduleDelta(original, updated) {
     finalRate = window.bookingGlobals.final_rate;
   }
 
+  showRescheduleSummary({
+    subtotal: 200,
+    discountTotal: 10,
+    creditsApplied: 5,
+    taxRate: 8.25,
+    taxTotal: 15.68,
+    total: 200 - 10 - 5 + 15.68 // or however you computed it
+  });  
+
   // Reapply original discounts
   let subtotal = finalRate * durationHours;
   let discountTotal = 0;
@@ -1663,6 +1672,26 @@ function buildNewBookingDetails() {
     }
   };
 }
+
+function showRescheduleSummary({ subtotal, discountTotal, creditsApplied, taxRate, taxTotal, total }) {
+  const container = document.getElementById("reschedule-summary");
+  if (container.classList.contains("hidden")) container.classList.remove("hidden");
+
+  document.getElementById("reschedule-subtotal").textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById("reschedule-discounts").textContent = `- $${discountTotal.toFixed(2)}`;
+  document.getElementById("reschedule-credits").textContent = `- $${creditsApplied.toFixed(2)}`;
+  document.getElementById("reschedule-tax").textContent = `$${taxTotal.toFixed(2)}`;
+  document.getElementById("reschedule-total").textContent = `$${total.toFixed(2)}`;
+
+  // Optional: show or hide the explanation message
+  const msg = document.getElementById("reschedule-difference-message");
+  if (total > 0) {
+    msg.classList.remove("hidden");
+  } else {
+    msg.classList.add("hidden");
+  }
+}
+
 
 function updateRescheduleSummaryUI(summary, show) {
   document.getElementById("summary-due-subtotal").textContent = `$${summary.subtotal.toFixed(2)}`;
