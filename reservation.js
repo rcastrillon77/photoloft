@@ -1528,27 +1528,30 @@ function renderRescheduleSummary(summary) {
   }
 
   const {
-    subtotal,
-    discountTotal,
-    userCredits,
-    taxes,
-    finalTotal,
+    deltaSubtotal,
+    deltaDiscount,
+    deltaCredits,
+    deltaTax,
+    deltaTotal,
     taxRate,
-    difference,
-    requiresPayment
+    requiresPayment,
+    difference
   } = summary;
 
-  const formatter = (amount) => `$${amount.toFixed(2)}`;
+  const formatter = (amount) => {
+    if (typeof amount !== "number" || isNaN(amount)) return "$0.00";
+    return `$${amount.toFixed(2)}`;
+  };
 
   // Update DOM
-  document.getElementById("reschedule-subtotal").textContent = formatter(subtotal);
-  document.getElementById("reschedule-discounts").textContent = `- ${formatter(discountTotal)}`;
-  document.getElementById("reschedule-credits").textContent = `- ${formatter(userCredits)}`;
-  document.getElementById("reschedule-tax").textContent = formatter(taxes);
-  document.getElementById("reschedule-total").textContent = formatter(finalTotal);
+  document.getElementById("reschedule-subtotal").textContent = formatter(deltaSubtotal);
+  document.getElementById("reschedule-discounts").textContent = `- ${formatter(deltaDiscount)}`;
+  document.getElementById("reschedule-credits").textContent = `- ${formatter(deltaCredits)}`;
+  document.getElementById("reschedule-tax").textContent = formatter(deltaTax);
+  document.getElementById("reschedule-total").textContent = formatter(deltaTotal);
 
-  toggleLineItem("reschedule-discounts", discountTotal);
-  toggleLineItem("reschedule-credits", userCredits);
+  toggleLineItem("reschedule-discounts", deltaDiscount);
+  toggleLineItem("reschedule-credits", deltaCredits);
 
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
@@ -1556,16 +1559,31 @@ function renderRescheduleSummary(summary) {
     taxRateEl.textContent = `${taxRate}%`;
   }
 
-  // Only show summary if Stripe minimum threshold is met
   const summaryContainer = document.getElementById("reschedule-summary");
   const messageEl = document.getElementById("reschedule-difference-message");
 
+  // Show or hide based on Stripe minimum threshold
   if (difference > 0.5) {
     summaryContainer.classList.remove("hidden");
     messageEl.classList.remove("hidden");
+
+    // 🔘 Update confirm button text
+    const btn = document.getElementById("confirm-new-booking");
+    if (btn) {
+      const btnTexts = btn.querySelectorAll(".button-text");
+      btnTexts.forEach(el => el.textContent = "Continue to Payment");
+    }
+
   } else {
     summaryContainer.classList.add("hidden");
     messageEl.classList.add("hidden");
+
+    // 🔘 Update confirm button text
+    const btn = document.getElementById("confirm-new-booking");
+    if (btn) {
+      const btnTexts = btn.querySelectorAll(".button-text");
+      btnTexts.forEach(el => el.textContent = "Confirm Reschedule");
+    }
   }
 
   console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Difference: $${difference}`);
