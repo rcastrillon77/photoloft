@@ -1407,17 +1407,12 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   const baseRate = bookingGlobals.base_rate;
   const bookingDate = bookingGlobals.booking_date;
 
-  console.log("🕒 Duration (hours):", hours);
-  console.log("💵 Base Rate:", baseRate);
-  console.log("📅 Booking Date:", bookingDate);
-
+  const originalPaid = details.transaction.total || 0;
   const discountSummary = details.transaction.discounts || [];
   const userCredits = details.transaction.user_credits_applied || 0;
   const taxRate = details.transaction.tax_rate || 0;
 
-  console.log("🏷️ Discount Summary:", discountSummary);
-  console.log("🎟️ User Credits Applied:", userCredits);
-  console.log("🧾 Tax Rate:", taxRate);
+  const baseTotal = baseRate * hours;
 
   const {
     results: validDiscounts,
@@ -1425,47 +1420,48 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     totalDiscount
   } = await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
 
-  console.log("✅ Valid Discounts:", validDiscounts);
-  console.log("💸 Subtotal After Discounts:", subtotalAfterDiscounts);
-  console.log("🧮 Total Discount Amount:", totalDiscount);
+  const subtotalAfterCredits = Math.max(subtotalAfterDiscounts - userCredits, 0);
+  const remainingBeforeTax = Math.max(subtotalAfterCredits - originalPaid, 0);
+  const taxes = remainingBeforeTax * (taxRate / 100);
+  const finalTotal = remainingBeforeTax + taxes;
 
-  const adjustedSubtotal = Math.max(subtotalAfterDiscounts - userCredits, 0);
-  const taxes = adjustedSubtotal * (taxRate / 100);
-  const finalTotal = adjustedSubtotal + taxes;
-
-  console.log("💳 Adjusted Subtotal (after discounts & credits):", adjustedSubtotal);
-  console.log("💵 Taxes:", taxes);
-  console.log("🧾 Final Total:", finalTotal);
-
-  bookingGlobals.reschedule_summary = {
+  const summary = {
     baseRate,
     hours,
-    taxRate,
-    subtotal: roundDecimals(adjustedSubtotal),
+    baseTotal: roundDecimals(baseTotal),
+    discountTotal: roundDecimals(totalDiscount),
+    userCredits: roundDecimals(userCredits),
+    originalPaid: roundDecimals(originalPaid),
+    subtotal: roundDecimals(remainingBeforeTax),
     taxes: roundDecimals(taxes),
     finalTotal: roundDecimals(finalTotal),
+    taxRate,
     requiresPayment: finalTotal > 0.5
   };
 
-  bookingGlobals.final_total = roundDecimals(finalTotal);
-  bookingGlobals.requiresPayment = finalTotal > 0.5;
+  bookingGlobals.reschedule_summary = summary;
+  bookingGlobals.final_total = summary.finalTotal;
+  bookingGlobals.requiresPayment = summary.requiresPayment;
 
-  console.log("🧠 bookingGlobals.reschedule_summary:", bookingGlobals.reschedule_summary);
+  console.log("🧠 bookingGlobals.reschedule_summary:", summary);
 
-  renderRescheduleSummary(bookingGlobals.reschedule_summary);
+  renderRescheduleSummary(summary);
 
-  return bookingGlobals.reschedule_summary;
+  return summary;
 }
 
 function renderRescheduleSummary(summary) {
   console.log("🧾 Rendering reschedule summary:", summary);
 
-  if (!summary) {
-    console.warn("⚠️ No summary provided to render.");
-    return;
-  }
+  if (!summary) return console.warn("⚠️ No summary provided to render.");
 
   const {
+    baseRate,
+    hours,
+    baseTotal,
+    discountTotal,
+    userCredits,
+    originalPaid,
     subtotal,
     taxes,
     finalTotal,
@@ -1473,50 +1469,40 @@ function renderRescheduleSummary(summary) {
     requiresPayment
   } = summary;
 
-  const formatter = (amount) => {
-    if (typeof amount !== "number" || isNaN(amount)) return "$0.00";
-    return `$${amount.toFixed(2)}`;
-  };
+  const fmt = (v) => typeof v !== "number" || isNaN(v) ? "$0.00" : `$${v.toFixed(2)}`;
 
-  // Update DOM
-  document.getElementById("reschedule-subtotal").textContent = formatter(subtotal);
-  document.getElementById("reschedule-tax").textContent = formatter(taxes);
-  document.getElementById("reschedule-total").textContent = formatter(finalTotal);
+  // Set line item values
+  document.getElementById("reschedule-base-line").textContent = `${fmt(baseRate)} × ${hours} hrs`;
+  document.getElementById("reschedule-base").textContent = fmt(baseTotal);
+  document.getElementById("reschedule-discounts").textContent = `– ${fmt(discountTotal)}`;
+  document.getElementById("reschedule-credits").textContent = `– ${fmt(userCredits)}`;
+  document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
+  document.getElementById("reschedule-subtotal").textContent = fmt(subtotal);
+  document.getElementById("reschedule-tax").textContent = fmt(taxes);
+  document.getElementById("reschedule-total").textContent = fmt(finalTotal);
 
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
-  if (taxRateEl) {
-    taxRateEl.textContent = `${taxRate}%`;
-  }
+  if (taxRateEl) taxRateEl.textContent = `${taxRate}%`;
 
-  // Show/hide the summary container and message
+  // Show/hide container and button logic
   const summaryContainer = document.getElementById("reschedule-summary");
   const messageEl = document.getElementById("reschedule-difference-message");
+  const btn = document.getElementById("confirm-new-booking");
+
+  summaryContainer.classList.remove("hidden");
 
   if (requiresPayment) {
-    summaryContainer.classList.remove("hidden");
     messageEl.classList.remove("hidden");
-
-    // Update button to "Continue to Payment"
-    const btn = document.getElementById("confirm-new-booking");
-    if (btn) {
-      const btnTexts = btn.querySelectorAll(".button-text");
-      btnTexts.forEach(el => el.textContent = "Continue to Payment");
-    }
+    btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue to Payment");
   } else {
-    summaryContainer.classList.remove("hidden"); // still show total = $0 summary
     messageEl.classList.add("hidden");
-
-    // Update button to "Confirm Reschedule"
-    const btn = document.getElementById("confirm-new-booking");
-    if (btn) {
-      const btnTexts = btn.querySelectorAll(".button-text");
-      btnTexts.forEach(el => el.textContent = "Confirm Reschedule");
-    }
+    btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Confirm Reschedule");
   }
 
   console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Total: $${finalTotal}`);
 }
+
 
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
   console.log("🔍 Starting revalidateOriginalCerts()");
