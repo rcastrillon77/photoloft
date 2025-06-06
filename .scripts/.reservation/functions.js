@@ -1420,12 +1420,11 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     totalDiscount
   } = await revalidateOriginalCerts(discountSummary, bookingDate, hours, baseRate);
 
-  const subtotalAfterCredits = Math.max(subtotalAfterDiscounts - userCredits, 0);
-  const taxes = subtotalAfterCredits * (taxRate / 100);
-  const finalTotal = subtotalAfterCredits + taxes;
+  const subtotalAfterCredits = roundDecimals(Math.max(subtotalAfterDiscounts - userCredits, 0));
+  const taxes = roundDecimals(subtotalAfterCredits * (taxRate / 100));
+  const finalTotal = roundDecimals(subtotalAfterCredits + taxes);
+  const difference = roundDecimals(finalTotal - originalPaid);
 
-  // Delta
-  const difference = finalTotal - originalPaid;
 
   const summary = {
     baseRate,
