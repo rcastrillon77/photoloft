@@ -1467,7 +1467,7 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
     originalTotal: roundDecimals(originalTotal),
     difference: roundDecimals(difference),
     requiresPayment: difference > 0.5,
-    deltaSubtotal: roundDecimals(deltaSubtotal),
+    deltaSubtotal: roundDecimals((baseRate * hours) - details.transaction.subtotal),
     deltaDiscount: roundDecimals(deltaDiscount),
     deltaCredits: roundDecimals(deltaCredits),
     deltaTax: roundDecimals(deltaTax),
