@@ -1390,7 +1390,7 @@ function setupStripeElements() {
       currency: 'usd',
       total: {
         label: 'Total',
-        amount: amount * 100
+        amount: Math.round(amount * 100)
       },
       requestPayerName: true,
       requestPayerEmail: true
@@ -1652,7 +1652,7 @@ async function updatePaymentIntent() {
         window.paymentRequest?.update?.({
             total: {
                 label: "Total",
-                amount: data.amount
+                amount: Math.round(data.amount)
             }
         });
     
@@ -1660,7 +1660,7 @@ async function updatePaymentIntent() {
         window.bookingGlobals.subtotal = subtotal;
         console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
         window.bookingGlobals.taxTotal = subtotalTaxes;
-        window.bookingGlobals.total = data.amount / 100;
+        window.bookingGlobals.total = Math.round(data.amount / 100);
 
         const updatedTotal = window.bookingGlobals.total;
         setButtonText("#pay-now-btn", `Pay $${updatedTotal} with Card`, false);
