@@ -1749,13 +1749,114 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null)
 }
 
 // ADD CHARGE
+async function setupStripeElements({ containerId, amount, userEmail, buttonSelector }) {
+  const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
+  const elements = stripe.elements();
+
+  const cardNumber = elements.create("cardNumber");
+  const cardExpiry = elements.create("cardExpiry");
+  const cardCvc = elements.create("cardCvc");
+
+  cardNumber.mount("#card-number-element");
+  cardExpiry.mount("#card-expiry-element");
+  cardCvc.mount("#card-cvc-element");
+
+  const clientSecret = window.bookingGlobals?.client_secret;
+  if (!clientSecret || !amount) return console.warn("Missing clientSecret or amount");
+
+  const paymentRequest = stripe.paymentRequest({
+    country: "US",
+    currency: "usd",
+    total: {
+      label: "Total",
+      amount: amount * 100
+    },
+    requestPayerName: true,
+    requestPayerEmail: true
+  });
+
+  const prButton = elements.create("paymentRequestButton", {
+    paymentRequest
+  });
+
+  paymentRequest.canMakePayment().then((result) => {
+    const prContainer = document.getElementById("payment-request-button");
+    if (result) {
+      prButton.mount("#payment-request-button");
+      prContainer.style.display = "block";
+    } else {
+      prContainer.style.display = "none";
+    }
+  });
+
+  paymentRequest.on("paymentmethod", async (ev) => {
+    try {
+      const { error } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: ev.paymentMethod.id
+      });
+
+      if (error) {
+        ev.complete("fail");
+        alert("Payment failed: " + error.message);
+      } else {
+        ev.complete("success");
+        await submitFinalBooking();
+      }
+    } catch (err) {
+      ev.complete("fail");
+    }
+  });
+
+  window.stripe = stripe;
+  window.cardElements = { cardNumber, cardExpiry, cardCvc };
+  window.paymentRequest = paymentRequest;
+}
+
+async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total, creditsToApply = 0 }) {
+  const taxRate = window.details.transaction?.tax_rate || 0;
+  const payload = {
+    subtotal,
+    tax_total: taxTotal,
+    tax_rate: taxRate,
+    total,
+    user_credits_applied: creditsToApply,
+    user_id: window.details.user_id,
+    booking_id: window.details.uuid,
+    line_item: lineItem,
+    email: window.details.user?.email,
+    payment_intent_id: window.bookingGlobals?.payment_intent_id || null,
+    transaction_id: window.bookingGlobals?.transaction_uuid || null
+  };
+
+  const url = payload.payment_intent_id
+    ? "https://hook.us1.make.com/mh3tg5aoxaa9b3d4qm7dicfu76k9q9k1"
+    : "https://hook.us1.make.com/isy5nbt7kyv7op25nsh5gph4k3xy4vbw";
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+
+  const data = await res.json();
+
+  // Store or update bookingGlobals
+  window.bookingGlobals.payment_intent_id = data.payment_intent_id;
+  window.bookingGlobals.client_secret = data.client_secret || window.bookingGlobals.client_secret;
+  window.bookingGlobals.transaction_uuid = data.transaction_uuid || window.bookingGlobals.transaction_uuid;
+  window.bookingGlobals.total = data.amount / 100;
+
+  return data;
+}
+
 async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
   const chargePopup = document.querySelector(".add-carge");
   const actionPopup = document.querySelector(".popup");
   const useCreditsBtn = document.querySelector("#use-credits");
   const savedCardBtn = document.querySelector("#add-charge_original-pm");
   const payNowBtn = document.querySelector("#pay-now-btn");
-
   const summaryLine = document.getElementById("add-charge_line-item");
   const summaryLinePrice = document.getElementById("add-charge_line-item-price");
   const taxRateEl = document.getElementById("add-charge_tax-rate");
@@ -1767,66 +1868,54 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
   let creditsToApply = 0;
   let useCredits = false;
 
-  // here would be a good place to add the payment intent. add some code for it, base it off how we do it in booking.js and add the pr button (apple pay, google pay, etc) in the same styling as booking.js
+  // Create or update charge
+  try {
+    const intent = await createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total, creditsToApply });
 
-  // Display popup
+    summaryLine.textContent = lineItem;
+    summaryLinePrice.textContent = `$${subtotal.toFixed(2)}`;
+    taxRateEl.textContent = `${(window.details.transaction?.tax_rate || 0).toFixed(2)}%`;
+    taxTotalEl.textContent = `$${taxTotal.toFixed(2)}`;
+    totalEl.textContent = `$${(total - creditsToApply).toFixed(2)}`;
+    savedCardText.forEach(t => t.textContent = `Pay $${(total - creditsToApply).toFixed(2)} with Saved Card`);
+
+    await setupStripeElements({
+      containerId: "stripe-card-container",
+      amount: window.bookingGlobals.total,
+      userEmail: window.details.user?.email,
+      buttonSelector: "#pay-now-btn"
+    });
+  } catch (err) {
+    console.error("❌ Error preparing charge:", err);
+    return;
+  }
+
+  if (creditAmountRaw === 0) {
+    document.getElementById("credits-section").classList.add("hidden");
+  }
+
+  // Show popup
   chargePopup.classList.remove("hidden");
   actionPopup.classList.add("background");
 
-  // Set initial values
-  summaryLine.textContent = lineItem;
-  summaryLinePrice.textContent = `$${subtotal.toFixed(2)}`;
-  taxRateEl.textContent = `${(window.details.transaction?.tax_rate || 0).toFixed(2)}%`;
-  taxTotalEl.textContent = `$${taxTotal.toFixed(2)}`;
-  totalEl.textContent = `$${total.toFixed(2)}`;
-  savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
-
-  const transactionId = window.details.transaction_id;
-  let paymentMethod = null;
-
-  if (transactionId) {
-    const { data, error } = await window.supabase
-      .from("transactions")
-      .select("payment_method")
-      .eq("uuid", transactionId)
-      .maybeSingle();
-
-    if (error) {
-      console.warn("❌ Error fetching payment method:", error);
-    } else {
-      paymentMethod = data?.payment_method || null;
-    }
-  }
-
-  // If no payment method, hide saved card option
-  const savedContainer = document.getElementById("saved-payment-container");
-  if (!paymentMethod) {
-    savedContainer?.classList.add("hidden");
-  }
-
-
   // Toggle credits
-  useCreditsBtn.onclick = () => {
+  useCreditsBtn.onclick = async () => {
     useCredits = !useCredits;
     useCreditsBtn.classList.toggle("active");
 
     creditsToApply = useCredits && creditAmountRaw > 0.5 ? Math.min(creditAmountRaw, total) : 0;
     useCreditsBtn.textContent = useCredits
-    ? `$${creditsToApply.toFixed(2)} in credits applied`
-    : "Use your credits for this transaction";
+      ? `$${creditsToApply.toFixed(2)} in credits applied`
+      : "Use your credits for this transaction";
 
-    const creditSection = document.getElementById("credits-section");
-    if (creditAmountRaw < 0.51) {
-      creditSection?.classList.add("hidden");
+    totalEl.textContent = `$${(total - creditsToApply).toFixed(2)}`;
+    savedCardText.forEach(t => t.textContent = `Pay $${(total - creditsToApply).toFixed(2)} with Saved Card`);
+
+    try {
+      await createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total, creditsToApply });
+    } catch (err) {
+      console.warn("⚠️ Failed to update payment intent with credits:", err);
     }
-
-    const newTotal = parseFloat((total - creditsToApply).toFixed(2)); 
-    totalEl.textContent = `$${newTotal.toFixed(2)}`;
-    savedCardText.forEach(t => t.textContent = `Pay $${newTotal.toFixed(2)} with Saved Card`);
-
-    // Store for later
-    useCreditsBtn.dataset.applied = useCredits ? "true" : "false";
-    // We should hide #credits-section if user has $0 in credits
   };
 
   // Pay with saved card
@@ -1835,59 +1924,33 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
     savedCardBtn.classList.add("processing");
     savedCardBtn.querySelector(".button-text").textContent = "Processing...";
 
-    const userId = window.details.user_id;
-    const bookingId = window.details.uuid;
-    const paymentMethod = "default"; // Change this from "Default" to the value of payment_method of the transaction table row, using bookings.transaction_id as the uuid to look up. If this booking has no payment_method in the transaction, ignore the saved card method and add .hidden to #saved-payment-container. Lets pull that at the beginning of this function
     const finalCredits = useCredits ? creditsToApply : 0;
-    const finalTotal = parseFloat((total - finalCredits).toFixed(2));
-
-
-
-    const payload = {
-      line_item: lineItem,
-      subtotal,
-      tax_total: taxTotal,
-      total: finalTotal,
-      user_credits_applied: finalCredits,
-      user_id: userId,
-      booking_id: bookingId,
-      payment_method: paymentMethod
-    };
+    const finalTotal = parseFloat((total - creditsToApply).toFixed(2));
 
     try {
-      const res = await fetch("https://hook.us1.make.com/b7m5qiaw6udii3xpalks2jxjljms6elj", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      const result = await confirmCharge({
+        lineItem,
+        subtotal,
+        taxTotal,
+        total: finalTotal,
+        creditsToApply: finalCredits,
+        paymentMethod,
+        savedCard: true
       });
 
-      if (!res.ok) throw new Error(await res.text()); 
-
-      const { transaction_id } = await res.json();
-      console.log("✅ Charge complete:", transaction_id);
-
+      console.log("✅ Charge complete:", result.transaction_uuid);
       chargePopup.classList.add("hidden");
       actionPopup.classList.remove("background");
 
-      if (onSuccess) onSuccess(transaction_id);
+      if (onSuccess) onSuccess(result.transaction_uuid);
     } catch (err) {
-      console.error("❌ Error during charge:", err);
-      alert("Payment failed. Try again.");
       savedCardBtn.classList.remove("processing");
       savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
+      console.error("❌ Error during saved card charge:", err);
+      alert("Payment failed. Try again with a new payment method.");
       document.getElementById("saved-payment-container")?.classList.add("hidden");
-      alert("Payment with saced failed. Please enter a new card instead.");
     }
   };
-
-  if (!window.addChargeStripe) {
-    window.addChargeStripe = await setupStripeElements({
-      containerId: "stripe-card-container",
-      amount: total,
-      userEmail: window.details.user?.email,
-      buttonSelector: "#pay-now-btn"
-    });
-  }
 
   // Pay with new card
   payNowBtn.onclick = async () => {
@@ -1896,42 +1959,33 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
     payNowBtn.classList.add("disabled");
     payNowBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Processing...");
 
-    // ⚠️ Insert Stripe integration here to handle actual card input and get payment method/token
-    // Placeholder response:
-    const userId = window.details.user_id; 
-    const bookingId = window.details.uuid;
     const finalCredits = useCredits ? creditsToApply : 0;
-    const finalTotal = parseFloat((total - finalCredits).toFixed(2));
-
-    const payload = {
-      line_item: lineItem,
-      subtotal,
-      tax_total: taxTotal,
-      total: finalTotal,
-      user_credits_applied: finalCredits,
-      user_id: userId,
-      booking_id: bookingId,
-      payment_method: "new_card"
-    };
+    const finalTotal = parseFloat((total - creditsToApply).toFixed(2));
 
     try {
-      const res = await fetch("https://hook.us1.make.com/b7m5qiaw6udii3xpalks2jxjljms6elj", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      const result = await confirmCharge({
+        lineItem,
+        subtotal,
+        taxTotal,
+        total: finalTotal,
+        creditsToApply: finalCredits,
+        paymentMethod: null,
+        savedCard: false
       });
 
-      if (!res.ok) throw new Error(await res.text());
-
-      const { transaction_id } = await res.json();
-      console.log("✅ New card charge complete:", transaction_id);
-
+      console.log("✅ New card charge complete:", result.transaction_uuid);
       chargePopup.classList.add("hidden");
       actionPopup.classList.remove("background");
 
-      if (onSuccess) onSuccess(transaction_id);
+      if (onSuccess) onSuccess(result.transaction_uuid);
+
+      setTimeout(() => {
+        delete window.bookingGlobals.payment_intent_id;
+        delete window.bookingGlobals.transaction_uuid;
+      }, 3000); 
+
     } catch (err) {
-      console.error("❌ Error with new card:", err);
+      console.error("❌ Error with new card payment:", err);
       alert("Payment failed. Try again.");
     } finally {
       payNowBtn.classList.remove("processing");
@@ -1940,6 +1994,43 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
   };
 }
 
+async function confirmCharge({
+  lineItem,
+  subtotal,
+  taxTotal,
+  total,
+  creditsToApply,
+  paymentMethod,
+  savedCard
+}) {
+  const payload = {
+    line_item: lineItem,
+    subtotal,
+    tax_rate: window.details.transaction?.tax_rate || 0,
+    tax_total: taxTotal,
+    total,
+    booking_id: window.details.uuid,
+    user_id: window.details.user_id,
+    payment_method: paymentMethod,
+    saved_card: savedCard,
+    user_credits_applied: creditsToApply,
+    payment_intent_id: window.bookingGlobals.payment_intent_id,
+    transaction_id: window.bookingGlobals.transaction_uuid
+  };
+
+  const res = await fetch("https://hook.us1.make.com/b7m5qiaw6udii3xpalks2jxjljms6elj", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+
+  const data = await res.json();
+  window.transaction_id = data.transaction_uuid;
+
+  return data;
+}
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
