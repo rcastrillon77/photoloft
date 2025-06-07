@@ -1471,7 +1471,7 @@ async function requestPaymentIntent() {
         final_rate = 0,
         booking_duration = 0,
         creditsApplied = 0,
-        taxRate = window.bookingGlobals.taxRate,
+        taxRate = window.bookingGlobals.taxRate
     } = window.bookingGlobals;
 
     const hours = roundDecimals(booking_duration / 60);
@@ -1551,6 +1551,10 @@ async function requestPaymentIntent() {
         window.bookingGlobals.payment_intent_id = data.payment_intent_id;
         window.bookingGlobals.transaction_uuid = data.transaction_uuid;
         window.bookingGlobals.total = data.amount / 100;
+        window.bookingGlobals.subtotal = subtotal;
+        console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
+        window.bookingGlobals.taxTotal = subtotalTaxes;
+
     
         const stripeBtns = document.getElementById("confirm-with-stripe");
         const confirmBtn = document.getElementById("confirm-without-stripe");
