@@ -1629,7 +1629,7 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
   const updated = rebuildBookingDetails(bookingUuid);
   const original = window.details;
-  const { requiresPayment, summary } = await calculateRescheduleDelta(original, updated);
+  const { requiresPayment, summary } = await calculateRescheduleTotals(original, updated);
 
   const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
   const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
