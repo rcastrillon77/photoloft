@@ -1749,7 +1749,7 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null)
 }
 
 // ADD CHARGE
-function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
+async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
   const chargePopup = document.querySelector(".add-carge");
   const actionPopup = document.querySelector(".popup");
   const useCreditsBtn = document.querySelector("#use-credits");
@@ -1763,7 +1763,7 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
   const totalEl = document.getElementById("add-charge_total");
   const savedCardText = savedCardBtn.querySelectorAll(".button-text");
 
-  const creditAmountRaw = window.details.transaction?.user_credits_applied || 0; // huh? what is this for? user_credits_applied from the original payment shouldnt matter, but they should be able to use their credits for a new transaction
+  const creditAmountRaw = window.details.user?.credits || 0;
   let creditsToApply = 0;
   let useCredits = false;
 
@@ -1781,12 +1781,45 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
   totalEl.textContent = `$${total.toFixed(2)}`;
   savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
 
+  const transactionId = window.details.transaction_id;
+  let paymentMethod = null;
+
+  if (transactionId) {
+    const { data, error } = await window.supabase
+      .from("transactions")
+      .select("payment_method")
+      .eq("uuid", transactionId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("❌ Error fetching payment method:", error);
+    } else {
+      paymentMethod = data?.payment_method || null;
+    }
+  }
+
+  // If no payment method, hide saved card option
+  const savedContainer = document.getElementById("saved-payment-container");
+  if (!paymentMethod) {
+    savedContainer?.classList.add("hidden");
+  }
+
+
   // Toggle credits
   useCreditsBtn.onclick = () => {
     useCredits = !useCredits;
     useCreditsBtn.classList.toggle("active");
 
-    creditsToApply = useCredits ? Math.min(creditAmountRaw, total) : 0; // what are we doing here? We should instead pull credits from users.credits and if they have some, when they click on the useCreditsBtn it should apply the credits up to a zero balance, but more than 50 cents. We should also change the textContent of useCreditsBtn to say "$creditsToApply has been applied" and "Use your credits for this transaction" if its not .active
+    creditsToApply = useCredits && creditAmountRaw > 0.5 ? Math.min(creditAmountRaw, total) : 0;
+    useCreditsBtn.textContent = useCredits
+    ? `$${creditsToApply.toFixed(2)} in credits applied`
+    : "Use your credits for this transaction";
+
+    const creditSection = document.getElementById("credits-section");
+    if (creditAmountRaw < 0.51) {
+      creditSection?.classList.add("hidden");
+    }
+
     const newTotal = parseFloat((total - creditsToApply).toFixed(2)); 
     totalEl.textContent = `$${newTotal.toFixed(2)}`;
     savedCardText.forEach(t => t.textContent = `Pay $${newTotal.toFixed(2)} with Saved Card`);
@@ -1807,6 +1840,8 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
     const paymentMethod = "default"; // Change this from "Default" to the value of payment_method of the transaction table row, using bookings.transaction_id as the uuid to look up. If this booking has no payment_method in the transaction, ignore the saved card method and add .hidden to #saved-payment-container. Lets pull that at the beginning of this function
     const finalCredits = useCredits ? creditsToApply : 0;
     const finalTotal = parseFloat((total - finalCredits).toFixed(2));
+
+
 
     const payload = {
       line_item: lineItem,
@@ -1838,11 +1873,21 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
     } catch (err) {
       console.error("❌ Error during charge:", err);
       alert("Payment failed. Try again.");
-      savedCardBtn.classList.remove("disabled");
+      savedCardBtn.classList.remove("processing");
       savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
-      // lets add .hidden to #saved-payment-container if payment fails. and alert that it failed and they need to enter a new payment method instead
+      document.getElementById("saved-payment-container")?.classList.add("hidden");
+      alert("Payment with saced failed. Please enter a new card instead.");
     }
   };
+
+  if (!window.addChargeStripe) {
+    window.addChargeStripe = await setupStripeElements({
+      containerId: "stripe-card-container",
+      amount: total,
+      userEmail: window.details.user?.email,
+      buttonSelector: "#pay-now-btn"
+    });
+  }
 
   // Pay with new card
   payNowBtn.onclick = async () => {
@@ -1853,7 +1898,7 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
 
     // ⚠️ Insert Stripe integration here to handle actual card input and get payment method/token
     // Placeholder response:
-    const userId = window.details.user_id;
+    const userId = window.details.user_id; 
     const bookingId = window.details.uuid;
     const finalCredits = useCredits ? creditsToApply : 0;
     const finalTotal = parseFloat((total - finalCredits).toFixed(2));
@@ -1889,7 +1934,7 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
       console.error("❌ Error with new card:", err);
       alert("Payment failed. Try again.");
     } finally {
-      payNowBtn.classList.remove("disabled");
+      payNowBtn.classList.remove("processing");
       payNowBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Pay with Card");
     }
   };
