@@ -1471,7 +1471,7 @@ async function requestPaymentIntent() {
         final_rate = 0,
         booking_duration = 0,
         creditsApplied = 0,
-        taxRate = 0,
+        taxRate = window.bookingGlobals.taxRate,
     } = window.bookingGlobals;
 
     const hours = roundDecimals(booking_duration / 60);
@@ -1646,10 +1646,10 @@ async function updatePaymentIntent() {
         const data = await res.json();
 
         window.paymentRequest?.update?.({
-        total: {
-            label: "Total",
-            amount: data.amount
-        }
+            total: {
+                label: "Total",
+                amount: data.amount
+            }
         });
     
         // ✅ Store values in bookingGlobals
