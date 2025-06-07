@@ -1627,7 +1627,7 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
 
-  const updated = rebuildBookingDetails(bookingUuid);
+  const updated = await rebuildBookingDetails(bookingUuid);
   const original = window.details;
   const { requiresPayment, summary } = await calculateRescheduleTotals(original, updated);
 
