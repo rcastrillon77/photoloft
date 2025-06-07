@@ -128,8 +128,9 @@ function openPopup() {
 
 function closePopup() {
   document.getElementById("popup-container").classList.add("hide");
+  document.querySelector("popup").classList.remove("background");
+  document.querySelector("add-charge").classList.add("hide");
   document.body.classList.remove("no-scroll");
-  //setTimeout(document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden")), 400);
 }
 
 function applyActionButtonStates(details) {
