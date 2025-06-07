@@ -1553,7 +1553,6 @@ function renderRescheduleSummary(summary) {
   console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Total: $${finalTotal}`);
 }
 
-
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
   console.log("🔍 Starting revalidateOriginalCerts()");
   console.log("🧾 Incoming cert summaries:", certSummaries);
@@ -1667,55 +1666,6 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
   };
 }
 
-
-document.getElementById("confirm-new-booking").addEventListener("click", async () => {
-  const pricing = await calculateRescheduleTotals(details, window.bookingGlobals);
-  const bookingStart = luxon.DateTime.fromJSDate(window.bookingGlobals.booking_date, { zone: timezone })
-    .startOf("day")
-    .plus({ minutes: window.bookingGlobals.booking_start });
-  const bookingEnd = bookingStart.plus({ minutes: window.bookingGlobals.booking_duration });
-
-  const payload = {
-    booking_uuid: bookingUuid,
-    new_start: bookingStart.toISO(),
-    new_end: bookingEnd.toISO(),
-    duration: window.bookingGlobals.booking_duration
-  };
-
-  const proceedWithReschedule = async () => {
-    const response = await fetch("https://hook.us1.make.com/YOUR-RESCHEDULE-ENDPOINT", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) return alert("❌ Reschedule failed.");
-
-    document.getElementById("confirm-popup-header").textContent = "Booking Rescheduled";
-    document.getElementById("confirm-popup-paragraph").textContent = pricing.requiresPayment
-      ? "Your booking has been moved. The additional charge was processed successfully."
-      : "Your booking has been moved to the new time.";
-    showPopupById("confirmation-popup");
-
-    details = await rebuildBookingDetails(bookingUuid);
-    populateReservationDetails(details);
-    applyActionButtonStates(details);
-  };
-
-  if (pricing.requiresPayment) {
-    addChargeHandler({
-      lineItem: "Rescheduling Balance",
-      subtotal: pricing.finalTotal - pricing.taxes,
-      taxTotal: pricing.taxes,
-      total: pricing.finalTotal,
-      onSuccess: proceedWithReschedule
-    });
-  } else {
-    proceedWithReschedule();
-  }
-});
-
-
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
 
@@ -1724,16 +1674,15 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   const { requiresPayment, summary } = await calculateRescheduleDelta(original, updated);
 
   if (requiresPayment) {
-    const lineItem = "Rescheduled Booking";
     const payload = {
-      line_item: lineItem,
-      subtotal: summary.subtotal,
+      line_item: "Rescheduled Booking",
+      subtotal: roundDecimals(summary.difference / (1 + (summary.tax_rate / 100))),
       tax_rate: summary.tax_rate,
-      tax_total: summary.tax_total,
-      total: summary.total,
+      tax_total: roundDecimals(subtotal * (tax_rate / 100)),
+      total: summary.difference,
       booking_id: window.details.uuid,
       user_id: window.details.user.uuid,
-      payment_method: "default", // override if user picks another PM
+      payment_method: null,
       user_credits_applied: summary.user_credits_applied
     };
 
@@ -1799,11 +1748,10 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null)
   }
 }
 
-
 // ADD CHARGE
 function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
-  const popup = document.querySelector(".add-carge");
-  const overlay = document.querySelector(".popup");
+  const chargePopup = document.querySelector(".add-carge");
+  const actionPopup = document.querySelector(".popup");
   const useCreditsBtn = document.querySelector("#use-credits");
   const savedCardBtn = document.querySelector("#add-charge_original-pm");
   const payNowBtn = document.querySelector("#pay-now-btn");
@@ -1815,13 +1763,15 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
   const totalEl = document.getElementById("add-charge_total");
   const savedCardText = savedCardBtn.querySelectorAll(".button-text");
 
-  const creditAmountRaw = window.details.transaction?.user_credits_applied || 0;
+  const creditAmountRaw = window.details.transaction?.user_credits_applied || 0; // huh? what is this for? user_credits_applied from the original payment shouldnt matter, but they should be able to use their credits for a new transaction
   let creditsToApply = 0;
   let useCredits = false;
 
+  // here would be a good place to add the payment intent. add some code for it, base it off how we do it in booking.js and add the pr button (apple pay, google pay, etc) in the same styling as booking.js
+
   // Display popup
-  popup.classList.remove("hidden");
-  overlay.classList.add("background");
+  chargePopup.classList.remove("hidden");
+  actionPopup.classList.add("background");
 
   // Set initial values
   summaryLine.textContent = lineItem;
@@ -1834,27 +1784,27 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
   // Toggle credits
   useCreditsBtn.onclick = () => {
     useCredits = !useCredits;
-    useCreditsBtn.classList.toggle("outline");
-    useCreditsBtn.classList.toggle("green");
+    useCreditsBtn.classList.toggle("active");
 
-    creditsToApply = useCredits ? Math.min(creditAmountRaw, total) : 0;
-    const newTotal = parseFloat((total - creditsToApply).toFixed(2));
+    creditsToApply = useCredits ? Math.min(creditAmountRaw, total) : 0; // what are we doing here? We should instead pull credits from users.credits and if they have some, when they click on the useCreditsBtn it should apply the credits up to a zero balance, but more than 50 cents. We should also change the textContent of useCreditsBtn to say "$creditsToApply has been applied" and "Use your credits for this transaction" if its not .active
+    const newTotal = parseFloat((total - creditsToApply).toFixed(2)); 
     totalEl.textContent = `$${newTotal.toFixed(2)}`;
     savedCardText.forEach(t => t.textContent = `Pay $${newTotal.toFixed(2)} with Saved Card`);
 
     // Store for later
     useCreditsBtn.dataset.applied = useCredits ? "true" : "false";
+    // We should hide #credits-section if user has $0 in credits
   };
 
   // Pay with saved card
   savedCardBtn.onclick = async (e) => {
     e.preventDefault();
-    savedCardBtn.classList.add("disabled");
+    savedCardBtn.classList.add("processing");
     savedCardBtn.querySelector(".button-text").textContent = "Processing...";
 
     const userId = window.details.user_id;
     const bookingId = window.details.uuid;
-    const paymentMethod = "default"; // you can replace with actual method if needed
+    const paymentMethod = "default"; // Change this from "Default" to the value of payment_method of the transaction table row, using bookings.transaction_id as the uuid to look up. If this booking has no payment_method in the transaction, ignore the saved card method and add .hidden to #saved-payment-container. Lets pull that at the beginning of this function
     const finalCredits = useCredits ? creditsToApply : 0;
     const finalTotal = parseFloat((total - finalCredits).toFixed(2));
 
@@ -1876,13 +1826,13 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await res.text()); 
 
       const { transaction_id } = await res.json();
       console.log("✅ Charge complete:", transaction_id);
 
-      popup.classList.add("hidden");
-      overlay.classList.remove("background");
+      chargePopup.classList.add("hidden");
+      actionPopup.classList.remove("background");
 
       if (onSuccess) onSuccess(transaction_id);
     } catch (err) {
@@ -1890,6 +1840,7 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
       alert("Payment failed. Try again.");
       savedCardBtn.classList.remove("disabled");
       savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
+      // lets add .hidden to #saved-payment-container if payment fails. and alert that it failed and they need to enter a new payment method instead
     }
   };
 
@@ -1930,8 +1881,8 @@ function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
       const { transaction_id } = await res.json();
       console.log("✅ New card charge complete:", transaction_id);
 
-      popup.classList.add("hidden");
-      overlay.classList.remove("background");
+      chargePopup.classList.add("hidden");
+      actionPopup.classList.remove("background");
 
       if (onSuccess) onSuccess(transaction_id);
     } catch (err) {
