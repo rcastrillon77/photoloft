@@ -1631,12 +1631,15 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   const original = window.details;
   const { requiresPayment, summary } = await calculateRescheduleDelta(original, updated);
 
+  const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
+  const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
+
   if (requiresPayment) {
     const payload = {
       line_item: "Rescheduled Booking",
-      subtotal: roundDecimals(summary.difference / (1 + (summary.tax_rate / 100))),
+      subtotal: subtotal,
       tax_rate: summary.tax_rate,
-      tax_total: roundDecimals(subtotal * (tax_rate / 100)),
+      tax_total: tax_total,
       total: summary.difference,
       booking_id: window.details.uuid,
       user_id: window.details.user.uuid,
@@ -1849,7 +1852,7 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
   }
 
   if (creditAmountRaw === 0) {
-    document.getElementById("credits-section").classList.add("hidden");
+    document.getElementById("credits-section")?.classList.add("hidden");
   }
 
   // Show popup
