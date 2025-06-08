@@ -144,3 +144,26 @@ document.getElementById('max-available')?.addEventListener('click', () => {
   
   generateStartTimeOptions(true); // will call disableUnavailableDates internally
 });  
+
+document.addEventListener("click", (e) => {
+  const target = e.target.closest(".side-bar-item-text.text-link");
+  if (!target) return;
+
+  const type = target.dataset.transactionType;
+  const index = target.dataset.transactionIndex;
+
+  let transaction = null;
+
+  if (type === "original") {
+    transaction = window.details.transaction;
+  } else if (type === "added_charge" && window.details.added_charges?.[index]) {
+    transaction = window.details.added_charges[index];
+  }
+
+  if (!transaction) return alert("Transaction details not found.");
+
+  renderTransactionSummary(transaction, type);
+  showPopupById("transaction-summary-popup");
+});
+
+
