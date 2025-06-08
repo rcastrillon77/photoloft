@@ -1666,9 +1666,9 @@ function renderRescheduleSummary(summary) {
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
 
-  const updated = buildUpdatedDetailsFromGlobals();
-  const original = window.details;
-  const { requiresPayment, summary } = await calculateRescheduleTotals(original, updated);
+  const bookingGlobals = window.bookingGlobals;
+  const { requiresPayment, summary } = await calculateRescheduleTotals(original, bookingGlobals);
+
 
   const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
   const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
@@ -1685,6 +1685,9 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
       payment_method: null,
       user_credits_applied: summary.user_credits_applied
     };
+
+    const updated = buildUpdatedDetailsFromGlobals(); // now build details for saving to Supabase
+
 
     addChargeHandler(payload, async (transactionId) => {
       await triggerRescheduleWebhook(original, updated, transactionId, summary);
