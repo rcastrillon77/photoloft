@@ -1712,7 +1712,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   const original = window.details;
   const bookingGlobals = window.bookingGlobals;
   const { requiresPayment, summary } = await calculateRescheduleTotals(original, bookingGlobals);
-
   
   const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
   const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
@@ -1731,7 +1730,6 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
     };
 
     const updated = buildUpdatedDetailsFromGlobals(); // now build details for saving to Supabase
-
 
     addChargeHandler(payload, async (transactionId) => {
       await triggerRescheduleWebhook(original, updated, transactionId, summary);
