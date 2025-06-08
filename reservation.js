@@ -1712,7 +1712,7 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   const bookingGlobals = window.bookingGlobals;
   const { requiresPayment, summary } = await calculateRescheduleTotals(original, bookingGlobals);
 
-
+  const original = window.details;
   const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
   const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
 
