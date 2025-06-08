@@ -156,6 +156,32 @@ function populateReservationDetails(details) {
   }
 }
 
+function buildUpdatedDetailsFromGlobals() {
+  const g = window.bookingGlobals;
+  const original = window.details;
+
+  const start = DateTime.fromISO(g.start);
+  const end = DateTime.fromISO(g.end);
+
+  const addedCharge = {
+    transaction_id: g.transaction_id,
+    line_item: g.line_item,
+    subtotal: g.subtotal,
+    tax_rate: g.tax_rate,
+    tax_total: g.tax_total,
+    user_credits_applied: g.user_credits_applied,
+    total: g.total
+  };
+
+  return {
+    ...original,
+    start: start.toISO(),
+    end: end.toISO(),
+    duration: g.booking_duration / 60,
+    added_charges: [...(original.added_charges || []), addedCharge]
+  };
+}
+
 function openPopup() {
   document.getElementById("popup-container").classList.remove("hide");
   document.body.classList.add("no-scroll");
@@ -1640,7 +1666,7 @@ function renderRescheduleSummary(summary) {
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
 
-  const updated = await rebuildBookingDetails(bookingUuid);
+  const updated = buildUpdatedDetailsFromGlobals();
   const original = window.details;
   const { requiresPayment, summary } = await calculateRescheduleTotals(original, updated);
 
