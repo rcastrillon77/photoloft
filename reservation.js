@@ -122,6 +122,7 @@ async function rebuildBookingDetails(bookingUuid) {
   }
 
   console.log("✅ Booking details updated.");
+  window.details = details;
   return details;
 }
 
@@ -1696,7 +1697,7 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
       tax_rate: summary.tax_rate,
       tax_total: tax_total,
       total: summary.difference,
-      booking_id: window.details.uuid,
+      booking_id: bookingUuid,
       user_id: window.details.user.uuid,
       payment_method: null,
       user_credits_applied: summary.user_credits_applied
