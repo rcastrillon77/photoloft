@@ -17,7 +17,7 @@ async function rebuildBookingDetails(bookingUuid) {
     supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
   ]);
 
-  details = {
+  const details = {
     start: bookingData.details.start || null,
     end: bookingData.details.end || null,
     status: bookingData.status || null,
@@ -26,6 +26,7 @@ async function rebuildBookingDetails(bookingUuid) {
     attendees: bookingData.details?.attendees || null,
     activities: bookingData.details?.activities || [],
     event_id: bookingData.event_id || [], 
+
     user: {
       first_name: bookingData.details.user?.first_name || "",
       last_name: bookingData.details.user?.last_name || "",
@@ -33,6 +34,7 @@ async function rebuildBookingDetails(bookingUuid) {
       phone: bookingData.details.user?.phone || "",
       membership: bookingData.details.user?.membership || "non-member"
     },
+
     listing: bookingData.details?.listing || {
       name: bookingData.details.listing?.name || "",
       address_line_1: bookingData.details.listing?.address_line_1 || "",
@@ -43,7 +45,7 @@ async function rebuildBookingDetails(bookingUuid) {
       timezone: bookingData.details.listing?.timezone || "America/Chicago",
       coordinates: bookingData.details.listing?.coordinates || {}
     },
-    activities: bookingData.details?.activities || [],
+
     transaction: {
       subtotal: bookingData.details.transaction?.subtotal || 0,
       total: bookingData.details.transaction?.total || 0,
@@ -55,7 +57,10 @@ async function rebuildBookingDetails(bookingUuid) {
       rate_label: bookingData.details.transaction?.rate_label || "",
       user_credits_applied: bookingData.details.transaction?.user_credits_applied || 0,
       discounts: bookingData.details.transaction?.discounts || []
-    }
+    },
+
+    original: bookingData.details?.original || null,
+    added_charges: bookingData.details?.added_charges || []
   };
 
   LISTING_UUID = bookingData.listing_id;
@@ -96,14 +101,14 @@ function populateReservationDetails(details) {
   `;
 
   document.getElementById("details_address-2").innerHTML = `
-  ${details.listing?.city || ''}, ${details.listing?.state || ''} ${details.listing?.zip_code || ''}
+    ${details.listing?.city || ''}, ${details.listing?.state || ''} ${details.listing?.zip_code || ''}
   `;
 
   document.getElementById("details_date").textContent =
-    DateTime.fromISO(start).setZone(timezone).toFormat('cccc LLLL d, yyyy');
+    start.toFormat('cccc LLLL d, yyyy');
 
   document.getElementById("details_start").textContent = start.toFormat("h:mm a");
-  document.getElementById("details_end").textContent =  end.toFormat("h:mm a ZZZZ")
+  document.getElementById("details_end").textContent = end.toFormat("h:mm a ZZZZ");
 
   document.getElementById("details_duration").textContent =
     details.duration + (details.duration > 1 ? " Hours" : " Hour");
@@ -111,14 +116,43 @@ function populateReservationDetails(details) {
   document.getElementById("details_attendees").textContent =
     details.attendees + (details.attendees > 1 ? " People" : " Person");
 
-  document.getElementById("details_paid").textContent =
-    `$${(details.transaction?.total || 0).toFixed(2)}`;
+  const paidEl = document.getElementById("details_paid");
+  paidEl.textContent = `$${(details.transaction?.total || 0).toFixed(2)}`;
+  paidEl.setAttribute("data-transaction-type", "original");
 
-
-  document.getElementById("summary-date-original").textContent = DateTime.fromISO(start).setZone(timezone).toFormat('cccc LLLL d, yyyy');
+  document.getElementById("summary-date-original").textContent = start.toFormat('cccc LLLL d, yyyy');
   document.getElementById("summary-time-original").textContent = start.toFormat("h:mm a") + " to " + end.toFormat("h:mm a ZZZZ");
   document.getElementById("summary-duration-original").textContent = details.duration + (details.duration > 1 ? " Hours" : " Hour");
   document.getElementById("summary-rate-original").textContent = `$${details.transaction.final_rate}/Hr`;
+
+  // 👉 Append added charges to the sidebar
+  const sidebar = document.getElementById("details_sidebar");
+  if (sidebar && Array.isArray(details.added_charges)) {
+    // Clear existing dynamically inserted charges (optional)
+    sidebar.querySelectorAll(".sidebar-item.added-charge").forEach(el => el.remove());
+
+    details.added_charges.forEach(charge => {
+      const { line_item, total } = charge;
+
+      const item = document.createElement("div");
+      item.className = "sidebar-item added-charge";
+
+      const header = document.createElement("div");
+      header.className = "side-bar-item-header";
+      header.textContent = line_item || "Charge";
+
+      const link = document.createElement("a");
+      link.href = "#";
+      link.className = "side-bar-item-text text-link";
+      link.textContent = `$${Math.abs(total).toFixed(2)}`;
+      link.setAttribute("data-transaction-index", i); 
+      link.setAttribute("data-transaction-type", "added_charge");
+
+      item.appendChild(header);
+      item.appendChild(link);
+      sidebar.appendChild(item);
+    });
+  }
 }
 
 function openPopup() {
@@ -1963,6 +1997,82 @@ async function confirmCharge({
 
   return data;
 }
+
+function renderTransactionSummary(transaction, type = "added_charge") {
+  const container = document.querySelector(".transaction-summary");
+  if (!container) return console.error("❌ Transaction summary container not found");
+
+  const fmt = (v) => typeof v !== "number" || isNaN(v) ? "$0.00" : `$${v.toFixed(2)}`;
+  const isOriginal = type === "original";
+
+  // Clear existing line items (but keep divider)
+  container.querySelectorAll(".summary-line-item-container:not(.total):not(.summary-divider)").forEach(el => el.remove());
+
+  const createLine = (label, value, options = {}) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "summary-line-item-container";
+    if (options.className) wrapper.classList.add(options.className);
+
+    const item = document.createElement("div");
+    item.className = "summary-line-item";
+    item.textContent = label;
+
+    const price = document.createElement("div");
+    price.className = "summary-line-item-price";
+    price.textContent = fmt(value);
+    if (options.positive) price.classList.add("green");
+    if (options.negative) price.textContent = `– ${fmt(value)}`;
+
+    wrapper.appendChild(item);
+    wrapper.appendChild(price);
+    container.insertBefore(wrapper, container.querySelector(".summary-divider"));
+  };
+
+  // Original booking display
+  if (isOriginal) {
+    const hours = window.details.duration;
+    const rate = transaction.base_rate || 0;
+    createLine(`Booking (${hours} hrs x $${rate}/hr)`, rate * hours);
+  }
+
+  // Subtotal
+  if (transaction.subtotal > 0) {
+    createLine("Subtotal", transaction.subtotal);
+  }
+
+  // Discounts (only for original)
+  if (isOriginal && transaction.discount_total > 0) {
+    createLine("Discounts", transaction.discount_total, { className: "negative", negative: true });
+  }
+
+  // Taxes
+  if (transaction.tax_total > 0) {
+    createLine(`Taxes (${transaction.tax_rate}%)`, transaction.tax_total);
+  }
+
+  // User credits applied (positive value but shown as negative)
+  if (transaction.user_credits_applied > 0) {
+    createLine("Credits Used", transaction.user_credits_applied, { className: "green", negative: true });
+  }
+
+  // Total
+  const totalLine = container.querySelector(".summary-line-item-container.total");
+  if (totalLine) {
+    const labelEl = totalLine.querySelector(".summary-line-item");
+    const valueEl = totalLine.querySelector(".summary-line-item-price");
+
+    valueEl.textContent = fmt(transaction.total);
+
+    if (transaction.total < 0) {
+      labelEl.textContent = "Credited";
+      valueEl.classList.add("green");
+    } else {
+      labelEl.textContent = "Total";
+      valueEl.classList.remove("green");
+    }
+  }
+}
+
 
 // Rebuild Booking Details
 
