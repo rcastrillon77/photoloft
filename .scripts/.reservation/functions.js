@@ -225,6 +225,19 @@ async function processCancellation(refundData) {
 
     if (!response.ok) throw new Error("Webhook failed");
 
+    const data = await response.json();
+    const transactionId = data.transaction_id || null;
+
+    const updatedDetails = buildCancellationDetails({
+      refundData,
+      transactionId
+    });
+
+    await supabase
+      .from("bookings")
+      .update({ details: updatedDetails })
+      .eq("uuid", bookingUuid);
+
     details = await rebuildBookingDetails(bookingUuid);
     populateReservationDetails(details);
     applyActionButtonStates(details);
@@ -317,40 +330,6 @@ function preloadRescheduleGlobals() {
     total: details.transaction.total || 0
   };
 }
-
-document.getElementById("confirm-new-booking").addEventListener("click", async () => {
-  const g = window.bookingGlobals;
-  const bookingStart = luxon.DateTime.fromJSDate(g.booking_date, { zone: timezone }).startOf("day").plus({ minutes: g.booking_start });
-  const bookingEnd = bookingStart.plus({ minutes: g.booking_duration });
-
-  const payload = {
-    booking_uuid: bookingUuid,
-    new_start: bookingStart.toISO(),
-    new_end: bookingEnd.toISO(),
-    duration: g.booking_duration,
-  };
-
-  try {
-    const response = await fetch("https://hook.us1.make.com/YOUR-RESCHEDULE-ENDPOINT", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) throw new Error("Reschedule failed");
-
-    details = await rebuildBookingDetails(bookingUuid);
-    populateReservationDetails(details);
-    applyActionButtonStates(details);
-
-    document.getElementById("confirm-popup-header").textContent = "Booking Rescheduled";
-    document.getElementById("confirm-popup-paragraph").textContent = "Your booking has been moved to the new time.";
-    showPopupById("confirmation-popup");
-
-  } catch (err) {
-    alert("There was a problem rescheduling your booking. Please try again.");
-  }
-});
 
 async function initBookingConfig(listingId) {
   try {
@@ -480,7 +459,6 @@ async function initBookingConfig(listingId) {
     console.error("🚨 Unexpected error initializing booking config:", err);
   }
 }
-
 
 async function initSliderSection() {
   document.querySelector('.extended-time').classList.add('shrunk');
@@ -1453,64 +1431,6 @@ async function calculateRescheduleTotals(details, bookingGlobals) {
   return summary;
 }
 
-function renderRescheduleSummary(summary) {
-  console.log("🧾 Rendering reschedule summary:", summary);
-
-  if (!summary) return console.warn("⚠️ No summary provided to render.");
-
-  const {
-    baseRate,
-    hours,
-    baseTotal,
-    discountTotal,
-    userCredits,
-    originalPaid,
-    subtotal,
-    taxes,
-    finalTotal,
-    taxRate,
-    requiresPayment,
-    difference
-  } = summary;
-
-  const fmt = (v) => typeof v !== "number" || isNaN(v) ? "$0.00" : `$${v.toFixed(2)}`;
-
-  // Set line item values
-  document.getElementById("reschedule-base-line").textContent = `${fmt(baseRate)} × ${hours} hrs`;
-  document.getElementById("reschedule-base").textContent = fmt(baseTotal);
-  document.getElementById("reschedule-discounts").textContent = `– ${fmt(discountTotal)}`;
-  document.getElementById("reschedule-credits").textContent = `– ${fmt(userCredits)}`;
-  document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
-  document.getElementById("reschedule-subtotal").textContent = fmt(subtotal);
-  document.getElementById("reschedule-tax").textContent = fmt(taxes);
-  document.getElementById("reschedule-total").textContent = fmt(finalTotal);
-  document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
-  document.getElementById("reschedule-difference").textContent = requiresPayment ? fmt(difference) : "$0.00";
-
-  // Update tax rate label
-  const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
-  if (taxRateEl) taxRateEl.textContent = `${taxRate}%`;
-
-  // Show/hide container and button logic
-  const summaryContainer = document.getElementById("reschedule-summary");
-  const messageEl = document.getElementById("reschedule-difference-message");
-  const btn = document.getElementById("confirm-new-booking");
-
-  console.log("Requires Payment: ", requiresPayment);
-
-  summaryContainer.classList.add("hidden");
-
-  if (requiresPayment) {
-    summaryContainer.classList.remove("hidden");
-    btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue to Payment");
-  } else {
-    summaryContainer.classList.add("hidden");
-    btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Confirm Reschedule");
-  }
-
-  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Total: $${finalTotal}`);
-}
-
 async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) {
   console.log("🔍 Starting revalidateOriginalCerts()");
   console.log("🧾 Incoming cert summaries:", certSummaries);
@@ -1624,6 +1544,64 @@ async function revalidateOriginalCerts(certSummaries, newDate, hours, baseRate) 
   };
 }
 
+function renderRescheduleSummary(summary) {
+  console.log("🧾 Rendering reschedule summary:", summary);
+
+  if (!summary) return console.warn("⚠️ No summary provided to render.");
+
+  const {
+    baseRate,
+    hours,
+    baseTotal,
+    discountTotal,
+    userCredits,
+    originalPaid,
+    subtotal,
+    taxes,
+    finalTotal,
+    taxRate,
+    requiresPayment,
+    difference
+  } = summary;
+
+  const fmt = (v) => typeof v !== "number" || isNaN(v) ? "$0.00" : `$${v.toFixed(2)}`;
+
+  // Set line item values
+  document.getElementById("reschedule-base-line").textContent = `${fmt(baseRate)} × ${hours} hrs`;
+  document.getElementById("reschedule-base").textContent = fmt(baseTotal);
+  document.getElementById("reschedule-discounts").textContent = `– ${fmt(discountTotal)}`;
+  document.getElementById("reschedule-credits").textContent = `– ${fmt(userCredits)}`;
+  document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
+  document.getElementById("reschedule-subtotal").textContent = fmt(subtotal);
+  document.getElementById("reschedule-tax").textContent = fmt(taxes);
+  document.getElementById("reschedule-total").textContent = fmt(finalTotal);
+  document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
+  document.getElementById("reschedule-difference").textContent = requiresPayment ? fmt(difference) : "$0.00";
+
+  // Update tax rate label
+  const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
+  if (taxRateEl) taxRateEl.textContent = `${taxRate}%`;
+
+  // Show/hide container and button logic
+  const summaryContainer = document.getElementById("reschedule-summary");
+  const messageEl = document.getElementById("reschedule-difference-message");
+  const btn = document.getElementById("confirm-new-booking");
+
+  console.log("Requires Payment: ", requiresPayment);
+
+  summaryContainer.classList.add("hidden");
+
+  if (requiresPayment) {
+    summaryContainer.classList.remove("hidden");
+    btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue to Payment");
+  } else {
+    summaryContainer.classList.add("hidden");
+    btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Confirm Reschedule");
+  }
+
+  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Total: $${finalTotal}`);
+}
+
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
 
@@ -1648,38 +1626,20 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
     };
 
     addChargeHandler(payload, async (transactionId) => {
-      await triggerRescheduleWebhook(original, updated, transactionId);
+      await triggerRescheduleWebhook(original, updated, transactionId, summary);
     });
   } else {
-    await triggerRescheduleWebhook(original, updated, null);
+    await triggerRescheduleWebhook(original, updated, null, summary);
   }
 });
 
-async function triggerRescheduleWebhook(original, updated, transactionId = null) {
+async function triggerRescheduleWebhook(original, updated, transactionId = null, summary) {
   const payload = {
     booking_id: window.details.uuid,
     start: updated.start,
     end: updated.end,
     duration: updated.duration,
     listing_name: updated.listing?.name || "",
-    details: {
-      ...updated,
-      original_booking: {
-        start: original.start,
-        end: original.end,
-        duration: original.duration,
-        reschedule_transaction: transactionId
-          ? {
-              id: transactionId,
-              subtotal: window.rescheduleSummary?.subtotal || 0,
-              tax_total: window.rescheduleSummary?.tax_total || 0,
-              discount_total: window.rescheduleSummary?.discount_total || 0,
-              user_credits_applied: window.rescheduleSummary?.user_credits_applied || 0,
-              total: window.rescheduleSummary?.total || 0
-            }
-          : null
-      }
-    }
   };
 
   console.log("📤 Sending reschedule payload:", payload);
@@ -1701,11 +1661,22 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null)
   const result = await response.json();
   console.log("✅ Reschedule success:", result);
 
+  const updatedDetails = buildRescheduleDetails({
+    summary,
+    transactionId
+  });
+  
+  await supabase
+    .from("bookings")
+    .update({ details: updatedDetails })
+    .eq("uuid", window.details.uuid);
+  
+
   // Refresh UI
   const newDetails = await rebuildBookingDetails(window.details.uuid);
   if (newDetails) {
     window.details = newDetails;
-    showPopup("Booking updated successfully!", true); // or your confetti popup logic
+    showPopup("Booking updated successfully!", true); 
   }
 }
 
@@ -1991,4 +1962,137 @@ async function confirmCharge({
   window.transaction_id = data.transaction_uuid;
 
   return data;
+}
+
+// Rebuild Booking Details
+
+function buildCancellationDetails({ refundData, transactionId }) {
+  const original = window.details;
+  const taxRate = original.transaction?.tax_rate || 0;
+
+  // Calculate subtotal: total - (credit_refund - taxRefund)
+  const creditRefund = parseFloat(refundData.credit_refund);
+  const taxRefund = parseFloat(refundData.taxRefund);
+  const creditsReissued = parseFloat(refundData.credits_reissued);
+
+  const subtotal = roundDecimals(creditRefund - taxRefund);
+  const tax_total = roundDecimals(-taxRefund);
+  const user_credits_applied = roundDecimals(-creditsReissued);
+  const total = roundDecimals(-(creditRefund + user_credits_applied + tax_total));
+
+  const addedCharge = {
+    transaction_id: transactionId,
+    line_item: "Cancellation Refund",
+    subtotal,
+    tax_rate: taxRate,
+    tax_total,
+    user_credits_applied,
+    total,
+    created_at: new Date().toISOString()
+  };
+
+  return {
+    ...original,
+    added_charges: [
+      ...(original.added_charges || []),
+      addedCharge
+    ]
+  };
+}
+
+function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, summary, transactionId }) {
+  const addedCharge = {
+    transaction_id: transactionId,
+    line_item: lineItem,
+    subtotal: summary.subtotal,
+    tax_rate: summary.taxRate,
+    tax_total: summary.taxes,
+    user_credits_applied: summary.userCredits,
+    total: summary.finalTotal,
+    created_at: new Date().toISOString()
+  };
+
+  return {
+    ...original,
+    start,
+    end,
+    duration,
+    original: {
+      start: original.start,
+      end: original.end,
+      duration: original.duration
+    },
+    added_charges: [
+      ...(original.added_charges || []),
+      addedCharge
+    ]
+  };
+}
+
+function buildCancellationDetails({ refundData, transactionId }) {
+  const original = window.details;
+  const taxRate = original.transaction?.tax_rate || 0;
+
+  // Calculate subtotal: total - (credit_refund - taxRefund)
+  const creditRefund = parseFloat(refundData.credit_refund);
+  const taxRefund = parseFloat(refundData.taxRefund);
+  const creditsReissued = parseFloat(refundData.credits_reissued);
+
+  const subtotal = roundDecimals(creditRefund - taxRefund);
+  const tax_total = roundDecimals(-taxRefund);
+  const user_credits_applied = roundDecimals(-creditsReissued);
+  const total = roundDecimals(-(creditRefund + user_credits_applied + tax_total));
+
+  const addedCharge = {
+    transaction_id: transactionId,
+    line_item: "Cancellation Refund",
+    subtotal,
+    tax_rate: taxRate,
+    tax_total,
+    user_credits_applied,
+    total,
+    created_at: new Date().toISOString()
+  };
+
+  return {
+    ...original,
+    added_charges: [
+      ...(original.added_charges || []),
+      addedCharge
+    ]
+  };
+}
+
+function buildRescheduleDetails({ summary, transactionId }) {
+  const g = window.bookingGlobals;
+  const start = luxon.DateTime.fromJSDate(g.booking_date, { zone: timezone })
+    .startOf("day").plus({ minutes: g.booking_start });
+  const end = start.plus({ minutes: g.booking_duration });
+  const duration = g.booking_duration / 60;
+
+  return buildUpdatedDetailsBase({
+    original: window.details,
+    start: start.toISO(),
+    end: end.toISO(),
+    duration,
+    lineItem: "Rescheduled Booking",
+    summary,
+    transactionId
+  });
+}
+
+function buildAddTimeDetails({ summary, transactionId, newStart, newEnd }) {
+  const original = window.details;
+  const duration = luxon.DateTime.fromISO(newEnd)
+    .diff(luxon.DateTime.fromISO(newStart), "minutes").minutes / 60;
+
+  return buildUpdatedDetailsBase({
+    original,
+    start: newStart,
+    end: newEnd,
+    duration,
+    lineItem: "Added Time",
+    summary,
+    transactionId
+  });
 }
