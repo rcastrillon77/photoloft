@@ -1746,11 +1746,11 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
 async function triggerRescheduleWebhook(original, updated, transactionId = null, summary) {
   const payload = {
-    booking_id: window.details.uuid,
-    start: updated.start,
-    end: updated.end,
-    duration: updated.duration,
-    listing_name: updated.listing?.name || "",
+    booking_id: bookingUuid,
+    start: updated.booking_start,
+    end: updated.booking_end,
+    duration: updated.booking_duration,
+    listing_name: window.details.listing.name || "",
   };
 
   console.log("📤 Sending reschedule payload:", payload);
@@ -1780,11 +1780,11 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null,
   await supabase
     .from("bookings")
     .update({ details: updatedDetails })
-    .eq("uuid", window.details.uuid);
+    .eq("uuid", bookingUuid);
   
 
   // Refresh UI
-  const newDetails = await rebuildBookingDetails(window.details.uuid);
+  const newDetails = await rebuildBookingDetails(bookingUuid);
   if (newDetails) {
     window.details = newDetails;
     showPopup("Booking updated successfully!", true); 
