@@ -1746,15 +1746,17 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
 
   const style = {
     base: {
-      fontSize: '16px',
-      color: '#000',
-      fontFamily: 'inherit',
-      '::placeholder': {
-        color: '#888'
+      color: "#191918",
+      fontFamily: "Founders Grotesk, Arial, sans-serif",
+      fontWeight: "300",
+      letterSpacing: "2px",
+      fontSize: "24px",
+      "::placeholder": {
+        color: "rgba(25, 25, 24, 0.65)"
       }
     },
     invalid: {
-      color: '#e5424d'
+      color: "#e53e3e"
     }
   };
   
@@ -1781,8 +1783,17 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
   });
 
   const prButton = elements.create("paymentRequestButton", {
-    paymentRequest
+    paymentRequest,
+    style: {
+      paymentRequestButton: {
+        type: "default",
+        theme: "dark",
+        height: "57.6px",
+        borderRadius: "30px"
+      }
+    }
   });
+
 
   paymentRequest.canMakePayment().then((result) => {
     const prContainer = document.getElementById("payment-request-button");
