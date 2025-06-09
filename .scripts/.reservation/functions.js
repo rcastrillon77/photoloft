@@ -1809,21 +1809,45 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
 
   paymentRequest.on("paymentmethod", async (ev) => {
     try {
-      const { error } = await stripe.confirmCardPayment(clientSecret, {
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: ev.paymentMethod.id
       });
-
-      if (error) {
+  
+      if (error || !paymentIntent) {
         ev.complete("fail");
-        alert("Payment failed: " + error.message);
-      } else {
-        ev.complete("success");
-        await submitFinalBooking();
+        alert("Payment failed: " + (error?.message || "Unknown error"));
+        return;
       }
+  
+      ev.complete("success");
+  
+      // Now trigger your backend webhook
+      try {
+        const result = await confirmCharge({
+          lineItem: "Rescheduled Booking", // or pass dynamically
+          subtotal: window.bookingGlobals.subtotal || 0,
+          taxTotal: window.bookingGlobals.tax_total || 0,
+          total: window.bookingGlobals.final_total || 0,
+          creditsToApply: 0, // Adjust if needed
+          paymentMethod: ev.paymentMethod.id,
+          savedCard: false
+        });
+  
+        console.log("✅ PR Button charge complete:", result.transaction_uuid);
+  
+        if (typeof window.bookingGlobals.onSuccess === "function") {
+          window.bookingGlobals.onSuccess(result.transaction_uuid);
+        }
+      } catch (webhookErr) {
+        console.error("❌ Webhook failed after PRB payment:", webhookErr);
+        alert("Payment succeeded but transaction could not be finalized.");
+      }
+  
     } catch (err) {
       ev.complete("fail");
+      alert("Stripe error: " + err.message);
     }
-  });
+  });  
 
   window.stripe = stripe;
   window.cardElements = { cardNumber, cardExpiry, cardCvc };
