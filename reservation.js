@@ -1787,9 +1787,23 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
   const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
   const elements = stripe.elements();
 
-  const cardNumber = elements.create("cardNumber");
-  const cardExpiry = elements.create("cardExpiry");
-  const cardCvc = elements.create("cardCvc");
+  const style = {
+    base: {
+      fontSize: '16px',
+      color: '#000',
+      fontFamily: 'inherit',
+      '::placeholder': {
+        color: '#888'
+      }
+    },
+    invalid: {
+      color: '#e5424d'
+    }
+  };
+  
+  const cardNumber = elements.create("cardNumber", { style });
+  const cardExpiry = elements.create("cardExpiry", { style });
+  const cardCvc = elements.create("cardCvc", { style });
 
   cardNumber.mount("#card-number-element");
   cardExpiry.mount("#card-expiry-element");
@@ -1803,7 +1817,7 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
     currency: "usd",
     total: {
       label: "Total",
-      amount: amount * 100
+      amount: Math.round(amount * 100)
     },
     requestPayerName: true,
     requestPayerEmail: true
