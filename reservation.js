@@ -1788,6 +1788,7 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
   if (!window.stripe) window.stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
   if (!window.elements) window.elements = window.stripe.elements();
   const elements = window.elements;
+  const stripe = window.stripe;
 
   const style = {
     base: {
@@ -1868,10 +1869,10 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
       try {
         const result = await confirmCharge({
           lineItem: window.addChargeDetails.lineItem,
-          subtotal: window.addChargeDetails.subtotal,
-          taxTotal: window.addChargeDetails.taxTotal,
-          total: window.addChargeDetails.total,
-          creditsToApply: window.addChargeDetails.creditsToApply,
+        subtotal: window.addChargeDetails.subtotal,
+        taxTotal: window.addChargeDetails.taxTotal,
+        total: window.addChargeDetails.total,
+        creditsToApply: window.addChargeDetails.creditsToApply,
           paymentMethod: ev.paymentMethod.id,
           savedCard: false
         });
