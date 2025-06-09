@@ -17,6 +17,8 @@ async function rebuildBookingDetails(bookingUuid) {
     supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
   ]);
 
+  window.user_id = bookingData.user_id;
+
   const details = {
     start: bookingData.details.start || null,
     end: bookingData.details.end || null,
@@ -1863,7 +1865,7 @@ async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total,
     tax_rate: taxRate,
     total,
     user_credits_applied: creditsToApply,
-    user_id: window.details.user_id,
+    user_id: window.user_id,
     booking_id: window.details.uuid,
     line_item: lineItem,
     email: window.details.user?.email,
@@ -2100,8 +2102,8 @@ async function confirmCharge({
     tax_rate: window.details.transaction?.tax_rate || 0,
     tax_total: taxTotal,
     total,
-    booking_id: window.details.uuid,
-    user_id: window.details.user_id,
+    booking_id: bookingUuid,
+    user_id: window.user_id,
     payment_method: paymentMethod,
     saved_card: savedCard,
     user_credits_applied: creditsToApply,
