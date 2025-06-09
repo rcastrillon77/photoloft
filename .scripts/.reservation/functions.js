@@ -1741,8 +1741,10 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null,
 
 // ADD CHARGE
 async function setupStripeElements({ containerId, amount, userEmail, buttonSelector }) {
-  const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
-  const elements = stripe.elements();
+
+  if (!window.stripe) window.stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
+  if (!window.elements) window.elements = window.stripe.elements();
+  const elements = window.elements;
 
   const style = {
     base: {
@@ -1977,23 +1979,40 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
 
     const finalCredits = useCredits ? creditsToApply : 0;
     const finalTotal = parseFloat((total - creditsToApply).toFixed(2));
+    const clientSecret = window.bookingGlobals?.client_secret;
 
     try {
-      const result = await confirmCharge({
+      const { paymentMethod, error } = await window.stripe.createPaymentMethod({
+        type: "card",
+        card: window.cardElements.cardNumber,
+        billing_details: {
+          email: window.details.user?.email || ""
+        }
+      });
+
+      if (error) throw error;
+
+      const result = await window.stripe.confirmCardPayment(clientSecret, {
+        payment_method: paymentMethod.id
+      });
+
+      if (result.error) throw result.error;
+
+      const confirmResult = await confirmCharge({
         lineItem,
         subtotal,
         taxTotal,
         total: finalTotal,
         creditsToApply: finalCredits,
-        paymentMethod: null,
+        paymentMethod: paymentMethod.id,
         savedCard: false
       });
 
-      console.log("✅ New card charge complete:", result.transaction_uuid);
+      console.log("✅ New card charge complete:", confirmResult.transaction_uuid);
       chargePopup.classList.add("hidden");
       actionPopup.classList.remove("background");
 
-      if (onSuccess) onSuccess(result.transaction_uuid);
+      if (onSuccess) onSuccess(confirmResult.transaction_uuid);
 
       setTimeout(() => {
         delete window.bookingGlobals.payment_intent_id;
