@@ -1665,38 +1665,34 @@ function renderRescheduleSummary(summary) {
 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
-  
+
   const original = window.details;
   const bookingGlobals = window.bookingGlobals;
   const summary = await calculateRescheduleTotals(original, bookingGlobals);
   const { requiresPayment } = summary;
 
-  
+  const updated = buildUpdatedDetailsFromGlobals(); // ✅ Move this up here
+
   const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
   const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
 
   if (requiresPayment) {
     const payload = {
-      line_item: "Rescheduled Booking",
+      lineItem: "Rescheduled Booking", // ✅ camelCase matches addChargeHandler's expected keys
       subtotal: subtotal,
-      tax_rate: summary.tax_rate,
-      tax_total: tax_total,
+      taxTotal: tax_total,
       total: summary.difference,
-      booking_id: bookingUuid,
-      user_id: window.details.user.uuid,
-      payment_method: null,
-      user_credits_applied: summary.user_credits_applied
+      onSuccess: async (transactionId) => {
+        await triggerRescheduleWebhook(original, updated, transactionId, summary);
+      }
     };
 
-    const updated = buildUpdatedDetailsFromGlobals(); // now build details for saving to Supabase
-
-    addChargeHandler(payload, async (transactionId) => {
-      await triggerRescheduleWebhook(original, updated, transactionId, summary);
-    });
+    addChargeHandler(payload);
   } else {
     await triggerRescheduleWebhook(original, updated, null, summary);
   }
 });
+
 
 async function triggerRescheduleWebhook(original, updated, transactionId = null, summary) {
   const payload = {
