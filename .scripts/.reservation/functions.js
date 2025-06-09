@@ -1870,6 +1870,14 @@ async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total,
     transaction_id: window.bookingGlobals?.transaction_uuid || null
   };
 
+  const {
+    lineItem,
+    subtotal,
+    taxTotal,
+    total,
+    creditsToApply
+  } = window.addChargeDetails  
+
   const url = payload.payment_intent_id
     ? "https://hook.us1.make.com/mh3tg5aoxaa9b3d4qm7dicfu76k9q9k1"
     : "https://hook.us1.make.com/isy5nbt7kyv7op25nsh5gph4k3xy4vbw";
@@ -1946,6 +1954,7 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
     useCreditsBtn.classList.toggle("active");
 
     creditsToApply = useCredits && creditAmountRaw > 0.5 ? Math.min(creditAmountRaw, total) : 0;
+    window.addChargeDetails.creditsToApply = creditsToApply;
     useCreditsBtn.textContent = useCredits
       ? `$${creditsToApply.toFixed(2)} in credits applied`
       : "Use your credits for this transaction";
@@ -1954,7 +1963,26 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
     savedCardText.forEach(t => t.textContent = `Pay $${(total - creditsToApply).toFixed(2)} with Saved Card`);
 
     try {
-      await createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total, creditsToApply });
+      const updatedTotal = total - creditsToApply;
+      const updatedTaxTotal = roundDecimals(updatedTotal * (window.details.transaction?.tax_rate || 0) / (1 + (window.details.transaction?.tax_rate || 0) / 100));
+      const updatedSubtotal = roundDecimals(updatedTotal - updatedTaxTotal);
+
+      window.addChargeDetails = {
+        lineItem,
+        subtotal: updatedSubtotal,
+        taxTotal: updatedTaxTotal,
+        total: updatedTotal,
+        creditsToApply
+      };
+
+      await createOrUpdateChargeIntent({
+        lineItem,
+        subtotal: updatedSubtotal,
+        taxTotal: updatedTaxTotal,
+        total: updatedTotal,
+        creditsToApply
+      });
+
     } catch (err) {
       console.warn("⚠️ Failed to update payment intent with credits:", err);
     }
