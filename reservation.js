@@ -60,6 +60,13 @@ async function rebuildBookingDetails(bookingUuid) {
     supabase.from("locations").select("*").in("uuid", bookingData.location_id).then(res => res.data || [])
   ]);
 
+  const { data: transactionData } = await supabase
+    .from("transaction")
+    .select("*")
+    .eq("uuid", bookingData.transaction_id)
+    .maybeSingle();
+
+  window.payment_method = transactionData.payment_method;
   window.user_id = bookingData.user_id;
 
   const details = {
