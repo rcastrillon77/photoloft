@@ -189,8 +189,8 @@ function openPopup() {
 
 function closePopup() {
   document.getElementById("popup-container").classList.add("hide");
-  document.querySelector("popup").classList.remove("background");
-  document.querySelector("add-charge").classList.add("hide");
+  document.querySelector(".popup").classList.remove("background");
+  document.querySelector(".add-charge").classList.add("hide");
   document.body.classList.remove("no-scroll");
 }
 
@@ -1872,7 +1872,7 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
 
     await setupStripeElements({
       containerId: "stripe-card-container",
-      amount: window.bookingGlobals.total,
+      amount: total,
       userEmail: window.details.user?.email,
       buttonSelector: "#pay-now-btn"
     });
