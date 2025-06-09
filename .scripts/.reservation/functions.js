@@ -1667,18 +1667,16 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   if (document.getElementById("confirm-new-booking").classList.contains("disabled")) return;
 
   const original = window.details;
-  const bookingGlobals = window.bookingGlobals;
-  const summary = await calculateRescheduleTotals(original, bookingGlobals);
+  const updated = window.bookingGlobals;
+  const summary = await calculateRescheduleTotals(original, updated);
   const { requiresPayment } = summary;
 
-  const updated = buildUpdatedDetailsFromGlobals(); // ✅ Move this up here
-
-  const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
-  const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
+  const subtotal = roundDecimals(summary.difference / (1 + (summary.taxRate / 100)));
+  const tax_total = roundDecimals(subtotal * (summary.taxRate / 100));
 
   if (requiresPayment) {
     const payload = {
-      lineItem: "Rescheduled Booking", // ✅ camelCase matches addChargeHandler's expected keys
+      lineItem: "Rescheduled Booking",
       subtotal: subtotal,
       taxTotal: tax_total,
       total: summary.difference,
