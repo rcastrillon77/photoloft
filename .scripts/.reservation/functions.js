@@ -1704,8 +1704,8 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 async function triggerRescheduleWebhook(original, updated, transactionId = null, summary) {
   const payload = {
     booking_id: bookingUuid,
-    start: updated.booking_start,
-    end: updated.booking_end,
+    start: DateTime.fromISO(updated.booking_date, { zone: timezone }).set({ hour: Math.floor(updated.booking_start / 60), minute: updated.booking_start % 60 }),
+    end: DateTime.fromISO(updated.booking_date, { zone: timezone }).set({ hour: Math.floor(updated.booking_end / 60), minute: updated.booking_end % 60 }),
     duration: updated.booking_duration,
     listing_name: window.details.listing.name || "",
   };
