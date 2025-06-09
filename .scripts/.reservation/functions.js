@@ -1293,11 +1293,11 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
   const requestedStart = Math.max(startTime - bufferBefore, OPEN_TIME);
   const requestedEnd = Math.min(endTime + bufferAfter, CLOSE_TIME);
 
-  console.log(`\n⏱️ Checking availability with buffer for start: ${requestedStart} → end: ${requestedEnd}`);
+  //console.log(`\n⏱️ Checking availability with buffer for start: ${requestedStart} → end: ${requestedEnd}`);
 
   for (const event of eventsForDay) {
       const { start, end } = getEventMinutesRange(event);
-      console.log(`📅 Comparing with event: ${event.start} - ${event.end} → (${start} to ${end})`);
+      //console.log(`📅 Comparing with event: ${event.start} - ${event.end} → (${start} to ${end})`);
 
       const overlaps = start < requestedEnd && end > requestedStart;
 
@@ -1307,7 +1307,7 @@ function isTimeSlotAvailable(startTime, duration, eventsForDay) {
       }
   }
 
-  console.log("✅ No conflict (buffer respected)");
+  //console.log("✅ No conflict (buffer respected)");
   return true;
 }
 
