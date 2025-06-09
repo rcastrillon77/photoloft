@@ -1703,7 +1703,7 @@ function renderRescheduleSummary(summary) {
     btn?.querySelectorAll(".button-text").forEach(el => el.textContent = "Confirm Reschedule");
   }
 
-  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Total: $${finalTotal}`);
+  console.log(`📦 Summary rendered. Requires payment: ${requiresPayment}, Difference: $${difference}`);
 }
 
 document.getElementById("confirm-new-booking").addEventListener("click", async () => {
