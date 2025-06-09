@@ -18,7 +18,7 @@ async function rebuildBookingDetails(bookingUuid) {
   ]);
 
   const { data: transactionData } = await supabase
-    .from("transaction")
+    .from("transactions")
     .select("*")
     .eq("uuid", bookingData.transaction_id)
     .maybeSingle();
@@ -2017,7 +2017,7 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
         taxTotal: window.addChargeDetails.taxTotal,
         total: window.addChargeDetails.total,
         creditsToApply: window.addChargeDetails.creditsToApply,
-        paymentMethod,
+        paymentMethod: window.payment_method,
         savedCard: true
       });
 
