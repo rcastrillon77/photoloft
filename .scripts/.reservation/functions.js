@@ -1824,11 +1824,11 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
       // Now trigger your backend webhook
       try {
         const result = await confirmCharge({
-          lineItem: "Rescheduled Booking", // or pass dynamically
-          subtotal: window.bookingGlobals.subtotal || 0,
-          taxTotal: window.bookingGlobals.tax_total || 0,
-          total: window.bookingGlobals.final_total || 0,
-          creditsToApply: 0, // Adjust if needed
+          lineItem: window.addChargeDetails.lineItem,
+          subtotal: window.addChargeDetails.subtotal,
+          taxTotal: window.addChargeDetails.taxTotal,
+          total: window.addChargeDetails.total,
+          creditsToApply: window.addChargeDetails.creditsToApply,
           paymentMethod: ev.paymentMethod.id,
           savedCard: false
         });
@@ -1870,14 +1870,6 @@ async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total,
     transaction_id: window.bookingGlobals?.transaction_uuid || null
   };
 
-  const {
-    lineItem,
-    subtotal,
-    taxTotal,
-    total,
-    creditsToApply
-  } = window.addChargeDetails  
-
   const url = payload.payment_intent_id
     ? "https://hook.us1.make.com/mh3tg5aoxaa9b3d4qm7dicfu76k9q9k1"
     : "https://hook.us1.make.com/isy5nbt7kyv7op25nsh5gph4k3xy4vbw";
@@ -1897,6 +1889,17 @@ async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total,
   window.bookingGlobals.client_secret = data.client_secret || window.bookingGlobals.client_secret;
   window.bookingGlobals.transaction_uuid = data.transaction_uuid || window.bookingGlobals.transaction_uuid;
   window.bookingGlobals.total = data.amount / 100;
+
+  window.addChargeDetails = {
+    lineItem,
+    subtotal,
+    taxTotal,
+    total,
+    creditsToApply,
+    paymentIntentId: data.payment_intent_id,
+    transactionId: data.transaction_uuid,
+    taxRate
+  };
 
   return data;
 }
@@ -1999,11 +2002,11 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
 
     try {
       const result = await confirmCharge({
-        lineItem,
-        subtotal,
-        taxTotal,
-        total: finalTotal,
-        creditsToApply: finalCredits,
+        lineItem: window.addChargeDetails.lineItem,
+        subtotal: window.addChargeDetails.subtotal,
+        taxTotal: window.addChargeDetails.taxTotal,
+        total: window.addChargeDetails.total,
+        creditsToApply: window.addChargeDetails.creditsToApply,
         paymentMethod,
         savedCard: true
       });
@@ -2051,11 +2054,11 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
       if (result.error) throw result.error;
 
       const confirmResult = await confirmCharge({
-        lineItem,
-        subtotal,
-        taxTotal,
-        total: finalTotal,
-        creditsToApply: finalCredits,
+        lineItem: window.addChargeDetails.lineItem,
+        subtotal: window.addChargeDetails.subtotal,
+        taxTotal: window.addChargeDetails.taxTotal,
+        total: window.addChargeDetails.total,
+        creditsToApply: window.addChargeDetails.creditsToApply,
         paymentMethod: paymentMethod.id,
         savedCard: false
       });
