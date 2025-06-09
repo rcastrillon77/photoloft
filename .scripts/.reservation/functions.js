@@ -1702,10 +1702,19 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
 
 
 async function triggerRescheduleWebhook(original, updated, transactionId = null, summary) {
+
+  const start = luxon.DateTime.fromJSDate(updated.booking_date, { zone: timezone })
+    .startOf("day").plus({ minutes: updated.booking_start });
+
+  const end = luxon.DateTime.fromJSDate(updated.booking_date, { zone: timezone })
+    .startOf("day").plus({ minutes: updated.booking_start });
+
+  console.log(`triggerRescheduleWebhook start(${start}) / end(${end})`)
+
   const payload = {
     booking_id: bookingUuid,
-    start: DateTime.fromISO(updated.booking_date, { zone: timezone }).set({ hour: Math.floor(updated.booking_start / 60), minute: updated.booking_start % 60 }),
-    end: DateTime.fromISO(updated.booking_date, { zone: timezone }).set({ hour: Math.floor(updated.booking_end / 60), minute: updated.booking_end % 60 }),
+    start: start,
+    end: end,
     duration: updated.booking_duration,
     listing_name: window.details.listing.name || "",
   };
