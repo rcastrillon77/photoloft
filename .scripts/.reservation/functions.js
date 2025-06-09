@@ -1668,7 +1668,9 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
   
   const original = window.details;
   const bookingGlobals = window.bookingGlobals;
-  const { requiresPayment, summary } = await calculateRescheduleTotals(original, bookingGlobals);
+  const summary = await calculateRescheduleTotals(original, bookingGlobals);
+  const { requiresPayment } = summary;
+
   
   const subtotal = roundDecimals(summary.difference / (1 + (summary.tax_rate / 100)));
   const tax_total = roundDecimals(subtotal * (summary.tax_rate / 100));
