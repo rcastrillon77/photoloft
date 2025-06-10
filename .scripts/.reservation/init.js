@@ -166,4 +166,92 @@ document.addEventListener("click", (e) => {
   showPopupById("transaction-summary-popup");
 });
 
+// ADD TIME
+document.getElementById("actions_add-time").addEventListener("click", async () => {
+  const originalStart = luxon.DateTime.fromISO(details.start, { zone: timezone });
+  const originalEnd = luxon.DateTime.fromISO(details.end, { zone: timezone });
+  const now = luxon.DateTime.now().setZone(timezone);
+  const interval = (window.listingSchedule?.["booking-rules"]?.interval || 0.5) * 60;
 
+  const bookingDateStr = originalStart.toISODate();
+  const eventsForDay = window.bookingEvents.filter(e =>
+    luxon.DateTime.fromISO(e.start, { zone: timezone }).toISODate() === bookingDateStr
+  );
+
+  const { maxBeforeMinutes, maxAfterMinutes } = getExtendableTimeRange(details, eventsForDay);
+
+  if (maxBeforeMinutes === 0 && maxAfterMinutes === 0) {
+    document.getElementById("actions_add-time").classList.add("disabled");
+    return;
+  }
+
+  const hasStarted = now >= originalStart;
+  const current = {
+    start: originalStart,
+    end: originalEnd
+  };
+
+  const $confirmBtn = document.getElementById("confirm-add-time");
+  const $startText = document.querySelector("#add-time-start-text");
+  const $endText = document.querySelector("#add-time-end-text");
+  const $startMinus = document.getElementById("start-less-btn");
+  const $startPlus = document.getElementById("start-more-btn");
+  const $endMinus = document.getElementById("end-less-btn");
+  const $endPlus = document.getElementById("end-more-btn");
+
+  function updateDisplay() {
+    const isStartChanged = !current.start.equals(originalStart);
+    const isEndChanged = !current.end.equals(originalEnd);
+
+    $startText.textContent = current.start.toFormat("h:mm a");
+    $endText.textContent = current.end.toFormat("h:mm a");
+
+    $startText.classList.toggle("green", isStartChanged);
+    $endText.classList.toggle("green", isEndChanged);
+
+    $confirmBtn.classList.toggle("disabled", !(isStartChanged || isEndChanged));
+    $startMinus.classList.toggle("disabled", !isStartChanged);
+    $endMinus.classList.toggle("disabled", !isEndChanged);
+    $startPlus.classList.toggle("disabled", current.start.diff(originalStart, 'minutes').minutes * -1 >= maxBeforeMinutes);
+    $endPlus.classList.toggle("disabled", current.end.diff(originalEnd, 'minutes').minutes >= maxAfterMinutes);
+  }
+
+  $startMinus?.addEventListener("click", () => {
+    if ($startMinus.classList.contains("disabled")) return;
+    const newStart = current.start.plus({ minutes: interval });
+    if (newStart <= originalStart) current.start = newStart;
+    updateDisplay();
+  });
+
+  $startPlus?.addEventListener("click", () => {
+    if ($startPlus.classList.contains("disabled")) return;
+    const newStart = current.start.minus({ minutes: interval });
+    if (newStart >= originalStart.minus({ minutes: maxBeforeMinutes }) && newStart < current.end)
+      current.start = newStart;
+    updateDisplay();
+  });
+
+  $endMinus?.addEventListener("click", () => {
+    if ($endMinus.classList.contains("disabled")) return;
+    const newEnd = current.end.minus({ minutes: interval });
+    if (newEnd >= originalEnd) current.end = newEnd;
+    updateDisplay();
+  });
+
+  $endPlus?.addEventListener("click", () => {
+    if ($endPlus.classList.contains("disabled")) return;
+    const newEnd = current.end.plus({ minutes: interval });
+    if (newEnd <= originalEnd.plus({ minutes: maxAfterMinutes }))
+      current.end = newEnd;
+    updateDisplay();
+  });
+
+  // disable before-stepper if already started
+  if (hasStarted) {
+    $startMinus?.classList.add("disabled");
+    $startPlus?.classList.add("disabled");
+  }
+
+  updateDisplay();
+  showPopupById("add-time-popup");
+});
