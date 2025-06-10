@@ -2394,6 +2394,55 @@ function buildAddTimeDetails({ summary, transactionId, newStart, newEnd }) {
   });
 }
 
+// ADD TIME
+
+function getExtendableTimeRange(details, eventsForDay) {
+  const { start, end } = details;
+  const zone = timezone;
+  const bufferBefore = window.BUFFER_BEFORE || 0;
+  const bufferAfter = window.BUFFER_AFTER || 0;
+
+  const bookingStart = luxon.DateTime.fromISO(start, { zone });
+  const bookingEnd = luxon.DateTime.fromISO(end, { zone });
+
+  const startMinutes = bookingStart.hour * 60 + bookingStart.minute;
+  const endMinutes = bookingEnd.hour * 60 + bookingEnd.minute;
+
+  let maxBefore = 0;
+  for (let t = startMinutes - 15; t >= OPEN_TIME; t -= 15) {
+    const slotStart = t - bufferBefore;
+    const slotEnd = startMinutes + bufferAfter;
+
+    const conflict = eventsForDay.some(ev => {
+      const { start, end } = getEventMinutesRange(ev);
+      return start < slotEnd && end > slotStart;
+    });
+
+    if (conflict) break;
+    maxBefore += 15;
+  }
+
+  let maxAfter = 0;
+  for (let t = endMinutes + 15; t <= CLOSE_TIME; t += 15) {
+    const slotStart = endMinutes - bufferBefore;
+    const slotEnd = t + bufferAfter;
+
+    const conflict = eventsForDay.some(ev => {
+      const { start, end } = getEventMinutesRange(ev);
+      return start < slotEnd && end > slotStart;
+    });
+
+    if (conflict) break;
+    maxAfter += 15;
+  }
+
+  return {
+    maxBeforeMinutes: maxBefore,
+    maxAfterMinutes: maxAfter
+  };
+}
+
+
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
