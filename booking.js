@@ -2216,18 +2216,23 @@ function prefillContactInfoIfLoggedIn() {
     const { email, phone, first_name, last_name, preferences, profile, id, customer_id, credits } = window.supabaseUser;
   
     const setField = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.value = value || '';
-        el.setAttribute('readonly', 'readonly'); // disable editing
-        el.classList.add('readonly'); // optional for styling
-      }
-    };
-  
-    setField("booking-email", email);
-    setField("booking-phone", phone?.replace(/^1/, ""));
-    setField("booking-first-name", first_name);
-    setField("booking-last-name", last_name);
+        const el = document.getElementById(id);
+        if (el) {
+          el.value = value || '';
+          el.setAttribute('readonly', 'readonly');
+          el.classList.add('readonly');
+      
+          // 🔔 Trigger events to bubble up to listeners
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      };
+      
+      setField("booking-email", email);
+      setField("booking-phone", phone?.replace(/^1/, ""));
+      setField("booking-first-name", first_name);
+      setField("booking-last-name", last_name);
+      
   
     // Set globals
     window.bookingGlobals.user_uuid_override = id;
