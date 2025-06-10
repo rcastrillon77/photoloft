@@ -292,7 +292,6 @@ function getRefundAmounts(startISO, totalPaid, userCreditsUsed, taxTotal, type) 
   };
 }
 
-
 async function processCancellation(refundData) {
   try {
     const payload = {
@@ -320,10 +319,15 @@ async function processCancellation(refundData) {
       transactionId
     });
 
-    await supabase
-      .from("bookings")
-      .update({ details: updatedDetails })
-      .eq("uuid", bookingUuid);
+    // Replace Supabase update with your Make.com webhook:
+    await fetch("https://hook.us1.make.com/gfjgubseuvpnma77h6orxj1ar1xzt5m5", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        booking_id: bookingUuid,
+        details: updatedDetails
+      })
+    });
 
     details = await rebuildBookingDetails(bookingUuid);
     populateReservationDetails(details);
@@ -338,9 +342,7 @@ async function processCancellation(refundData) {
   }
 }
 
-// =============================== //
-// ====== RESCHEDULE SUPPORT ===== //
-// =============================== //
+// RESCHEDULE SUPPORT
 
 async function setupRescheduleFlow(details) {
   
@@ -1707,18 +1709,18 @@ document.getElementById("confirm-new-booking").addEventListener("click", async (
       taxTotal: tax_total,
       total: summary.difference,
       onSuccess: async (transactionId) => {
-        await triggerRescheduleWebhook(original, updated, transactionId, summary);
+        await triggerRescheduleWebhook(updated, transactionId);
       }
     };
 
     addChargeHandler(payload);
   } else {
-    await triggerRescheduleWebhook(original, updated, null, summary);
+    await triggerRescheduleWebhook(updated, null);
   }
 });
 
 
-async function triggerRescheduleWebhook(original, updated, transactionId = null, summary) {
+async function triggerRescheduleWebhook(updated, transactionId = null) {
 
   const start = luxon.DateTime.fromJSDate(updated.booking_date, { zone: timezone })
     .startOf("day").plus({ minutes: updated.booking_start });
@@ -1755,9 +1757,15 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null,
   const result = await response.json();
   console.log("✅ Reschedule success:", result);
 
+  if (!transactionId) {
+    skipAddedCharge = true
+  } else {
+    skipAddedCharge = false
+  };
+
   const updatedDetails = buildRescheduleDetails({
-    summary,
-    transactionId
+    transactionId,
+    skipAddedCharge
   });
   
   await fetch("https://hook.us1.make.com/gfjgubseuvpnma77h6orxj1ar1xzt5m5", {
@@ -2254,22 +2262,26 @@ function renderTransactionSummary(transaction, type = "added_charge") {
 
 // Rebuild Booking Details
 
-function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, summary, transactionId, skipTimeUpdate = false, skipOriginalStamp = false }) {
-  const addedCharge = {
-    transaction_id: transactionId,
-    line_item: lineItem,
-    subtotal: summary.subtotal,
-    tax_rate: summary.taxRate,
-    tax_total: summary.taxes,
-    user_credits_applied: summary.userCredits,
-    total: summary.finalTotal,
-    created_at: new Date().toISOString()
+function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, summary, transactionId, skipTimeUpdate = false, skipOriginalStamp = false, skipAddedCharge = false }) {
+  
+  const base = {
+    ...original
   };
 
-  const base = {
-    ...original,
-    added_charges: [...(original.added_charges || []), addedCharge]
-  };
+  if(!skipAddedCharge) { 
+    const addedCharge = {
+      transaction_id: transactionId,
+      line_item: lineItem,
+      subtotal: summary.subtotal,
+      tax_rate: summary.taxRate,
+      tax_total: summary.taxes,
+      user_credits_applied: summary.userCredits,
+      total: summary.finalTotal,
+      created_at: new Date().toISOString()
+    };
+
+    base.added_charges = [...(original.added_charges || []), addedCharge];
+  }
 
   if (!skipTimeUpdate) {
     base.start = start;
@@ -2321,7 +2333,7 @@ function buildCancellationDetails({ refundData, transactionId }) {
   };
 }
 
-function buildRescheduleDetails({ summary, transactionId }) {
+function buildRescheduleDetails({transactionId, skipAddedCharge }) {
   const g = window.bookingGlobals;
   const start = luxon.DateTime.fromJSDate(g.booking_date, { zone: timezone })
     .startOf("day").plus({ minutes: g.booking_start });
@@ -2334,8 +2346,15 @@ function buildRescheduleDetails({ summary, transactionId }) {
     end: end.toISO(),
     duration,
     lineItem: "Rescheduled Booking",
-    summary,
-    transactionId
+    summary: {
+      subtotal: window.addChargeDetails.subtotal,
+      taxRate: window.details.transaction.tax_rate || 0,
+      taxes: window.addChargeDetails.taxTotal,
+      userCredits: window.addChargeDetails.creditsToApply || 0,
+      finalTotal: window.addChargeDetails.total
+    },
+    transactionId: transactionId || null,
+    skipAddedCharge
   });
 }
 
