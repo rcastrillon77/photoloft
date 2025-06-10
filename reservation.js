@@ -342,7 +342,7 @@ async function processCancellation(refundData) {
   }
 }
 
-// RESCHEDULE SUPPORT
+// RESCHEDULE
 
 async function setupRescheduleFlow(details) {
   
@@ -1802,6 +1802,7 @@ async function triggerRescheduleWebhook(updated, transactionId = null) {
 }
 
 // ADD CHARGE
+
 async function setupStripeElements({ containerId, amount, userEmail, buttonSelector }) {
 
   if (!window.stripe) window.stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
@@ -2260,7 +2261,7 @@ function renderTransactionSummary(transaction, type = "added_charge") {
   }
 }
 
-// Rebuild Booking Details
+// REBUILD BOOKING DETAILS
 
 function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, summary, transactionId, skipTimeUpdate = false, skipOriginalStamp = false, skipAddedCharge = false }) {
   
@@ -2361,7 +2362,7 @@ function buildRescheduleDetails({transactionId, skipAddedCharge }) {
   });
 }
 
-function buildAddTimeDetails({ summary, transactionId, newStart, newEnd, addedMinutes}) {
+function buildAddTimeDetails({ summary, transactionId, newStart, newEnd, addedMinutes }) {
   const original = window.details;
 
   const duration = luxon.DateTime
@@ -2375,11 +2376,11 @@ function buildAddTimeDetails({ summary, transactionId, newStart, newEnd, addedMi
     const mins = addedMinutes % 60;
 
     if (hrs > 0 && mins > 0) {
-      lineItem = `Added ${hrs} Hour${hrs !== 1 ? "s" : ""} ${mins} minute${mins !== 1 ? "s" : ""}`;
+      lineItem = `Added ${hrs} hour${hrs !== 1 ? "s" : ""} ${mins} minute${mins !== 1 ? "s" : ""}`;
     } else if (hrs > 0) {
-      lineItem = `Added ${hrs} Hour${hrs !== 1 ? "s" : ""}`;
+      lineItem = `Added ${hrs} hour${hrs !== 1 ? "s" : ""}`;
     } else {
-      lineItem = `Added ${mins} Minute${mins !== 1 ? "s" : ""}`;
+      lineItem = `Added ${mins} minute${mins !== 1 ? "s" : ""}`;
     }
   }
 
@@ -2388,13 +2389,12 @@ function buildAddTimeDetails({ summary, transactionId, newStart, newEnd, addedMi
     start: newStart,
     end: newEnd,
     duration,
-    lineItem: "Added Time",
+    lineItem,
     summary,
     transactionId,
     skipOriginalStamp: true
   });
 }
-
 
 // ADD TIME
 
