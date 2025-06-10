@@ -1120,7 +1120,7 @@ function attachRadioStyling() {
        radio.closest('.radio-option-container')?.classList.add('selected');
       }
   });
-  }
+}
 
   function parseTimeToMinutes(timeStr) {
     const [h, m] = timeStr.split(':').map(Number);
