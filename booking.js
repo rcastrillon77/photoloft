@@ -2225,7 +2225,7 @@ function prefillContactInfoIfLoggedIn() {
     };
   
     setField("booking-email", email);
-    setField("booking-phone", phone);
+    setField("booking-phone", phone?.replace(/^1/, ""));
     setField("booking-first-name", first_name);
     setField("booking-last-name", last_name);
   
