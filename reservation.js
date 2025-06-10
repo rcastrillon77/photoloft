@@ -208,32 +208,6 @@ function populateReservationDetails(details) {
   }
 }
 
-function buildUpdatedDetailsFromGlobals() {
-  const g = window.bookingGlobals;
-  const original = window.details;
-
-  const start = DateTime.fromISO(g.start);
-  const end = DateTime.fromISO(g.end);
-
-  const addedCharge = {
-    transaction_id: g.transaction_id,
-    line_item: g.line_item,
-    subtotal: g.subtotal,
-    tax_rate: g.tax_rate,
-    tax_total: g.tax_total,
-    user_credits_applied: g.user_credits_applied,
-    total: g.total
-  };
-
-  return {
-    ...original,
-    start: start.toISO(),
-    end: end.toISO(),
-    duration: g.booking_duration / 60,
-    added_charges: [...(original.added_charges || []), addedCharge]
-  };
-}
-
 function openPopup() {
   document.getElementById("popup-container").classList.remove("hide");
   document.body.classList.add("no-scroll");
@@ -1888,10 +1862,10 @@ async function setupStripeElements({ containerId, amount, userEmail, buttonSelec
       try {
         const result = await confirmCharge({
           lineItem: window.addChargeDetails.lineItem,
-        subtotal: window.addChargeDetails.subtotal,
-        taxTotal: window.addChargeDetails.taxTotal,
-        total: window.addChargeDetails.total,
-        creditsToApply: window.addChargeDetails.creditsToApply,
+          subtotal: window.addChargeDetails.subtotal,
+          taxTotal: window.addChargeDetails.taxTotal,
+          total: window.addChargeDetails.total,
+          creditsToApply: window.addChargeDetails.creditsToApply,
           paymentMethod: ev.paymentMethod.id,
           savedCard: false
         });
@@ -2260,44 +2234,9 @@ function renderTransactionSummary(transaction, type = "added_charge") {
   }
 }
 
-
 // Rebuild Booking Details
 
-function buildCancellationDetails({ refundData, transactionId }) {
-  const original = window.details;
-  const taxRate = original.transaction?.tax_rate || 0;
-
-  // Calculate subtotal: total - (credit_refund - taxRefund)
-  const creditRefund = parseFloat(refundData.credit_refund);
-  const taxRefund = parseFloat(refundData.taxRefund);
-  const creditsReissued = parseFloat(refundData.credits_reissued);
-
-  const subtotal = roundDecimals(creditRefund - taxRefund);
-  const tax_total = roundDecimals(-taxRefund);
-  const user_credits_applied = roundDecimals(-creditsReissued);
-  const total = roundDecimals(-(creditRefund + user_credits_applied + tax_total));
-
-  const addedCharge = {
-    transaction_id: transactionId,
-    line_item: "Cancellation Refund",
-    subtotal,
-    tax_rate: taxRate,
-    tax_total,
-    user_credits_applied,
-    total,
-    created_at: new Date().toISOString()
-  };
-
-  return {
-    ...original,
-    added_charges: [
-      ...(original.added_charges || []),
-      addedCharge
-    ]
-  };
-}
-
-function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, summary, transactionId }) {
+function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, summary, transactionId, skipTimeUpdate = false, skipOriginalStamp = false }) {
   const addedCharge = {
     transaction_id: transactionId,
     line_item: lineItem,
@@ -2309,28 +2248,32 @@ function buildUpdatedDetailsBase({ original, start, end, duration, lineItem, sum
     created_at: new Date().toISOString()
   };
 
-  return {
+  const base = {
     ...original,
-    start,
-    end,
-    duration,
-    original: {
+    added_charges: [...(original.added_charges || []), addedCharge]
+  };
+
+  if (!skipTimeUpdate) {
+    base.start = start;
+    base.end = end;
+    base.duration = duration;
+  }
+
+  if (!skipOriginalStamp && !original.original) {
+    base.original = {
       start: original.start,
       end: original.end,
       duration: original.duration
-    },
-    added_charges: [
-      ...(original.added_charges || []),
-      addedCharge
-    ]
-  };
+    };
+  }
+
+  return base;
 }
 
 function buildCancellationDetails({ refundData, transactionId }) {
   const original = window.details;
   const taxRate = original.transaction?.tax_rate || 0;
 
-  // Calculate subtotal: total - (credit_refund - taxRefund)
   const creditRefund = parseFloat(refundData.credit_refund);
   const taxRefund = parseFloat(refundData.taxRefund);
   const creditsReissued = parseFloat(refundData.credits_reissued);
