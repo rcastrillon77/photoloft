@@ -1717,6 +1717,7 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null,
     end: end,
     duration: updated.booking_duration,
     listing_name: window.details.listing.name || "",
+    status: "rescheduled"
   };
 
   console.log("📤 Sending reschedule payload:", payload);
