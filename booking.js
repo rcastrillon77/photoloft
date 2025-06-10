@@ -2130,6 +2130,7 @@ async function initBookingConfig(listingId, locationId) {
             const activityArray = activitiesData.activities || [];
 
             window.bookingGlobals.taxRate = activitiesData.details?.["tax-rate"];
+            window.listingCapacity = listingData.details?.capacity;
 
             bookingTypes = {};
             for (const activity of activityArray) {
@@ -2308,9 +2309,8 @@ function sortBookingTypes() {
     return Object.entries(bookingTypes)
       .sort((a, b) => Number(b[1].count || 0) - Number(a[1].count || 0))
       .map(([id, val]) => ({ id, ...val }));
-  }
-  
-  
+}
+
 function highlightMatch(text, match) {
     if (!match) return text;
     return text.replace(new RegExp(`(${match})`, 'ig'), '<span class="matched-string">$1</span>');
@@ -2318,6 +2318,7 @@ function highlightMatch(text, match) {
   
 function updateOptionsList(inputValue = "") {
     const rawInput = inputValue.trim();
+    if (!rawInput) return suggestionBox.classList.add("hide");
     const input = rawInput.toLowerCase(); // for matching
     suggestionBox.innerHTML = "";
   
