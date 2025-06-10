@@ -255,3 +255,56 @@ document.getElementById("actions_add-time").addEventListener("click", async () =
   updateDisplay();
   showPopupById("add-time-popup");
 });
+
+document.getElementById("confirm-add-time").addEventListener("click", () => {
+  if (document.getElementById("confirm-add-time").classList.contains("disabled")) return;
+
+  const addedMinutes =
+    Math.max(0, originalStart.diff(current.start, "minutes").minutes) +
+    Math.max(0, current.end.diff(originalEnd, "minutes").minutes);
+
+  if (addedMinutes === 0) return;
+
+  const addedTimeLabel = null;
+
+  if (addedMinutes < 60) {
+    addedTimeLabel = `Added ${addedMinutes} Minutes`;
+  } else if (addedMinutes = 60) {
+    addedTimeLabel = `Added 1 Hour`;
+  } else {
+    addedTimeLabel = "Added " + (addedMinutes/60) + " Hours";
+  };
+
+  const rate = FULL_RATE;
+  const subtotal = (rate / 60) * addedMinutes;
+  const taxRate = details.transaction?.tax_rate || 0;
+  const taxTotal = subtotal * (taxRate / 100);
+  const total = subtotal + taxTotal;
+
+  addChargeHandler({
+    lineItem: addedTimeLabel,
+    subtotal,
+    taxTotal,
+    total,
+    onSuccess: async () => {
+      const payload = {
+        booking_id: details.uuid,
+        start: current.start.toISO(),
+        end: current.end.toISO(),
+        duration: current.end.diff(current.start, "minutes").minutes,
+        listing_name: details.listing?.name || "",
+        added_minutes: addedMinutes,
+      };
+
+      console.log("⏱️ Sending added time payload:", payload);
+      await fetch("https://hook.us1.make.com/zse7u92reikd8k266hhalkgvjawp9jk2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      // optional: refresh the page or close popup
+      closePopupById("add-time-popup");
+    },
+  });
+});
