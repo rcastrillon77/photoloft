@@ -2743,7 +2743,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     //STEP 2 LISTENERS
     activityInput?.addEventListener("input", () => updateOptionsList(activityInput.value.trim()));
-    activityInput?.addEventListener("focus", () => updateOptionsList(activityInput.value.trim()));
 
     activityInput?.addEventListener("keydown", (e) => {
         const container = suggestionBox;
