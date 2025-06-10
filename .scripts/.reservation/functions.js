@@ -1680,8 +1680,7 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null,
   const start = luxon.DateTime.fromJSDate(updated.booking_date, { zone: timezone })
     .startOf("day").plus({ minutes: updated.booking_start });
 
-  const end = luxon.DateTime.fromJSDate(updated.booking_date, { zone: timezone })
-    .startOf("day").plus({ minutes: updated.booking_start });
+  const end = start.plus({ minutes: updated.booking_duration });
 
   console.log(`triggerRescheduleWebhook start(${start}) / end(${end})`)
 
@@ -1718,17 +1717,36 @@ async function triggerRescheduleWebhook(original, updated, transactionId = null,
     transactionId
   });
   
-  await supabase
-    .from("bookings")
-    .update({ details: updatedDetails })
-    .eq("uuid", bookingUuid);
-  
+  await fetch("https://hook.us1.make.com/gfjgubseuvpnma77h6orxj1ar1xzt5m5", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      booking_id: bookingUuid,
+      details: updatedDetails
+    })
+  });  
 
   // Refresh UI
   const newDetails = await rebuildBookingDetails(bookingUuid);
+  const fmt = luxon.DateTime.fromISO;
+  const startFormatted = fmt(newDetails.start, { zone: timezone });
+  const endFormatted = fmt(newDetails.end, { zone: timezone });
+
+  const day = startFormatted.toFormat("cccc, LLLL d, yyyy");
+  const timeStart = startFormatted.toFormat("h:mm a");
+  const timeEnd = endFormatted.toFormat("h:mm a");
+
+  document.getElementById("confirm-popup-header").textContent = "Booking Rescheduled";
+  document.getElementById("confirm-popup-paragraph").textContent =
+    `Your booking was successfully rescheduled to ${day} from ${timeStart} to ${timeEnd}.`;
+
   if (newDetails) {
     window.details = newDetails;
-    showPopup("Booking updated successfully!", true); 
+    populateReservationDetails(newDetails);
+    applyActionButtonStates(newDetails);
+    showPopupById("confirmation-popup");
   }
 }
 
