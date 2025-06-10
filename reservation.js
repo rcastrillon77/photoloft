@@ -2304,33 +2304,36 @@ function buildCancellationDetails({ refundData, transactionId }) {
   const original = window.details;
   const taxRate = original.transaction?.tax_rate || 0;
 
-  const creditRefund = parseFloat(refundData.credit_refund);
-  const taxRefund = parseFloat(refundData.taxRefund);
-  const creditsReissued = parseFloat(refundData.credits_reissued);
+  const creditRefund = parseFloat(refundData.credit_refund || 0);
+  const taxRefund = parseFloat(refundData.taxRefund || 0);
+  const creditsReissued = parseFloat(refundData.credits_reissued || 0);
 
   const subtotal = roundDecimals(creditRefund - taxRefund);
   const tax_total = roundDecimals(-taxRefund);
   const user_credits_applied = roundDecimals(-creditsReissued);
-  const total = roundDecimals(-(creditRefund + user_credits_applied + tax_total));
+  const total = roundDecimals(-(creditRefund + taxRefund + creditsReissued));
 
-  const addedCharge = {
-    transaction_id: transactionId,
-    line_item: "Cancellation Refund",
-    subtotal,
-    tax_rate: taxRate,
-    tax_total,
-    user_credits_applied,
-    total,
-    created_at: new Date().toISOString()
-  };
+  // ⛔ Skip if no refund was issued
+  const skipAddedCharge = total === 0;
 
-  return {
-    ...original,
-    added_charges: [
-      ...(original.added_charges || []),
-      addedCharge
-    ]
-  };
+  return buildUpdatedDetailsBase({
+    original,
+    start: original.start,
+    end: original.end,
+    duration: original.duration,
+    lineItem: "Cancellation Refund",
+    summary: {
+      subtotal,
+      taxRate,
+      taxes: tax_total,
+      userCredits: user_credits_applied,
+      finalTotal: total
+    },
+    transactionId,
+    skipTimeUpdate: true,
+    skipOriginalStamp: true,
+    skipAddedCharge
+  });
 }
 
 function buildRescheduleDetails({transactionId, skipAddedCharge }) {
@@ -2358,10 +2361,27 @@ function buildRescheduleDetails({transactionId, skipAddedCharge }) {
   });
 }
 
-function buildAddTimeDetails({ summary, transactionId, newStart, newEnd }) {
+function buildAddTimeDetails({ summary, transactionId, newStart, newEnd, addedMinutes}) {
   const original = window.details;
-  const duration = luxon.DateTime.fromISO(newEnd)
-    .diff(luxon.DateTime.fromISO(newStart), "minutes").minutes / 60;
+
+  const duration = luxon.DateTime
+    .fromISO(newEnd)
+    .diff(luxon.DateTime.fromISO(newStart), "minutes")
+    .minutes / 60;
+
+  let lineItem = "Added Time";
+  if (addedMinutes) {
+    const hrs = Math.floor(addedMinutes / 60);
+    const mins = addedMinutes % 60;
+
+    if (hrs > 0 && mins > 0) {
+      lineItem = `Added ${hrs} Hour${hrs !== 1 ? "s" : ""} ${mins} minute${mins !== 1 ? "s" : ""}`;
+    } else if (hrs > 0) {
+      lineItem = `Added ${hrs} Hour${hrs !== 1 ? "s" : ""}`;
+    } else {
+      lineItem = `Added ${mins} Minute${mins !== 1 ? "s" : ""}`;
+    }
+  }
 
   return buildUpdatedDetailsBase({
     original,
@@ -2370,9 +2390,11 @@ function buildAddTimeDetails({ summary, transactionId, newStart, newEnd }) {
     duration,
     lineItem: "Added Time",
     summary,
-    transactionId
+    transactionId,
+    skipOriginalStamp: true
   });
 }
+
 
 // ADD TIME
 
