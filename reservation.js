@@ -184,27 +184,28 @@ function populateReservationDetails(details) {
     // Clear existing dynamically inserted charges (optional)
     sidebar.querySelectorAll(".sidebar-item.added-charge").forEach(el => el.remove());
 
-    details.added_charges.forEach(charge => {
+    details.added_charges.forEach((charge, i) => {
       const { line_item, total } = charge;
-
+    
       const item = document.createElement("div");
       item.className = "sidebar-item added-charge";
-
+    
       const header = document.createElement("div");
       header.className = "side-bar-item-header";
       header.textContent = line_item || "Charge";
-
+    
       const link = document.createElement("a");
       link.href = "#";
       link.className = "side-bar-item-text text-link";
       link.textContent = `$${Math.abs(total).toFixed(2)}`;
-      link.setAttribute("data-transaction-index", i); 
+      link.setAttribute("data-transaction-index", i); // ✅ Now this works
       link.setAttribute("data-transaction-type", "added_charge");
-
+    
       item.appendChild(header);
       item.appendChild(link);
       sidebar.appendChild(item);
     });
+    
   }
 }
 
