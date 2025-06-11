@@ -1752,11 +1752,12 @@ async function triggerRescheduleWebhook(updated, transactionId = null) {
   document.getElementById("confirm-popup-paragraph").textContent =
     `Your booking was successfully rescheduled to ${day} from ${timeStart} to ${timeEnd}.`;
 
+  showPopupById("confirmation-popup");
+
   if (newDetails) {
     window.details = newDetails;
     populateReservationDetails(newDetails);
     applyActionButtonStates(newDetails);
-    showPopupById("confirmation-popup");
   }
 }
 
@@ -2042,6 +2043,11 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
       actionPopup.classList.remove("background");
 
       if (onSuccess) onSuccess(result.transaction_uuid);
+
+      setTimeout(() => {
+        delete window.bookingGlobals.payment_intent_id;
+        delete window.bookingGlobals.transaction_uuid;
+      }, 3000); 
     } catch (err) {
       savedCardBtn.classList.remove("processing");
       savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
