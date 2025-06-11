@@ -269,7 +269,7 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
 
   if (addedMinutes < 60) {
     addedTimeLabel = `Added ${addedMinutes} Minutes`;
-  } else if (addedMinutes = 60) {
+  } else if (addedMinutes === 60) {
     addedTimeLabel = `Added 1 Hour`;
   } else {
     addedTimeLabel = "Added " + (addedMinutes/60) + " Hours";
