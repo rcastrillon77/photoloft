@@ -1404,7 +1404,7 @@ function setupStripeElements() {
         paymentRequestButton: {
           type: "default",
           theme: "dark",
-          height: "57.6px",
+          height: "60px",
           borderRadius: "30px"
         }
       }
@@ -1423,7 +1423,8 @@ function setupStripeElements() {
     paymentRequest.on("paymentmethod", async (ev) => {
       try {
         const { error } = await stripe.confirmCardPayment(clientSecret, {
-          payment_method: ev.paymentMethod.id
+          payment_method: ev.paymentMethod.id,
+          setup_future_usage: "off_session"
         }, { handleActions: true });
   
         if (error) {
