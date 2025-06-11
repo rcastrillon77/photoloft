@@ -2465,6 +2465,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!jumped) {
         await initSliderSection();
         initCalendar();
+        updateDurationDisplay(DEFAULT_DURATION * 60)
+        updateBookingSummary();
+        setSliderProgress(DEFAULT_DURATION);
     }
   
     // Everything after this point is UI event listeners:
@@ -2484,7 +2487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setSliderProgress(hours);
     
         const extendedSection = document.querySelector('.extended-time');
-        if (hours >= MAX_DURATION) {
+        if (hours >= MAX_DURATION && EXTENDED_OPTIONS.length > 0) {
             extendedSection.classList.remove('shrunk');
         } else {
             extendedSection.classList.add('shrunk');
