@@ -1970,6 +1970,12 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
     document.getElementById("credits-section")?.classList.add("hidden");
   }
 
+  if (!window.payment_method) {
+    document.getElementById("saved-payment-container")?.classList.add("hidden");
+  } else {
+    document.getElementById("saved-payment-container")?.classList.remove("hidden");
+  }  
+
   // Show popup
   chargePopup.classList.remove("hidden");
   actionPopup.classList.add("background");
@@ -2018,10 +2024,7 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
   savedCardBtn.onclick = async (e) => {
     e.preventDefault();
     savedCardBtn.classList.add("processing");
-    savedCardBtn.querySelector(".button-text").textContent = "Processing...";
-
-    const finalCredits = useCredits ? creditsToApply : 0;
-    const finalTotal = parseFloat((total - creditsToApply).toFixed(2));
+    savedCardBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Processing...");
 
     try {
       const result = await confirmCharge({
@@ -2071,7 +2074,8 @@ async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess
       if (error) throw error;
 
       const result = await window.stripe.confirmCardPayment(clientSecret, {
-        payment_method: paymentMethod.id
+        payment_method: paymentMethod.id,
+        setup_future_usage: "off_session"
       });
 
       if (result.error) throw result.error;
