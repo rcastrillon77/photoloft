@@ -68,6 +68,7 @@ async function rebuildBookingDetails(bookingUuid) {
 
   window.payment_method = transactionData.payment_method;
   window.user_id = bookingData.user_id;
+  console.log(`PM: ${window.payment_method}, UID: ${window.user_id}`);
 
   const details = {
     start: bookingData.details.start || null,
@@ -198,7 +199,7 @@ function populateReservationDetails(details) {
       link.href = "#";
       link.className = "side-bar-item-text text-link";
       link.textContent = `$${Math.abs(total).toFixed(2)}`;
-      link.setAttribute("data-transaction-index", i); // ✅ Now this works
+      link.setAttribute("data-transaction-index", i); s
       link.setAttribute("data-transaction-type", "added_charge");
     
       item.appendChild(header);
