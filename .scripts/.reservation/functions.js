@@ -1765,7 +1765,7 @@ async function triggerRescheduleWebhook(updated, transactionId = null) {
 
 async function setupStripeElements({ containerId, amount, userEmail, buttonSelector }) {
 
-  if (!window.stripe) window.stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
+  if (!window.stripe) window.stripe = Stripe("pk_live_51Pc8eHHPk1zi7F68Lfo7LHLTmpxCNsSidfCzjFELM9Ajum07WIMljcsbU9L1R2Tejvue1BaZ0xuDwcpiXjwMgrdq00eUxlyH9D");
   if (!window.elements) window.elements = window.stripe.elements();
   const elements = window.elements;
   const stripe = window.stripe;
