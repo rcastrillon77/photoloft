@@ -1244,7 +1244,7 @@ function roundDecimals(n) {
 }
 
 function setupStripeElements() {
-    const stripe = Stripe("pk_test_51Pc8eHHPk1zi7F68zMTVeY8Fz2yYMw3wNwK4bivjk3HeAFEuv2LoQ9CasqPwaweG8UBfyS8trW7nnSIICTPVmp2K00Fr0zWXKj");
+    const stripe = Stripe("pk_live_51Pc8eHHPk1zi7F68Lfo7LHLTmpxCNsSidfCzjFELM9Ajum07WIMljcsbU9L1R2Tejvue1BaZ0xuDwcpiXjwMgrdq00eUxlyH9D");
     const elements = stripe.elements();
   
     const style = {
