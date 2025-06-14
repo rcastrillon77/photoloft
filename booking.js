@@ -1661,7 +1661,7 @@ async function updatePaymentIntent() {
         window.bookingGlobals.subtotal = subtotal;
         console.log(`SUBTOTAL UPDATED: ${window.bookingGlobals.subtotal} via updatedPaymentIntent`);
         window.bookingGlobals.taxTotal = subtotalTaxes;
-        window.bookingGlobals.total = Math.round(data.amount / 100);
+        window.bookingGlobals.total = data.amount / 100;
 
         const updatedTotal = window.bookingGlobals.total;
         setButtonText("#pay-now-btn", `Pay $${updatedTotal} with Card`, false);
