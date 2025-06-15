@@ -585,10 +585,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       
         const cert = certs[0];
         const rules = cert.rules || {};
+        const users = Array.isArray(cert.users) ? cert.users : [];
         const discount = cert.discount || {};
       
         const upperCode = code.toUpperCase();
         const existing = (window.bookingGlobals.appliedCertificates || []).find(c => c.code === upperCode);
+
+        if (cert.status === "inactive") {
+          alert("This coupon is no longer active.");
+          return;
+        }
+
         if (existing) {
           alert("You’ve already applied this coupon.");
           return;
@@ -612,11 +619,43 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
       
-        // ✅ User check
-        if (Array.isArray(rules.users) && userId && !rules.users.includes(userId)) {
+        // ✅ User eligibility check
+        if (Array.isArray(users) && userId && !users.includes(userId)) {
           alert("This coupon is not valid for your account.");
           return;
         }
+
+        // ✅ Usage limit check
+        if (cert.usage_limit === 0) {
+          alert("This coupon has been used to its limit.");
+          return;
+        }
+
+        // ✅ Usage limit check
+        if (typeof cert.usage_limit === "number" && cert.usage_limit > 0 && userId) {
+          // Look for previous bookings with this cert
+          const { data: pastBookings, error: usageError } = await window.supabase
+            .from("bookings")
+            .select("details, user_id")
+            .eq("user_id", userId);
+
+          if (usageError) {
+            console.error("❌ Failed to check past usage:", usageError);
+            alert("Something went wrong verifying your coupon usage.");
+            return;
+          }
+
+          const usageCount = (pastBookings || []).filter(b => {
+            const discounts = b.details?.transaction?.discounts || [];
+            return discounts.some(d => d.uuid === cert.uuid);
+          }).length;
+
+          if (usageCount >= cert.usage_limit) {
+            alert(`You’ve already used this coupon ${usageCount} time${usageCount === 1 ? '' : 's'}, the maximum allowed for this coupon.`);
+            return;
+          }
+        }
+
       
         const rate = window.bookingGlobals.final_rate;
         const hours = window.bookingGlobals.booking_duration / 60;
