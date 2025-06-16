@@ -235,6 +235,7 @@ function applyActionButtonStates(details) {
     disable("actions_checkout");
   } else if (status === "rescheduled") {
     disable("actions_reschedule");
+    disable("actions_checkout");
   }
 
   if (status === "cancelled") {
