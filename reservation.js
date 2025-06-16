@@ -1,10 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 const bookingUuid = urlParams.get("booking");
 
-if (urlParams.get("confirmation") === "true") {
-  showBookingConfirmationPopup();
-}
-
 let details = null;
 
 LISTING_UUID = null;
