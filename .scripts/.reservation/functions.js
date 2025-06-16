@@ -183,14 +183,14 @@ function closePopup() {
 function applyActionButtonStates(details) {
   const disable = id => document.getElementById(id)?.classList.add("disable");
 
-  const { status, type } = details;
+  const { status } = details;
 
   // Always evaluate these
   if (status === "past" || status === "cancelled") {
     ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(disable);
   } else if (status === "upcoming") {
     disable("actions_checkout");
-    if (type === "rescheduled") {
+    if (status === "rescheduled") {
       disable("actions_reschedule");
     }
   }
