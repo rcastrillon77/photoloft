@@ -274,7 +274,6 @@ async function checkIfGuestHasActiveHold() {
             .from('temp_events')
             .select('uuid')
             .eq('listing_id', LISTING_UUID)
-            .eq('location_id', locId)
             .gt('expires_at', now)
             .limit(1);
 
@@ -2230,22 +2229,6 @@ window.releaseTempHold = async function () {
         sessionStorage.removeItem('temp_event_id');
     } else {
         console.error("⚠️ Failed to release temporary hold:", error);
-    }
-};
-
-window.releaseExpiredHolds = async function () {
-    const now = new Date().toISOString();
-  
-    const { error, count } = await window.supabase
-      .from('temp_events')
-      .delete({ count: 'exact' }) // Optional: returns number of rows deleted
-      .lt('expires_at', now);
-  
-    if (!error) {
-      console.log(`🗑️ Released ${count} expired temporary hold(s)`);
-      sessionStorage.removeItem('temp_event_id');
-    } else {
-      console.error("⚠️ Failed to release expired temporary holds:", error);
     }
 };
   
