@@ -6,6 +6,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   await loadListingConfig(LISTING_UUID);
   await initBookingConfig(LISTING_UUID, window.LOCATION_UUID);
+  await window.releaseExpiredHolds();
   
     const jumped = await checkIfGuestHasActiveHold();
     if (!jumped) {
@@ -270,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Countdown logic
-    function startCountdownTimer(durationSeconds = 600) {
+    function startCountdownTimer(durationSeconds = 300) {
     const display = document.getElementById('booking-total-countdown');
     const reserveWrapper = document.querySelector('.booking-reserve-container');
     clearInterval(countdownInterval);
