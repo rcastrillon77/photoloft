@@ -7,6 +7,10 @@ async function initReservationUpdate() {
     return;
   }
 
+  if (urlParams.get("confirmation") === "true") {
+    showBookingConfirmationPopup();
+  }
+
   populateReservationDetails(details);
   applyActionButtonStates(details);
   console.log("✅ Reservation populated.");
