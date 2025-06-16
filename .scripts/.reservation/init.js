@@ -23,6 +23,7 @@ initReservationUpdate();
 // POPUP CLOSE & OPEN
 document.getElementById("popup-closer").addEventListener("click", closePopup);
 document.getElementById("popup-close-btn").addEventListener("click", closePopup);
+document.getElementById("popup-confirm-closer").addEventListener("click", closePopup);
 
 // CANCEL 
 document.getElementById("actions_cancel").addEventListener("click", () => {
