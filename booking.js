@@ -2459,7 +2459,7 @@ function updatePurposeHiddenField() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadListingConfig(LISTING_UUID);
   await initBookingConfig(LISTING_UUID, window.LOCATION_UUID);
-  await window.releaseExpiredHolds();
+  await deleteExpiredHolds();
   
     const jumped = await checkIfGuestHasActiveHold();
     if (!jumped) {
