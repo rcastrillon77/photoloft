@@ -190,9 +190,8 @@ function applyActionButtonStates(details) {
     ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(disable);
   } else if (status === "upcoming") {
     disable("actions_checkout");
-    if (status === "rescheduled") {
-      disable("actions_reschedule");
-    }
+  } else if (status === "rescheduled") {
+    disable("actions_reschedule");
   }
 
   if (status === "cancelled") {
