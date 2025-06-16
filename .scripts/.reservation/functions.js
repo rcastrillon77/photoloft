@@ -302,6 +302,27 @@ async function processCancellation(refundData) {
   }
 }
 
+function showBookingConfirmationPopup() {
+  const start = luxon.DateTime.fromISO(details.start, { zone: timezone });
+  const end = luxon.DateTime.fromISO(details.end, { zone: timezone });
+  const dateStr = start.toFormat("cccc, LLLL d, yyyy");
+  const timeStr = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a")}`;
+
+  document.getElementById("confirm-popup-header").textContent = "Booking Confirmed";
+  document.getElementById("confirm-popup-paragraph").textContent =
+    `Your booking has been confirmed for ${dateStr} from ${timeStr}. Please familiarize yourself with the rules and instructions on this page.`;
+
+  openPopup();
+  showPopupById("confirmation-popup");
+  triggerConfetti();
+}
+
+function triggerConfetti() {
+  if (typeof confetti !== "function") return;
+  confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+}
+
+
 // RESCHEDULE
 
 async function setupRescheduleFlow(details) {
@@ -500,6 +521,7 @@ async function initBookingConfig(listingId) {
     if (specialRateEntry?.amount !== undefined) {
       console.log(`🎯 Overriding final_rate due to special rate on ${isoDateStr}`);
       window.bookingGlobals.final_rate = specialRateEntry.amount;
+      window.bookingGlobals.base_rate = window.bookingGlobals.final_rate;
     } else {
       window.bookingGlobals.final_rate = FULL_RATE;
     }
@@ -1627,6 +1649,27 @@ function renderRescheduleSummary(summary) {
   document.getElementById("reschedule-paid").textContent = `– ${fmt(originalPaid)}`;
   document.getElementById("reschedule-difference").textContent = requiresPayment ? fmt(difference) : "$0.00";
 
+  const discountRow = document.getElementById("reschedule-discounts")?.parentElement;
+  if (discountTotal > 0) {
+    discountRow?.classList.remove("hidden");
+    document.getElementById("reschedule-discounts").textContent = `– ${fmt(discountTotal)}`;
+  } else {
+    discountRow?.classList.add("hidden");
+  }
+
+  const creditsEl = document.getElementById("reschedule-credits");
+  const creditsRow = creditsEl?.parentElement;
+  const subtotalRow = document.getElementById("reschedule-subtotal")?.parentElement;
+
+  if (creditsRow && subtotalRow && creditsRow !== subtotalRow.nextElementSibling) {
+    subtotalRow.after(creditsRow);
+  }
+
+  creditsRow?.classList.toggle("hidden", userCredits <= 0);
+  creditsRow?.classList.toggle("green", userCredits > 0);
+  creditsEl.textContent = `– ${fmt(userCredits)}`;
+
+
   // Update tax rate label
   const taxRateEl = document.querySelector("#reschedule-tax span, #reschedule-tax-rate");
   if (taxRateEl) taxRateEl.textContent = `${taxRate}%`;
@@ -1738,6 +1781,8 @@ async function triggerRescheduleWebhook(updated, transactionId = null) {
       details: updatedDetails
     })
   });  
+
+  closePopup();
 
   // Refresh UI
   const newDetails = await rebuildBookingDetails(bookingUuid);
