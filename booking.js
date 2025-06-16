@@ -2264,7 +2264,7 @@ function prefillContactInfoIfLoggedIn() {
 window.holdTemporaryBooking = async function (start, end) {
     try {
         const dt = luxon.DateTime;
-        const expires = dt.now().plus({ minutes: 10 }).toISO();
+        const expires = dt.now().plus({ minutes: 5 }).toISO();
 
         const { data, error } = await window.supabase.from('temp_events').insert([{
             start_time: start,
@@ -2310,6 +2310,22 @@ window.releaseTempHold = async function () {
     }
 };
 
+window.releaseExpiredHolds = async function () {
+    const now = new Date().toISOString();
+  
+    const { error, count } = await window.supabase
+      .from('temp_events')
+      .delete({ count: 'exact' }) // Optional: returns number of rows deleted
+      .lt('expires_at', now);
+  
+    if (!error) {
+      console.log(`🗑️ Released ${count} expired temporary hold(s)`);
+      sessionStorage.removeItem('temp_event_id');
+    } else {
+      console.error("⚠️ Failed to release expired temporary holds:", error);
+    }
+};
+  
 // Booking Activities
 function sortBookingTypes() {
     return Object.entries(bookingTypes)
