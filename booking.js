@@ -3074,7 +3074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       
         // ✅ User eligibility check
-        if (Array.isArray(users) && userId && !users.includes(userId)) {
+        if (Array.isArray(users) && users.length > 0 && userId && !users.includes(userId)) {
           alert("This coupon is not valid for your account.");
           return;
         }
