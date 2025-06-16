@@ -178,58 +178,31 @@ document.getElementById("actions_add-time").addEventListener("click", async () =
     luxon.DateTime.fromISO(e.start, { zone: timezone }).toISODate() === bookingDateStr
   );
 
-  const { maxBeforeMinutes, maxAfterMinutes } = getExtendableTimeRange(details, eventsForDay);
+  const { maxAfterMinutes } = getExtendableTimeRange(details, eventsForDay);
 
-  if (maxBeforeMinutes === 0 && maxAfterMinutes === 0) {
+  if (maxAfterMinutes === 0) {
     document.getElementById("actions_add-time").classList.add("disabled");
     return;
   }
 
-  const hasStarted = now >= originalStart;
-  const current = {
-    start: originalStart,
-    end: originalEnd
-  };
+  const current = { end: originalEnd };
 
   const $confirmBtn = document.getElementById("confirm-add-time");
-  const $startText = document.querySelector("#add-time-start-text");
-  const $endText = document.querySelector("#add-time-end-text");
-  const $startMinus = document.getElementById("start-less-btn");
-  const $startPlus = document.getElementById("start-more-btn");
+  const $endText = document.getElementById("add-time-end-text");
   const $endMinus = document.getElementById("end-less-btn");
   const $endPlus = document.getElementById("end-more-btn");
+  const $limitText = document.getElementById("add-time-limit");
+
+  $limitText.textContent = `Add up to ${Math.floor(maxAfterMinutes / 60)} hour${maxAfterMinutes >= 120 ? 's' : ''} after`;
 
   function updateDisplay() {
-    const isStartChanged = !current.start.equals(originalStart);
-    const isEndChanged = !current.end.equals(originalEnd);
-
-    $startText.textContent = current.start.toFormat("h:mm a");
-    $endText.textContent = current.end.toFormat("h:mm a");
-
-    $startText.classList.toggle("green", isStartChanged);
-    $endText.classList.toggle("green", isEndChanged);
-
-    $confirmBtn.classList.toggle("disabled", !(isStartChanged || isEndChanged));
-    $startMinus.classList.toggle("disabled", !isStartChanged);
-    $endMinus.classList.toggle("disabled", !isEndChanged);
-    $startPlus.classList.toggle("disabled", current.start.diff(originalStart, 'minutes').minutes * -1 >= maxBeforeMinutes);
-    $endPlus.classList.toggle("disabled", current.end.diff(originalEnd, 'minutes').minutes >= maxAfterMinutes);
+    const added = current.end.diff(originalEnd, 'minutes').minutes;
+    $endText.textContent = `${originalStart.toFormat("h:mm a")} to ${current.end.toFormat("h:mm a")}`;
+    $endText.classList.toggle("green", added > 0);
+    $confirmBtn.classList.toggle("disabled", added <= 0);
+    $endMinus.classList.toggle("disabled", added <= 0);
+    $endPlus.classList.toggle("disabled", added >= maxAfterMinutes);
   }
-
-  $startMinus?.addEventListener("click", () => {
-    if ($startMinus.classList.contains("disabled")) return;
-    const newStart = current.start.plus({ minutes: interval });
-    if (newStart <= originalStart) current.start = newStart;
-    updateDisplay();
-  });
-
-  $startPlus?.addEventListener("click", () => {
-    if ($startPlus.classList.contains("disabled")) return;
-    const newStart = current.start.minus({ minutes: interval });
-    if (newStart >= originalStart.minus({ minutes: maxBeforeMinutes }) && newStart < current.end)
-      current.start = newStart;
-    updateDisplay();
-  });
 
   $endMinus?.addEventListener("click", () => {
     if ($endMinus.classList.contains("disabled")) return;
@@ -246,36 +219,33 @@ document.getElementById("actions_add-time").addEventListener("click", async () =
     updateDisplay();
   });
 
-  // disable before-stepper if already started
-  if (hasStarted) {
-    $startMinus?.classList.add("disabled");
-    $startPlus?.classList.add("disabled");
-  }
-
   updateDisplay();
   showPopupById("add-time-popup");
+
+  // Store in global so confirm handler has access
+  window.addTimeExtension = { originalStart, originalEnd, current };
 });
 
 document.getElementById("confirm-add-time").addEventListener("click", () => {
-  if (document.getElementById("confirm-add-time").classList.contains("disabled")) return;
+  const $btn = document.getElementById("confirm-add-time");
+  if ($btn.classList.contains("disabled")) return;
 
-  const addedMinutes =
-    Math.max(0, originalStart.diff(current.start, "minutes").minutes) +
-    Math.max(0, current.end.diff(originalEnd, "minutes").minutes);
+  const { originalStart, originalEnd, current } = window.addTimeExtension;
 
-  if (addedMinutes === 0) return;
+  const addedMinutes = current.end.diff(originalEnd, "minutes").minutes;
+  if (addedMinutes <= 0) return;
 
-  const addedTimeLabel = null;
-
+  let addedTimeLabel = "";
   if (addedMinutes < 60) {
     addedTimeLabel = `Added ${addedMinutes} Minutes`;
   } else if (addedMinutes === 60) {
     addedTimeLabel = `Added 1 Hour`;
   } else {
-    addedTimeLabel = "Added " + (addedMinutes/60) + " Hours";
-  };
+    const hours = (addedMinutes / 60).toFixed(1).replace(/\.0$/, '');
+    addedTimeLabel = `Added ${hours} Hours`;
+  }
 
-  const rate = FULL_RATE;
+  const rate = window.details.final_rate;
   const subtotal = (rate / 60) * addedMinutes;
   const taxRate = details.transaction?.tax_rate || 0;
   const taxTotal = subtotal * (taxRate / 100);
@@ -289,22 +259,27 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
     onSuccess: async () => {
       const payload = {
         booking_id: details.uuid,
-        start: current.start.toISO(),
+        start: originalStart.toISO(),
         end: current.end.toISO(),
-        duration: current.end.diff(current.start, "minutes").minutes,
+        duration: current.end.diff(originalStart, "minutes").minutes,
         listing_name: details.listing?.name || "",
         added_minutes: addedMinutes,
       };
 
       console.log("⏱️ Sending added time payload:", payload);
-      await fetch("https://hook.us1.make.com/zse7u92reikd8k266hhalkgvjawp9jk2", {
+      const res = await fetch("https://hook.us1.make.com/zse7u92reikd8k266hhalkgvjawp9jk2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      // optional: refresh the page or close popup
-      closePopupById("add-time-popup");
+      if (res.ok) {
+        showPopupById("confirmation-popup");
+        document.getElementById("confirm-popup-header").textContent = "Time Added";
+        document.getElementById("confirm-popup-paragraph").textContent = "Your booking time has been extended.";
+      } else {
+        alert("Failed to add time. Please try again.");
+      }
     },
   });
 });
