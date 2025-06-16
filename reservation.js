@@ -353,7 +353,7 @@ function showBookingConfirmationPopup() {
   const timeStr = `${start.toFormat("h:mm a")} to ${end.toFormat("h:mm a")}`;
 
   document.getElementById("confirm-popup-header").textContent = "Booking Confirmed";
-  document.getElementById("confirm-popup-paragraph").textContent = `Your booking has been confirmed for <strong>${dateStr}</strong> from <strong>${start}</strong> to <strong>${end}</strong>.<br><br>Please familiarize yourself with the rules and instructions on this page.`;
+  document.getElementById("confirm-popup-paragraph").textContent = `Your booking has been confirmed for <strong>${dateStr}</strong> from <strong>${timeStr}</strong>.<br><br>Please familiarize yourself with the rules and instructions on this page.`;
   openPopup();
   showPopupById("confirmation-popup");
   triggerConfetti();
