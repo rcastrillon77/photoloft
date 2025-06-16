@@ -157,7 +157,7 @@ function populateReservationDetails(details) {
       link.href = "#";
       link.className = "side-bar-item-text text-link";
       link.textContent = `$${Math.abs(total).toFixed(2)}`;
-      link.setAttribute("data-transaction-index", i); s
+      link.setAttribute("data-transaction-index", i);
       link.setAttribute("data-transaction-type", "added_charge");
     
       item.appendChild(header);
