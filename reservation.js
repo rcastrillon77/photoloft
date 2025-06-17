@@ -2755,7 +2755,7 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
     addedTimeLabel = `Added ${hours} Hours`;
   }
 
-  const rate = window.details.final_rate;
+  const rate = window.details.transaction?.final_rate;
   const subtotal = (rate / 60) * addedMinutes;
   const taxRate = details.transaction?.tax_rate || 0;
   const taxTotal = subtotal * (taxRate / 100);
