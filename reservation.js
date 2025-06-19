@@ -2,6 +2,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const bookingUuid = urlParams.get("booking");
 
 let details = null;
+let guidedEntryStepIndex = 0;
 
 LISTING_UUID = null;
 MEMBERSHIP = null;
