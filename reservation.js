@@ -2576,6 +2576,19 @@ window.initGuidedEntry = async function () {
 };
 
 // CHECKOUT
+function syncCheckboxVisualState(checkboxEl) {
+  const label = checkboxEl.closest(".checkbox-field");
+  const checkmark = label?.querySelector(".checkmark");
+
+  if (checkboxEl.checked) {
+    label?.classList.add("checked");
+    checkmark?.classList.add("checked");
+  } else {
+    label?.classList.remove("checked");
+    checkmark?.classList.remove("checked");
+  }
+}
+
 async function loadCheckoutProcess(listingId) {
   const { data, error } = await window.supabase
     .from("listings")
@@ -2594,6 +2607,10 @@ async function loadCheckoutProcess(listingId) {
 
 
 window.initCheckoutFlow = async function () {
+  document.querySelectorAll("#checkout-continue .button-text").forEach(el => {
+    el.textContent = "Continue";
+  });
+  
   console.log("🚀 Starting checkout flow...");
   const steps = await loadCheckoutProcess(LISTING_UUID);
   console.log("📋 Loaded steps:", steps);
@@ -2637,6 +2654,8 @@ window.initCheckoutFlow = async function () {
     fieldLabel.classList.add("hidden");
     formInput.classList.add("hidden");
     continueBtn.classList.remove("hidden");
+    continueBtn.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue");
+
 
     // Update text
     stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
@@ -2666,6 +2685,8 @@ window.initCheckoutFlow = async function () {
         formFields.classList.remove("hidden");
         checkboxField.classList.remove("hidden");
         checkbox.checked = step["show-field"]?.default || false;
+        syncCheckboxVisualState(checkbox);
+        checkbox.addEventListener("change", () => syncCheckboxVisualState(checkbox));
         checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "Checkbox";
         console.log("☑️ Showing checkbox:", checkboxLabel.textContent);
         break;
@@ -2674,6 +2695,8 @@ window.initCheckoutFlow = async function () {
         formFields.classList.remove("hidden");
         checkboxField.classList.remove("hidden");
         checkbox.checked = step["show-field"]?.["checkbox-default"] || false;
+        syncCheckboxVisualState(checkbox);
+        checkbox.addEventListener("change", () => syncCheckboxVisualState(checkbox));
         checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "";
         fieldLabel.textContent = step["show-field"]?.["field-label"] || "Message";
         textarea.value = "";
