@@ -2598,31 +2598,35 @@ window.initCheckoutFlow = async function () {
   let stepIndex = 0;
   const formValues = {};
 
+  const stepNumEl = document.querySelector(".text-block-108");
+  const headerEl = document.getElementById("checkout-header");
+  const paragraphEl = document.getElementById("checkout-paragraph");
+  const galleryEl = document.getElementById("checkout-gallery");
+  const formFields = document.querySelector(".form-fields");
+  const checkboxField = formFields.querySelector(".checkbox-field");
+  const checkboxLabel = checkboxField.querySelector(".checkbox-text");
+  const checkbox = checkboxField.querySelector("input[type='checkbox']");
+  const textarea = document.getElementById("text-area-message");
+  const fieldLabel = formFields.querySelector(".field-label");
+  const continueBtn = document.getElementById("checkout-continue");
+  const formInput = textarea.closest(".form-input");
+
   const updateStep = () => {
     const step = steps[stepIndex];
     if (!step) return;
 
-    const stepNumEl = document.querySelector(".text-block-108");
-    const headerEl = document.getElementById("checkout-header");
-    const paragraphEl = document.getElementById("checkout-paragraph");
-    const galleryEl = document.getElementById("checkout-gallery");
-    const formFields = document.querySelector(".form-fields");
-    const checkboxField = formFields.querySelector(".checkbox-field");
-    const checkboxLabel = checkboxField.querySelector(".checkbox-text");
-    const checkbox = checkboxField.querySelector("input[type='checkbox']");
-    const textarea = document.getElementById("text-area-message");
-    const fieldLabel = formFields.querySelector(".field-label");
-    const continueBtn = document.getElementById("checkout-continue");
-
-    stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
-    headerEl.textContent = step.title || "";
-    paragraphEl.textContent = step.description || "";
-
+    // Reset visibility
     galleryEl.classList.add("hidden");
     formFields.classList.add("hidden");
     checkboxField.classList.add("hidden");
     textarea.classList.add("hidden");
     fieldLabel.classList.add("hidden");
+    formInput.classList.add("hidden");
+    continueBtn.classList.remove("hidden");
+
+    stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
+    headerEl.textContent = step.title || "";
+    paragraphEl.textContent = step.description || "";
 
     switch (step.type) {
       case "gallery":
@@ -2641,10 +2645,6 @@ window.initCheckoutFlow = async function () {
         };
         break;
 
-      case "step":
-        // Simple step with no inputs
-        break;
-
       case "checkbox":
         formFields.classList.remove("hidden");
         checkboxField.classList.remove("hidden");
@@ -2655,21 +2655,19 @@ window.initCheckoutFlow = async function () {
       case "show-field":
         formFields.classList.remove("hidden");
         checkboxField.classList.remove("hidden");
-        checkbox.checked = step["show-field"]["checkbox-default"] || false;
-        checkboxLabel.textContent = step["show-field"]["checkbox-label"] || "";
+        checkbox.checked = step["show-field"]?.["checkbox-default"] || false;
+        checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "";
+        fieldLabel.textContent = step["show-field"]?.["field-label"] || "Message";
         textarea.value = "";
-        fieldLabel.textContent = step["show-field"]["field-label"] || "Message";
         fieldLabel.classList.remove("hidden");
         textarea.classList.remove("hidden");
 
-        const formInput = textarea.closest(".form-input");
-        const toggleFieldVisibility = () => {
-          const showField = !checkbox.checked;
-          formInput.classList.toggle("hidden", !showField);
+        const toggle = () => {
+          const hidden = checkbox.checked === step["show-field"]["show-field-if"];
+          formInput.classList.toggle("hidden", hidden);
         };
-
-        checkbox.onchange = toggleFieldVisibility;
-        toggleFieldVisibility();
+        checkbox.onchange = toggle;
+        toggle();
         break;
 
       case "submit":
@@ -2682,14 +2680,12 @@ window.initCheckoutFlow = async function () {
     }
   };
 
-  document.getElementById("checkout-continue").onclick = async (e) => {
+  continueBtn.onclick = async (e) => {
     e.preventDefault();
 
     const step = steps[stepIndex];
-    const checkbox = document.querySelector(".form-fields input[type='checkbox']");
-    const textarea = document.getElementById("text-area-message");
 
-    // Collect values
+    // Store responses
     if (step.type === "checkbox" || step.type === "show-field") {
       formValues[step.title] = {
         checked: checkbox.checked,
@@ -2724,7 +2720,6 @@ window.initCheckoutFlow = async function () {
 
   updateStep();
 };
-
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
