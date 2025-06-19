@@ -308,4 +308,8 @@ document.getElementById("actions_checkout")?.addEventListener("click", async (e)
   await initCheckoutScrollFlow();
 });
 
-
+document.getElementById("timer-checkout")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  showPopupById("checkout-process");
+  await initCheckoutScrollFlow();
+});
