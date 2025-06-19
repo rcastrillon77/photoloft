@@ -2560,199 +2560,129 @@ async function loadCheckoutProcess(listingId) {
   return data.details["checkout-process"];
 }
 
+window.initCheckoutScrollFlow = async function () {
+  console.log("🚀 Starting scroll-based checkout flow");
 
-window.initCheckoutFlow = async function () {
-  // Reset Continue button text immediately
-  document.querySelectorAll("#checkout-continue .button-text").forEach(el => {
-    el.textContent = "Continue";
-  });
-
-  console.log("🚀 Starting checkout flow...");
   const steps = await loadCheckoutProcess(LISTING_UUID);
-  console.log("📋 Loaded steps:", steps);
-
-  if (!steps || !steps.length) {
-    console.warn("⚠️ No checkout steps found. Check listing config.");
+  if (!steps?.length) {
+    console.warn("⚠️ No checkout steps found.");
     return;
   }
 
-  let stepIndex = 0;
-  const formValues = {};
+  const containerEls = document.querySelectorAll("#checkout-process .section-container");
+  const responses = {};
 
-  const stepNumEl = document.querySelector(".text-block-108");
-  const headerEl = document.getElementById("checkout-header");
-  const paragraphEl = document.getElementById("checkout-paragraph");
-  const galleryEl = document.getElementById("checkout-gallery");
-  const formFields = document.querySelector(".form-fields");
-  const checkboxField = formFields.querySelector(".checkbox-field");
-  const checkboxLabel = checkboxField.querySelector(".checkbox-text");
-  const checkboxInput = checkboxField.querySelector("input[type='checkbox']");
-  const textarea = document.getElementById("text-area-message");
-  const fieldLabel = formFields.querySelector(".field-label");
-  const continueBtn = document.getElementById("checkout-continue");
-  const formInput = textarea.closest(".form-input");
-
-  if (!stepNumEl || !headerEl || !paragraphEl || !continueBtn) {
-    console.error("❌ Missing required DOM elements. Aborting.");
-    return;
-  }
-
-  function syncCheckboxVisualState(el) {
-    const label = el.closest(".checkbox-field");
-    const checkmark = label?.querySelector(".checkmark");
-
-    if (el.checked) {
-      label?.classList.add("checked");
-      checkmark?.classList.add("checked");
-    } else {
-      label?.classList.remove("checked");
-      checkmark?.classList.remove("checked");
-    }
-  }
-
-  const updateStep = () => {
-    const step = steps[stepIndex];
-    if (!step) return;
-    console.log(`🔄 Rendering step ${stepIndex + 1}:`, step);
-
-    // Reset UI state
-    galleryEl.classList.add("hidden");
-    formFields.classList.add("hidden");
-    checkboxField.classList.add("hidden");
-    textarea.classList.add("hidden");
-    fieldLabel.classList.add("hidden");
-    formInput.classList.add("hidden");
-    continueBtn.classList.remove("hidden");
-
-    // Reset button label to "Continue"
-    continueBtn.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue");
-
-    // Step number and copy
-    stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
-    headerEl.textContent = step.title || "";
-    paragraphEl.textContent = step.description || "";
-
-    switch (step.type) {
-      case "gallery":
-        galleryEl.classList.remove("hidden");
-        let imgIndex = 0;
-        galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
-
-        document.getElementById("prev-img").onclick = e => {
-          e.preventDefault();
-          imgIndex = (imgIndex - 1 + step.gallery.length) % step.gallery.length;
-          galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
-        };
-
-        document.getElementById("next-img").onclick = e => {
-          e.preventDefault();
-          imgIndex = (imgIndex + 1) % step.gallery.length;
-          galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
-        };
-
-        console.log("🖼️ Gallery initialized with", step.gallery.length, "images.");
-        break;
-
-      case "checkbox":
-        formFields.classList.remove("hidden");
-        checkboxField.classList.remove("hidden");
-
-        const checkbox1 = checkboxInput.cloneNode(true);
-        checkboxField.replaceChild(checkbox1, checkboxInput);
-        checkbox1.checked = step["show-field"]?.default || false;
-        syncCheckboxVisualState(checkbox1);
-        checkbox1.addEventListener("change", () => syncCheckboxVisualState(checkbox1));
-
-        checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "Checkbox";
-        break;
-
-      case "show-field":
-        formFields.classList.remove("hidden");
-        checkboxField.classList.remove("hidden");
-
-        const checkbox2 = checkboxInput.cloneNode(true);
-        checkboxField.replaceChild(checkbox2, checkboxInput);
-        checkbox2.checked = step["show-field"]?.["checkbox-default"] || false;
-        syncCheckboxVisualState(checkbox2);
-
-        fieldLabel.textContent = step["show-field"]?.["field-label"] || "Message";
-        fieldLabel.classList.remove("hidden");
-        textarea.classList.remove("hidden");
-        textarea.value = "";
-
-        const toggle = () => {
-          const shouldHide = checkbox2.checked === step["show-field"]["show-field-if"];
-          formInput.classList.toggle("hidden", shouldHide);
-          console.log("📦 Conditional field is", shouldHide ? "hidden" : "visible");
-        };
-
-        checkbox2.addEventListener("change", () => {
-          syncCheckboxVisualState(checkbox2);
-          toggle();
-        });
-
-        checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "";
-        toggle();
-        break;
-
-      case "submit":
-        continueBtn.querySelectorAll(".button-text").forEach(el => el.textContent = "Submit");
-        console.log("✅ Reached submission step.");
-        break;
-
-      case "success":
-        continueBtn.classList.add("hidden");
-        console.log("🎉 Success message shown.");
-        break;
-
-      default:
-        console.warn("❓ Unknown step type:", step.type);
-    }
-  };
-
-  continueBtn.onclick = async (e) => {
-    e.preventDefault();
-
-    const step = steps[stepIndex];
-    const checkboxEl = formFields.querySelector("input[type='checkbox']");
-
-    if (step.type === "checkbox" || step.type === "show-field") {
-      formValues[step.title] = {
-        checked: checkboxEl?.checked || false,
-        value: (!checkboxEl?.checked && step.type === "show-field") ? textarea.value : null
-      };
-      console.log("🧾 Collected form response:", formValues[step.title]);
-    }
-
-    if (step.type === "submit") {
-      const payload = {
-        booking_id: bookingUuid,
-        responses: formValues
-      };
-
-      console.log("📤 Sending payload to Make.com:", payload);
-
-      try {
-        await fetch("https://hook.us1.make.com/your-make-webhook-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        console.log("✅ Submission successful");
-        stepIndex++;
-        updateStep();
-      } catch (err) {
-        console.error("❌ Failed to submit checkout form:", err);
-        alert("Something went wrong submitting the checkout form.");
-      }
-
+  steps.forEach((step, index) => {
+    const container = containerEls[index];
+    if (!container) {
+      console.warn(`⚠️ No matching container for step ${index + 1}`);
       return;
     }
 
-    stepIndex++;
-    updateStep();
-  };
+    const keyBase = `${step.title?.toLowerCase().replace(/\s+/g, "-")}-${step.type}`;
 
-  updateStep();
+    // Handle checkbox
+    if (step.type === "checkbox" || step.type === "show-field") {
+      const checkbox = container.querySelector("input[type='checkbox']");
+      const checkmark = container.querySelector(".checkmark");
+      const label = container.querySelector(".checkbox-field");
+      const checkboxLabel = container.querySelector(".checkbox-text");
+      const checkboxText = step["show-field"]?.["checkbox-label"] || step["checkbox-label"] || "Checkbox";
+
+      checkbox.id = keyBase;
+      checkbox.name = keyBase;
+      checkbox.checked = step["show-field"]?.["checkbox-default"] || step["default"] || false;
+      checkboxLabel.textContent = checkboxText;
+
+      // Sync visual state
+      const syncCheckbox = () => {
+        if (checkbox.checked) {
+          label.classList.add("checked");
+          checkmark.classList.add("checked");
+        } else {
+          label.classList.remove("checked");
+          checkmark.classList.remove("checked");
+        }
+      };
+
+      checkbox.addEventListener("change", syncCheckbox);
+      syncCheckbox();
+
+      // Show-field toggle
+      if (step.type === "show-field") {
+        const inputContainer = container.querySelector(".form-input");
+        const textarea = container.querySelector("textarea");
+        const fieldLabel = inputContainer.querySelector(".field-label");
+        fieldLabel.textContent = step["show-field"]["field-label"] || "Message";
+
+        const toggleVisibility = () => {
+          const shouldHide = checkbox.checked === step["show-field"]["show-field-if"];
+          inputContainer.classList.toggle("hidden", shouldHide);
+        };
+
+        checkbox.addEventListener("change", toggleVisibility);
+        toggleVisibility();
+      }
+    }
+
+    // Handle textareas
+    if (step.type === "show-field") {
+      const textarea = container.querySelector("textarea");
+      if (textarea) {
+        textarea.id = `${keyBase}-textarea`;
+        textarea.name = `${keyBase}-textarea`;
+      }
+    }
+  });
+
+  // Handle submit
+  document.getElementById("checkout-submit")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      booking_id: bookingUuid,
+      responses: {}
+    };
+
+    steps.forEach((step, index) => {
+      const container = containerEls[index];
+      const keyBase = `${step.title?.toLowerCase().replace(/\s+/g, "-")}-${step.type}`;
+
+      if (step.type === "checkbox") {
+        const checkbox = container.querySelector(`#${keyBase}`);
+        if (checkbox) {
+          payload.responses[keyBase] = checkbox.checked;
+        }
+      }
+
+      if (step.type === "show-field") {
+        const checkbox = container.querySelector(`#${keyBase}`);
+        const textarea = container.querySelector(`#${keyBase}-textarea`);
+        const shouldShowTextarea = checkbox && (checkbox.checked !== step["show-field"]["show-field-if"]);
+
+        payload.responses[keyBase] = {
+          checked: checkbox?.checked || false,
+          value: shouldShowTextarea ? textarea?.value || null : null
+        };
+      }
+    });
+
+    console.log("📤 Submitting checkout payload to Make:", payload);
+
+    try {
+      await fetch("https://hook.us1.make.com/your-make-webhook-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      console.log("✅ Submission successful");
+      showPopupById("checkout-success"); // or whatever ID your success confirmation popup uses
+    } catch (err) {
+      console.error("❌ Failed to submit checkout form:", err);
+      alert("Something went wrong submitting the checkout form.");
+    }
+  });
 };
+
 
