@@ -2699,8 +2699,8 @@ window.initCheckoutScrollFlow = async function () {
         fieldContainer.appendChild(inputWrapper);
 
         const toggleTextarea = () => {
-          const shouldShow = checkbox.checked !== step["show-field"]["show-field-if"];
-          inputWrapper.classList.toggle("hidden", !shouldShow);
+          const shouldHide = checkbox.checked === step["show-field"]["show-field-if"];
+          inputWrapper.classList.toggle("hidden", shouldHide);
         };        
 
         checkbox.addEventListener("change", toggleTextarea);
