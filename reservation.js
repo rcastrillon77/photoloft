@@ -135,6 +135,7 @@ async function rebuildBookingDetails(bookingUuid) {
 
   console.log("✅ Booking details updated.");
   window.details = details;
+  await initGuidedEntry();
   return details;
 }
 
