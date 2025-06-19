@@ -2607,10 +2607,11 @@ async function loadCheckoutProcess(listingId) {
 
 
 window.initCheckoutFlow = async function () {
+  // Reset Continue button text immediately
   document.querySelectorAll("#checkout-continue .button-text").forEach(el => {
     el.textContent = "Continue";
   });
-  
+
   console.log("🚀 Starting checkout flow...");
   const steps = await loadCheckoutProcess(LISTING_UUID);
   console.log("📋 Loaded steps:", steps);
@@ -2630,7 +2631,7 @@ window.initCheckoutFlow = async function () {
   const formFields = document.querySelector(".form-fields");
   const checkboxField = formFields.querySelector(".checkbox-field");
   const checkboxLabel = checkboxField.querySelector(".checkbox-text");
-  const checkbox = checkboxField.querySelector("input[type='checkbox']");
+  const checkboxInput = checkboxField.querySelector("input[type='checkbox']");
   const textarea = document.getElementById("text-area-message");
   const fieldLabel = formFields.querySelector(".field-label");
   const continueBtn = document.getElementById("checkout-continue");
@@ -2639,6 +2640,19 @@ window.initCheckoutFlow = async function () {
   if (!stepNumEl || !headerEl || !paragraphEl || !continueBtn) {
     console.error("❌ Missing required DOM elements. Aborting.");
     return;
+  }
+
+  function syncCheckboxVisualState(el) {
+    const label = el.closest(".checkbox-field");
+    const checkmark = label?.querySelector(".checkmark");
+
+    if (el.checked) {
+      label?.classList.add("checked");
+      checkmark?.classList.add("checked");
+    } else {
+      label?.classList.remove("checked");
+      checkmark?.classList.remove("checked");
+    }
   }
 
   const updateStep = () => {
@@ -2654,62 +2668,75 @@ window.initCheckoutFlow = async function () {
     fieldLabel.classList.add("hidden");
     formInput.classList.add("hidden");
     continueBtn.classList.remove("hidden");
+
+    // Reset button label to "Continue"
     continueBtn.querySelectorAll(".button-text").forEach(el => el.textContent = "Continue");
 
-
-    // Update text
+    // Step number and copy
     stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
     headerEl.textContent = step.title || "";
     paragraphEl.textContent = step.description || "";
 
-    // Handle step types
     switch (step.type) {
       case "gallery":
         galleryEl.classList.remove("hidden");
         let imgIndex = 0;
         galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
-        console.log("🖼️ Showing gallery with", step.gallery.length, "images");
+
         document.getElementById("prev-img").onclick = e => {
           e.preventDefault();
           imgIndex = (imgIndex - 1 + step.gallery.length) % step.gallery.length;
           galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
         };
+
         document.getElementById("next-img").onclick = e => {
           e.preventDefault();
           imgIndex = (imgIndex + 1) % step.gallery.length;
           galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
         };
+
+        console.log("🖼️ Gallery initialized with", step.gallery.length, "images.");
         break;
 
       case "checkbox":
         formFields.classList.remove("hidden");
         checkboxField.classList.remove("hidden");
-        checkbox.checked = step["show-field"]?.default || false;
-        syncCheckboxVisualState(checkbox);
-        checkbox.addEventListener("change", () => syncCheckboxVisualState(checkbox));
+
+        const checkbox1 = checkboxInput.cloneNode(true);
+        checkboxField.replaceChild(checkbox1, checkboxInput);
+        checkbox1.checked = step["show-field"]?.default || false;
+        syncCheckboxVisualState(checkbox1);
+        checkbox1.addEventListener("change", () => syncCheckboxVisualState(checkbox1));
+
         checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "Checkbox";
-        console.log("☑️ Showing checkbox:", checkboxLabel.textContent);
         break;
 
       case "show-field":
         formFields.classList.remove("hidden");
         checkboxField.classList.remove("hidden");
-        checkbox.checked = step["show-field"]?.["checkbox-default"] || false;
-        syncCheckboxVisualState(checkbox);
-        checkbox.addEventListener("change", () => syncCheckboxVisualState(checkbox));
-        checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "";
+
+        const checkbox2 = checkboxInput.cloneNode(true);
+        checkboxField.replaceChild(checkbox2, checkboxInput);
+        checkbox2.checked = step["show-field"]?.["checkbox-default"] || false;
+        syncCheckboxVisualState(checkbox2);
+
         fieldLabel.textContent = step["show-field"]?.["field-label"] || "Message";
-        textarea.value = "";
         fieldLabel.classList.remove("hidden");
         textarea.classList.remove("hidden");
-        console.log("📝 Showing conditional field:", fieldLabel.textContent);
+        textarea.value = "";
 
         const toggle = () => {
-          const hidden = checkbox.checked === step["show-field"]["show-field-if"];
-          formInput.classList.toggle("hidden", hidden);
-          console.log("📦 Conditional field is", hidden ? "hidden" : "visible");
+          const shouldHide = checkbox2.checked === step["show-field"]["show-field-if"];
+          formInput.classList.toggle("hidden", shouldHide);
+          console.log("📦 Conditional field is", shouldHide ? "hidden" : "visible");
         };
-        checkbox.onchange = toggle;
+
+        checkbox2.addEventListener("change", () => {
+          syncCheckboxVisualState(checkbox2);
+          toggle();
+        });
+
+        checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "";
         toggle();
         break;
 
@@ -2720,7 +2747,7 @@ window.initCheckoutFlow = async function () {
 
       case "success":
         continueBtn.classList.add("hidden");
-        console.log("🎉 Success message step shown.");
+        console.log("🎉 Success message shown.");
         break;
 
       default:
@@ -2732,11 +2759,12 @@ window.initCheckoutFlow = async function () {
     e.preventDefault();
 
     const step = steps[stepIndex];
+    const checkboxEl = formFields.querySelector("input[type='checkbox']");
 
     if (step.type === "checkbox" || step.type === "show-field") {
       formValues[step.title] = {
-        checked: checkbox.checked,
-        value: (!checkbox.checked && step.type === "show-field") ? textarea.value : null
+        checked: checkboxEl?.checked || false,
+        value: (!checkboxEl?.checked && step.type === "show-field") ? textarea.value : null
       };
       console.log("🧾 Collected form response:", formValues[step.title]);
     }
@@ -2772,6 +2800,7 @@ window.initCheckoutFlow = async function () {
 
   updateStep();
 };
+
 
 
 async function initReservationUpdate() {
