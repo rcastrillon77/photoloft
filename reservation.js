@@ -2592,8 +2592,15 @@ async function loadCheckoutProcess(listingId) {
 }
 
 window.initCheckoutFlow = async function () {
+  console.log("🚀 Starting checkout flow...");
+
   const steps = await loadCheckoutProcess(LISTING_UUID);
-  if (!steps.length) return;
+  console.log("📋 Steps loaded from Supabase:", steps);
+
+  if (!steps || !steps.length) {
+    console.warn("⚠️ No checkout steps found. Check listing config.");
+    return;
+  }
 
   let stepIndex = 0;
   const formValues = {};
@@ -2611,11 +2618,17 @@ window.initCheckoutFlow = async function () {
   const continueBtn = document.getElementById("checkout-continue");
   const formInput = textarea.closest(".form-input");
 
+  if (!stepNumEl || !headerEl || !paragraphEl || !continueBtn) {
+    console.error("❌ Missing required DOM elements. Aborting.");
+    return;
+  }
+
   const updateStep = () => {
     const step = steps[stepIndex];
     if (!step) return;
+    console.log(`🔄 Rendering step ${stepIndex + 1}:`, step);
 
-    // Reset visibility
+    // Reset UI state
     galleryEl.classList.add("hidden");
     formFields.classList.add("hidden");
     checkboxField.classList.add("hidden");
@@ -2624,15 +2637,18 @@ window.initCheckoutFlow = async function () {
     formInput.classList.add("hidden");
     continueBtn.classList.remove("hidden");
 
+    // Update text
     stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
     headerEl.textContent = step.title || "";
     paragraphEl.textContent = step.description || "";
 
+    // Handle step types
     switch (step.type) {
       case "gallery":
         galleryEl.classList.remove("hidden");
         let imgIndex = 0;
         galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
+        console.log("🖼️ Showing gallery with", step.gallery.length, "images");
         document.getElementById("prev-img").onclick = e => {
           e.preventDefault();
           imgIndex = (imgIndex - 1 + step.gallery.length) % step.gallery.length;
@@ -2650,6 +2666,7 @@ window.initCheckoutFlow = async function () {
         checkboxField.classList.remove("hidden");
         checkbox.checked = step["show-field"]?.default || false;
         checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "Checkbox";
+        console.log("☑️ Showing checkbox:", checkboxLabel.textContent);
         break;
 
       case "show-field":
@@ -2661,10 +2678,12 @@ window.initCheckoutFlow = async function () {
         textarea.value = "";
         fieldLabel.classList.remove("hidden");
         textarea.classList.remove("hidden");
+        console.log("📝 Showing conditional field:", fieldLabel.textContent);
 
         const toggle = () => {
           const hidden = checkbox.checked === step["show-field"]["show-field-if"];
           formInput.classList.toggle("hidden", hidden);
+          console.log("📦 Conditional field is", hidden ? "hidden" : "visible");
         };
         checkbox.onchange = toggle;
         toggle();
@@ -2672,11 +2691,16 @@ window.initCheckoutFlow = async function () {
 
       case "submit":
         continueBtn.querySelectorAll(".button-text").forEach(el => el.textContent = "Submit");
+        console.log("✅ Reached submission step.");
         break;
 
       case "success":
         continueBtn.classList.add("hidden");
+        console.log("🎉 Success message step shown.");
         break;
+
+      default:
+        console.warn("❓ Unknown step type:", step.type);
     }
   };
 
@@ -2685,12 +2709,12 @@ window.initCheckoutFlow = async function () {
 
     const step = steps[stepIndex];
 
-    // Store responses
     if (step.type === "checkbox" || step.type === "show-field") {
       formValues[step.title] = {
         checked: checkbox.checked,
         value: (!checkbox.checked && step.type === "show-field") ? textarea.value : null
       };
+      console.log("🧾 Collected form response:", formValues[step.title]);
     }
 
     if (step.type === "submit") {
@@ -2699,16 +2723,20 @@ window.initCheckoutFlow = async function () {
         responses: formValues
       };
 
+      console.log("📤 Sending payload to Make.com:", payload);
+
       try {
         await fetch("https://hook.us1.make.com/your-make-webhook-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
+        console.log("✅ Submission successful");
         stepIndex++;
         updateStep();
       } catch (err) {
-        alert("Error submitting checkout form.");
+        console.error("❌ Failed to submit checkout form:", err);
+        alert("Something went wrong submitting the checkout form.");
       }
 
       return;
@@ -2720,6 +2748,7 @@ window.initCheckoutFlow = async function () {
 
   updateStep();
 };
+
 
 async function initReservationUpdate() {
   if (!bookingUuid) return;
