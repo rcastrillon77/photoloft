@@ -2606,82 +2606,168 @@ async function loadCheckoutProcess(listingId) {
 }
 
 window.initCheckoutScrollFlow = async function () {
-  console.log("🚀 Starting scroll-based checkout flow");
+  console.log("🚀 Initializing dynamic scroll-based checkout...");
 
   const steps = await loadCheckoutProcess(LISTING_UUID);
+  const container = document.getElementById("checkout-process");
+  container.innerHTML = ""; // clear existing content
+
   if (!steps?.length) {
-    console.warn("⚠️ No checkout steps found.");
+    container.innerHTML = "<p>No checkout steps found.</p>";
     return;
   }
 
-  const containerEls = document.querySelectorAll("#checkout-process .section-container");
   const responses = {};
+  const elements = {}; // keep refs for data gathering
 
   steps.forEach((step, index) => {
-    const container = containerEls[index];
-    if (!container) {
-      console.warn(`⚠️ No matching container for step ${index + 1}`);
-      return;
-    }
+    const stepId = `${step.title?.toLowerCase().replace(/\s+/g, "-")}-${step.type}`;
 
-    const keyBase = `${step.title?.toLowerCase().replace(/\s+/g, "-")}-${step.type}`;
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("section-container");
 
-    // Handle checkbox
-    if (step.type === "checkbox" || step.type === "show-field") {
-      const checkbox = container.querySelector("input[type='checkbox']");
-      const checkmark = container.querySelector(".checkmark");
-      const label = container.querySelector(".checkbox-field");
-      const checkboxLabel = container.querySelector(".checkbox-text");
-      const checkboxText = step["show-field"]?.["checkbox-label"] || step["checkbox-label"] || "Checkbox";
+    const headerBlock = document.createElement("div");
+    headerBlock.classList.add("div-block-249");
 
-      checkbox.id = keyBase;
-      checkbox.name = keyBase;
-      checkbox.checked = step["show-field"]?.["checkbox-default"] || step["default"] || false;
-      checkboxLabel.textContent = checkboxText;
+    const stepNumber = document.createElement("div");
+    stepNumber.classList.add("text-block-108");
+    stepNumber.textContent = `${index + 1}`;
 
-      // Sync visual state
-      const syncCheckbox = () => {
-        if (checkbox.checked) {
-          label.classList.add("checked");
-          checkmark.classList.add("checked");
-        } else {
-          label.classList.remove("checked");
-          checkmark.classList.remove("checked");
-        }
+    const header = document.createElement("div");
+    header.classList.add("section-header");
+    header.textContent = step.title || "";
+
+    headerBlock.append(stepNumber, header);
+
+    const content = document.createElement("div");
+    content.classList.add("checkout-step-content");
+
+    const description = document.createElement("div");
+    description.classList.add("checkout-description");
+    description.textContent = step.description || "";
+
+    content.appendChild(description);
+
+    // === Step Type Handling ===
+    if (step.type === "gallery") {
+      const gallery = document.createElement("div");
+      gallery.classList.add("checkout-gallery");
+      let imgIndex = 0;
+
+      gallery.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
+
+      const prev = document.createElement("a");
+      prev.href = "#";
+      prev.textContent = "←";
+      prev.onclick = e => {
+        e.preventDefault();
+        imgIndex = (imgIndex - 1 + step.gallery.length) % step.gallery.length;
+        gallery.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
       };
 
-      checkbox.addEventListener("change", syncCheckbox);
-      syncCheckbox();
+      const next = document.createElement("a");
+      next.href = "#";
+      next.textContent = "→";
+      next.onclick = e => {
+        e.preventDefault();
+        imgIndex = (imgIndex + 1) % step.gallery.length;
+        gallery.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
+      };
 
-      // Show-field toggle
+      gallery.append(prev, next);
+      content.appendChild(gallery);
+    }
+
+    if (step.type === "checkbox" || step.type === "show-field") {
+      const fieldContainer = document.createElement("div");
+      fieldContainer.classList.add("section-container", "form-fields");
+
+      const label = document.createElement("label");
+      label.classList.add("checkbox-field", "light");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.classList.add("checkbox");
+      checkbox.name = stepId;
+      checkbox.id = stepId;
+      checkbox.checked = step["show-field"]?.["checkbox-default"] || step["default"] || false;
+
+      const checkmark = document.createElement("div");
+      checkmark.classList.add("checkmark");
+
+      const checkboxTextSection = document.createElement("div");
+      checkboxTextSection.classList.add("checkbox-text-section");
+
+      const checkboxText = document.createElement("p");
+      checkboxText.classList.add("checkbox-text");
+      checkboxText.textContent = step["show-field"]?.["checkbox-label"] || step["checkbox-label"] || "Checkbox";
+
+      checkboxTextSection.appendChild(checkboxText);
+      label.append(checkbox, checkmark, checkboxTextSection);
+      fieldContainer.appendChild(label);
+
+      const updateCheckboxVisual = () => {
+        label.classList.toggle("checked", checkbox.checked);
+        checkmark.classList.toggle("checked", checkbox.checked);
+      };
+
+      checkbox.addEventListener("change", updateCheckboxVisual);
+      updateCheckboxVisual();
+
+      // Textarea for show-field
+      let textarea;
       if (step.type === "show-field") {
-        const inputContainer = container.querySelector(".form-input");
-        const textarea = container.querySelector("textarea");
-        const fieldLabel = inputContainer.querySelector(".field-label");
-        fieldLabel.textContent = step["show-field"]["field-label"] || "Message";
+        const inputWrapper = document.createElement("div");
+        inputWrapper.classList.add("form-input");
 
-        const toggleVisibility = () => {
+        const inputLabel = document.createElement("div");
+        inputLabel.classList.add("field-label");
+        inputLabel.textContent = step["show-field"]["field-label"] || "Message";
+
+        textarea = document.createElement("textarea");
+        textarea.classList.add("input-field", "textarea");
+        textarea.name = `${stepId}-textarea`;
+        textarea.id = `${stepId}-textarea`;
+
+        inputWrapper.append(inputLabel, textarea);
+        fieldContainer.appendChild(inputWrapper);
+
+        const toggleTextarea = () => {
           const shouldHide = checkbox.checked === step["show-field"]["show-field-if"];
-          inputContainer.classList.toggle("hidden", shouldHide);
+          inputWrapper.classList.toggle("hidden", shouldHide);
         };
 
-        checkbox.addEventListener("change", toggleVisibility);
-        toggleVisibility();
+        checkbox.addEventListener("change", toggleTextarea);
+        toggleTextarea();
       }
+
+      content.appendChild(fieldContainer);
+      elements[stepId] = { checkbox, textarea };
     }
 
-    // Handle textareas
-    if (step.type === "show-field") {
-      const textarea = container.querySelector("textarea");
-      if (textarea) {
-        textarea.id = `${keyBase}-textarea`;
-        textarea.name = `${keyBase}-textarea`;
-      }
-    }
+    wrapper.append(headerBlock, content);
+    container.appendChild(wrapper);
   });
 
-  // Handle submit
-  document.getElementById("checkout-submit")?.addEventListener("click", async (e) => {
+  // === Submit Button ===
+  const submitBtn = document.createElement("a");
+  submitBtn.href = "#";
+  submitBtn.id = "checkout-submit";
+  submitBtn.classList.add("button", "w-inline-block");
+
+  submitBtn.innerHTML = `
+    <div class="button-text-wrapper">
+      <div class="button-text-container">
+        <div class="button-text">Complete Checkout Process</div>
+        <div class="button-text-with-icon">
+          <div class="button-text">Complete Checkout Process</div>
+          <div class="button-icon">→</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  submitBtn.addEventListener("click", async (e) => {
     e.preventDefault();
 
     const payload = {
@@ -2689,30 +2775,19 @@ window.initCheckoutScrollFlow = async function () {
       responses: {}
     };
 
-    steps.forEach((step, index) => {
-      const container = containerEls[index];
-      const keyBase = `${step.title?.toLowerCase().replace(/\s+/g, "-")}-${step.type}`;
-
-      if (step.type === "checkbox") {
-        const checkbox = container.querySelector(`#${keyBase}`);
-        if (checkbox) {
-          payload.responses[keyBase] = checkbox.checked;
-        }
-      }
-
-      if (step.type === "show-field") {
-        const checkbox = container.querySelector(`#${keyBase}`);
-        const textarea = container.querySelector(`#${keyBase}-textarea`);
-        const shouldShowTextarea = checkbox && (checkbox.checked !== step["show-field"]["show-field-if"]);
-
-        payload.responses[keyBase] = {
-          checked: checkbox?.checked || false,
-          value: shouldShowTextarea ? textarea?.value || null : null
+    Object.entries(elements).forEach(([key, el]) => {
+      if (el.checkbox && el.textarea) {
+        const show = el.checkbox.checked !== steps.find(s => key.startsWith(s.title?.toLowerCase().replace(/\s+/g, "-"))).show-field["show-field-if"];
+        payload.responses[key] = {
+          checked: el.checkbox.checked,
+          value: show ? el.textarea.value : null
         };
+      } else if (el.checkbox) {
+        payload.responses[key] = el.checkbox.checked;
       }
     });
 
-    console.log("📤 Submitting checkout payload to Make:", payload);
+    console.log("📤 Submitting dynamic checkout:", payload);
 
     try {
       await fetch("https://hook.us1.make.com/your-make-webhook-url", {
@@ -2721,16 +2796,16 @@ window.initCheckoutScrollFlow = async function () {
         body: JSON.stringify(payload)
       });
 
-      console.log("✅ Submission successful");
-      showPopupById("checkout-success"); // or whatever ID your success confirmation popup uses
+      console.log("✅ Submission complete");
+      showPopupById("confirmation-popup"); // change this if your success popup has a different ID
     } catch (err) {
-      console.error("❌ Failed to submit checkout form:", err);
-      alert("Something went wrong submitting the checkout form.");
+      console.error("❌ Submission failed:", err);
+      alert("Checkout submission failed. Please try again.");
     }
   });
+
+  container.appendChild(submitBtn);
 };
-
-
 
 
 async function initReservationUpdate() {
