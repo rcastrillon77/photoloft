@@ -2595,7 +2595,9 @@ initReservationUpdate();
 // POPUP CLOSE & OPEN
 document.getElementById("popup-closer")?.addEventListener("click", () => {
   closePopup();
-  document.getElementById("popup")?.classList.remove("entry");
+  setTimeout(() => {
+    document.getElementById("popup")?.classList.remove("entry");
+  }, 300);
 });
 document.getElementById("popup-close-btn").addEventListener("click", closePopup);
 document.getElementById("popup-confirm-closer").addEventListener("click", closePopup);
@@ -2866,6 +2868,7 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
 
 // GUIDED ENTRY
 document.getElementById("actions_entry")?.addEventListener("click", async (e) => {
+  guidedEntryStepIndex = 0;
   showPopupById("guided-entry");
   document.getElementById("popup").classList.add("entry");
   await initGuidedEntry();
