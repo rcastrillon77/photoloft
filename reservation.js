@@ -2608,7 +2608,18 @@ async function loadCheckoutProcess(listingId) {
 window.initCheckoutScrollFlow = async function () {
   console.log("🚀 Initializing dynamic scroll-based checkout...");
 
-  const steps = await loadCheckoutProcess(LISTING_UUID);
+  const allSteps = await loadCheckoutProcess(LISTING_UUID);
+  let successStep = null;
+  const steps = [];
+
+  for (const step of allSteps) {
+    if (step.type === "success") {
+      successStep = step;
+    } else {
+      steps.push(step);
+    }
+  }
+
   const container = document.getElementById("checkout-process");
   container.innerHTML = ""; // clear existing content
 
@@ -2797,7 +2808,11 @@ window.initCheckoutScrollFlow = async function () {
       });
 
       console.log("✅ Submission complete");
-      showPopupById("confirmation-popup"); // change this if your success popup has a different ID
+      if (successStep) {
+        document.getElementById("confirm-popup-header").textContent = successStep.title || "Thank You";
+        document.getElementById("confirm-popup-paragraph").textContent = successStep.description || "Your checkout is complete.";
+        showPopupById("confirmation-popup");
+      }
     } catch (err) {
       console.error("❌ Submission failed:", err);
       alert("Checkout submission failed. Please try again.");
