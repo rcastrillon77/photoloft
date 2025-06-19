@@ -2758,7 +2758,7 @@ window.initCheckoutScrollFlow = async function () {
     console.log("📤 Submitting dynamic checkout:", payload);
 
     try {
-      await fetch("https://hook.us1.make.com/your-make-webhook-url", {
+      await fetch("https://hook.us1.make.com/lila320113a7nngn29ix7yl94snyqjjr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
