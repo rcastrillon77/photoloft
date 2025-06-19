@@ -2476,10 +2476,11 @@ async function loadEntryInstructions(listingId) {
 }
 
 window.initGuidedEntry = async function () {
+  let guidedEntryStepIndex = 0;
   const steps = await loadEntryInstructions(LISTING_UUID);
   if (!steps.length) return;
 
-  let currentStep = 0;
+  let currentStep = guidedEntryStepIndex;
   const wrapper = document.querySelector(".popup-content.entry");
   const stepEl = wrapper?.querySelector(".guided-entry-step");
   const titleEl = wrapper?.querySelector("#ge-title");
@@ -2516,9 +2517,11 @@ window.initGuidedEntry = async function () {
     e.preventDefault();
     if (currentStep < steps.length - 1) {
       currentStep++;
+      guidedEntryStepIndex = currentStep;
       updateStep(currentStep);
     } else {
       closePopup();
+      document.getElementById("popup")?.classList.remove("entry");
     }
   });
 
