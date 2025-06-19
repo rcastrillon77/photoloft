@@ -3027,3 +3027,9 @@ document.getElementById("actions_entry")?.addEventListener("click", async (e) =>
   showPopupById("guided-entry");
   document.getElementById("popup").classList.add("entry");
 });
+
+// CHECKOUT
+document.getElementById("actions_checkout")?.addEventListener("click", async (e) => {
+  showPopupById("checkout-process");
+  await initCheckoutFlow();
+});
