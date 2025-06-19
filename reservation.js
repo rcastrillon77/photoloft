@@ -2581,21 +2581,22 @@ async function loadCheckoutProcess(listingId) {
     .from("listings")
     .select("details")
     .eq("uuid", listingId)
-    .single();
+    .maybeSingle();
 
   if (error || !data?.details?.["checkout-process"]) {
-    console.error("❌ Failed to load checkout process:", error);
+    console.warn("⚠️ Failed to load checkout-process for listing:", listingId, error);
     return [];
   }
 
+  console.log("📦 checkout-process loaded from Supabase:", data.details["checkout-process"]);
   return data.details["checkout-process"];
 }
 
+
 window.initCheckoutFlow = async function () {
   console.log("🚀 Starting checkout flow...");
-
   const steps = await loadCheckoutProcess(LISTING_UUID);
-  console.log("📋 Steps loaded from Supabase:", steps);
+  console.log("📋 Loaded steps:", steps);
 
   if (!steps || !steps.length) {
     console.warn("⚠️ No checkout steps found. Check listing config.");
