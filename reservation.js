@@ -2832,7 +2832,8 @@ function startBookingCountdown(startISO, endISO) {
   const end = luxon.DateTime.fromISO(endISO, { zone: timezone });
   const totalSeconds = end.diff(start, 'seconds').seconds;
 
-  const timerEl = document.getElementById("booking-timer-countdown");
+  const timerEl = document.querySelector(".booking-timer-countdown");
+
   const progressEl = document.querySelector(".booking-timer-progress");
 
   function updateTimer() {
