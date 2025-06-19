@@ -2793,3 +2793,17 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
     },
   });
 });
+
+// GUIDED ENTRY
+document.getElementById("actions_entry")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+
+  // Add `.entry` class to .popup
+  document.querySelector(".popup")?.classList.add("entry");
+
+  // Show only the guided entry popup content
+  showPopupById("guided-entry");
+
+  // Run the guided entry flow
+  await initGuidedEntry();
+});
