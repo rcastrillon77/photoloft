@@ -303,6 +303,10 @@ document.getElementById("actions_entry")?.addEventListener("click", async (e) =>
 
 // CHECKOUT
 document.getElementById("actions_checkout")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  console.log("🟢 Checkout button clicked.");
+
   showPopupById("checkout-process");
   await initCheckoutFlow();
 });
+
