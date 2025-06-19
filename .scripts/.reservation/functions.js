@@ -2476,11 +2476,11 @@ async function loadEntryInstructions(listingId) {
 }
 
 window.initGuidedEntry = async function () {
-  let guidedEntryStepIndex = 0;
   const steps = await loadEntryInstructions(LISTING_UUID);
   if (!steps.length) return;
 
-  let currentStep = guidedEntryStepIndex;
+  guidedEntryStepIndex = 0;
+
   const wrapper = document.querySelector(".popup-content.entry");
   const stepEl = wrapper?.querySelector(".guided-entry-step");
   const titleEl = wrapper?.querySelector("#ge-title");
@@ -2490,7 +2490,21 @@ window.initGuidedEntry = async function () {
 
   const entryCode = document.getElementById("entry-code")?.textContent || "----";
 
-  const updateStep = (index) => {
+  // Remove any previous click handlers
+  const newBtn = btn.cloneNode(true);
+  btn.replaceWith(newBtn);
+
+  newBtn.addEventListener("click", () => {
+    guidedEntryStepIndex++;
+    if (guidedEntryStepIndex >= steps.length) {
+      closePopup();
+      document.getElementById("popup")?.classList.remove("entry");
+      return;
+    }
+    updateStep(guidedEntryStepIndex);
+  });
+
+  function updateStep(index) {
     const step = steps[index];
     if (!step) return;
 
@@ -2507,23 +2521,12 @@ window.initGuidedEntry = async function () {
     // Description
     descEl.textContent = step.description;
 
-    // Button
+    // Button text
     const isLast = index === steps.length - 1;
     const label = isLast ? "Close" : `Continue (${index + 1} of ${steps.length})`;
-    btnTextEls.forEach(el => el.textContent = label);
-  };
+    newBtn.querySelectorAll(".button-text").forEach(el => el.textContent = label);
+  }
 
-  btn?.addEventListener("click", (e) => {
-    e.preventDefault();
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      guidedEntryStepIndex = currentStep;
-      updateStep(currentStep);
-    } else {
-      closePopup();
-      document.getElementById("popup")?.classList.remove("entry");
-    }
-  });
-
-  updateStep(currentStep);
+  updateStep(guidedEntryStepIndex);
 };
+
