@@ -2871,7 +2871,6 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
 // GUIDED ENTRY
 document.getElementById("actions_entry")?.addEventListener("click", async (e) => {
   await initGuidedEntry();
-  guidedEntryStepIndex = 0;
   showPopupById("guided-entry");
   document.getElementById("popup").classList.add("entry");
 });
