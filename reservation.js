@@ -2593,7 +2593,10 @@ async function initReservationUpdate() {
 initReservationUpdate();
 
 // POPUP CLOSE & OPEN
-document.getElementById("popup-closer").addEventListener("click", closePopup);
+document.getElementById("popup-closer")?.addEventListener("click", () => {
+  closePopup();
+  document.getElementById("popup")?.classList.remove("entry");
+});
 document.getElementById("popup-close-btn").addEventListener("click", closePopup);
 document.getElementById("popup-confirm-closer").addEventListener("click", closePopup);
 
@@ -2866,7 +2869,7 @@ document.getElementById("actions_entry")?.addEventListener("click", async (e) =>
   e.preventDefault();
 
   // Add `.entry` class to .popup
-  document.querySelector(".popup")?.classList.add("entry");
+  document.getElementById("popup")?.classList.add("entry");
 
   // Show only the guided entry popup content
   showPopupById("guided-entry");
