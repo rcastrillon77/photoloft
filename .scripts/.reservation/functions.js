@@ -2530,3 +2530,152 @@ window.initGuidedEntry = async function () {
   updateStep(guidedEntryStepIndex);
 };
 
+// CHECKOUT
+async function loadCheckoutProcess(listingId) {
+  const { data, error } = await window.supabase
+    .from("listings")
+    .select("details")
+    .eq("uuid", listingId)
+    .single();
+
+  if (error || !data?.details?.["checkout-process"]) {
+    console.error("❌ Failed to load checkout process:", error);
+    return [];
+  }
+
+  return data.details["checkout-process"];
+}
+
+window.initCheckoutFlow = async function () {
+  const steps = await loadCheckoutProcess(LISTING_UUID);
+  if (!steps.length) return;
+
+  let stepIndex = 0;
+  const formValues = {};
+
+  const updateStep = () => {
+    const step = steps[stepIndex];
+    if (!step) return;
+
+    const stepNumEl = document.querySelector(".text-block-108");
+    const headerEl = document.getElementById("checkout-header");
+    const paragraphEl = document.getElementById("checkout-paragraph");
+    const galleryEl = document.getElementById("checkout-gallery");
+    const formFields = document.querySelector(".form-fields");
+    const checkboxField = formFields.querySelector(".checkbox-field");
+    const checkboxLabel = checkboxField.querySelector(".checkbox-text");
+    const checkbox = checkboxField.querySelector("input[type='checkbox']");
+    const textarea = document.getElementById("text-area-message");
+    const fieldLabel = formFields.querySelector(".field-label");
+    const continueBtn = document.getElementById("checkout-continue");
+
+    stepNumEl.textContent = `${stepIndex + 1} of ${steps.length}`;
+    headerEl.textContent = step.title || "";
+    paragraphEl.textContent = step.description || "";
+
+    galleryEl.classList.add("hidden");
+    formFields.classList.add("hidden");
+    checkboxField.classList.add("hidden");
+    textarea.classList.add("hidden");
+    fieldLabel.classList.add("hidden");
+
+    switch (step.type) {
+      case "gallery":
+        galleryEl.classList.remove("hidden");
+        let imgIndex = 0;
+        galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
+        document.getElementById("prev-img").onclick = e => {
+          e.preventDefault();
+          imgIndex = (imgIndex - 1 + step.gallery.length) % step.gallery.length;
+          galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
+        };
+        document.getElementById("next-img").onclick = e => {
+          e.preventDefault();
+          imgIndex = (imgIndex + 1) % step.gallery.length;
+          galleryEl.style.backgroundImage = `url(${step.gallery[imgIndex]})`;
+        };
+        break;
+
+      case "step":
+        // Simple step with no inputs
+        break;
+
+      case "checkbox":
+        formFields.classList.remove("hidden");
+        checkboxField.classList.remove("hidden");
+        checkbox.checked = step["show-field"]?.default || false;
+        checkboxLabel.textContent = step["show-field"]?.["checkbox-label"] || "Checkbox";
+        break;
+
+      case "show-field":
+        formFields.classList.remove("hidden");
+        checkboxField.classList.remove("hidden");
+        checkbox.checked = step["show-field"]["checkbox-default"] || false;
+        checkboxLabel.textContent = step["show-field"]["checkbox-label"] || "";
+        textarea.value = "";
+        fieldLabel.textContent = step["show-field"]["field-label"] || "Message";
+        fieldLabel.classList.remove("hidden");
+        textarea.classList.remove("hidden");
+
+        const formInput = textarea.closest(".form-input");
+        const toggleFieldVisibility = () => {
+          const showField = !checkbox.checked;
+          formInput.classList.toggle("hidden", !showField);
+        };
+
+        checkbox.onchange = toggleFieldVisibility;
+        toggleFieldVisibility();
+        break;
+
+      case "submit":
+        continueBtn.querySelectorAll(".button-text").forEach(el => el.textContent = "Submit");
+        break;
+
+      case "success":
+        continueBtn.classList.add("hidden");
+        break;
+    }
+  };
+
+  document.getElementById("checkout-continue").onclick = async (e) => {
+    e.preventDefault();
+
+    const step = steps[stepIndex];
+    const checkbox = document.querySelector(".form-fields input[type='checkbox']");
+    const textarea = document.getElementById("text-area-message");
+
+    // Collect values
+    if (step.type === "checkbox" || step.type === "show-field") {
+      formValues[step.title] = {
+        checked: checkbox.checked,
+        value: (!checkbox.checked && step.type === "show-field") ? textarea.value : null
+      };
+    }
+
+    if (step.type === "submit") {
+      const payload = {
+        booking_id: bookingUuid,
+        responses: formValues
+      };
+
+      try {
+        await fetch("https://hook.us1.make.com/your-make-webhook-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        stepIndex++;
+        updateStep();
+      } catch (err) {
+        alert("Error submitting checkout form.");
+      }
+
+      return;
+    }
+
+    stepIndex++;
+    updateStep();
+  };
+
+  updateStep();
+};
