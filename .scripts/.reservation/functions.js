@@ -202,6 +202,7 @@ function applyActionButtonStates(details) {
 
   if (status === "active") {
     document.getElementById("booking-timer").classList.remove("hidden");
+    startBookingCountdown(details.start, details.end);
   } 
 }
 
@@ -2779,3 +2780,40 @@ window.initCheckoutScrollFlow = async function () {
 
   container.appendChild(submitBtn);
 };
+
+// COUNTDOWN
+function startBookingCountdown(startISO, endISO) {
+  const start = luxon.DateTime.fromISO(startISO, { zone: timezone });
+  const end = luxon.DateTime.fromISO(endISO, { zone: timezone });
+  const totalSeconds = end.diff(start, 'seconds').seconds;
+
+  const timerEl = document.getElementById("booking-timer-countdown");
+  const progressEl = document.querySelector(".booking-timer-progress");
+
+  function updateTimer() {
+    const now = luxon.DateTime.now().setZone(timezone);
+    const remaining = end.diff(now, ['hours', 'minutes', 'seconds']);
+    const elapsedSeconds = now.diff(start, 'seconds').seconds;
+    const percent = Math.min(100, Math.max(0, (elapsedSeconds / totalSeconds) * 100));
+
+    if (timerEl) {
+      const hrs = Math.floor(remaining.hours).toString().padStart(2, "0");
+      const mins = Math.floor(remaining.minutes).toString().padStart(2, "0");
+      const secs = Math.floor(remaining.seconds).toString().padStart(2, "0");
+      timerEl.textContent = `${hrs}:${mins}:${secs}`;
+    }
+
+    if (progressEl) {
+      progressEl.style.width = `${percent}%`;
+    }
+
+    if (now >= end) {
+      clearInterval(window.bookingCountdownInterval);
+      if (timerEl) timerEl.textContent = "00:00:00";
+      if (progressEl) progressEl.style.width = "100%";
+    }
+  }
+
+  updateTimer(); // run once immediately
+  window.bookingCountdownInterval = setInterval(updateTimer, 1000);
+}
