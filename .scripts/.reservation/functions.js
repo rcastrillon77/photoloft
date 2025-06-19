@@ -91,6 +91,7 @@ async function rebuildBookingDetails(bookingUuid) {
 
   console.log("✅ Booking details updated.");
   window.details = details;
+  await initGuidedEntry();
   return details;
 }
 
@@ -2457,3 +2458,69 @@ function getExtendableTimeRange(details, eventsForDay) {
   };
 }
 
+// GUIDED ENTRY
+
+async function loadEntryInstructions(listingId) {
+  const { data, error } = await window.supabase
+    .from("listings")
+    .select("details")
+    .eq("uuid", listingId)
+    .single();
+
+  if (error || !data?.details?.entry?.private) {
+    console.error("❌ Failed to load entry instructions:", error || "Missing data");
+    return [];
+  }
+
+  return data.details.entry.private;
+}
+
+window.initGuidedEntry = async function () {
+  const steps = await loadEntryInstructions(LISTING_UUID);
+  if (!steps.length) return;
+
+  let currentStep = 0;
+  const wrapper = document.querySelector(".popup-content.entry");
+  const stepEl = wrapper?.querySelector(".guided-entry-step");
+  const titleEl = wrapper?.querySelector("#ge-title");
+  const descEl = wrapper?.querySelector("#ge-description");
+  const btn = wrapper?.querySelector("#guided-steps-continue");
+  const btnTextEls = btn?.querySelectorAll(".button-text");
+
+  const entryCode = document.getElementById("entry-code")?.textContent || "----";
+
+  const updateStep = (index) => {
+    const step = steps[index];
+    if (!step) return;
+
+    // Background
+    stepEl.style.backgroundImage = `url('${step["bg-source"]}')`;
+    stepEl.style.backgroundSize = 'cover';
+    stepEl.style.backgroundPosition = 'center';
+
+    // Title
+    const title = step.title === "${guest-code}" ? entryCode : step.title;
+    titleEl.textContent = title;
+    titleEl.classList.toggle("code", step.type === "code");
+
+    // Description
+    descEl.textContent = step.description;
+
+    // Button
+    const isLast = index === steps.length - 1;
+    const label = isLast ? "Close" : `Continue (${index + 1} of ${steps.length})`;
+    btnTextEls.forEach(el => el.textContent = label);
+  };
+
+  btn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      updateStep(currentStep);
+    } else {
+      closePopup();
+    }
+  });
+
+  updateStep(currentStep);
+};
