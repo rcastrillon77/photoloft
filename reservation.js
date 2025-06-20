@@ -359,7 +359,9 @@ function showBookingConfirmationPopup() {
   document.getElementById("confirm-popup-paragraph").innerHTML = `Your booking has been confirmed for <strong>${dateStr}</strong> from <strong>${timeStr}</strong>.<br><br>Please familiarize yourself with the rules and instructions.`;
   openPopup();
   showPopupById("confirmation-popup");
+  setTimeout(() => {
   launchConfettiWithinPopup("confirmation-popup");
+  }, 400); 
 }
 
 function launchConfettiWithinPopup(popupId = "confirmation-popup") {
