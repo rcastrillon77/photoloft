@@ -92,18 +92,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     console.log("🔗 Matched events with bookings:", enrichedEvents);
 
+    const sidePanel = document.querySelector(".side-col-wrapper");
+
     const activeEvent = enrichedEvents.find(e => {
         const now = DateTime.now().setZone(TIMEZONE);
         return DateTime.fromISO(e.start) <= now && DateTime.fromISO(e.end) >= now;
     });
-      
+
     if (activeEvent && activeEvent.bookingDetails) {
         window.currentBooking = activeEvent.bookingDetails;
         renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUUID, activeEvent);
+        sidePanel?.classList.remove("hide");
     } else {
         console.log("🕒 No active booking at the moment");
-    } 
-      
+        sidePanel?.classList.add("hide");
+    }
 
   });
   
