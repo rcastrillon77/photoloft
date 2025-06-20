@@ -315,11 +315,11 @@ function showBookingConfirmationPopup() {
   openPopup();
   showPopupById("confirmation-popup");
   setTimeout(() => {
-  launchConfettiWithinPopup("popup-closer");
+  launchConfettiWithinPopup("confirmation-popup");
   }, 400); 
 }
 
-function launchConfettiWithinPopup(popupId = "popup-closer") {
+function launchConfettiWithinPopup(popupId = "confirmation-popup") {
   const popup = document.getElementById(popupId);
   if (!popup) return;
 
