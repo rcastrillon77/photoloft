@@ -41,7 +41,7 @@ async function fetchUpcomingEvents() {
   
     const { data, error } = await window.supabase
       .from("bookings")
-      .select("uuid, event_id, details, user_id, transaction_id")
+      .select("uuid, event_id, details, user_id, transaction_id, entry_code, checkout_completed")
       .overlaps("event_id", eventUUIDs); // array overlap match
   
     if (error) {
