@@ -315,11 +315,11 @@ function showBookingConfirmationPopup() {
   openPopup();
   showPopupById("confirmation-popup");
   setTimeout(() => {
-  launchConfettiWithinPopup("confirmation-popup");
-  }, 400); 
+  launchConfettiWithinPopup("popup-closer");
+  }, 200); 
 }
 
-function launchConfettiWithinPopup(popupId = "confirmation-popup") {
+function launchConfettiWithinPopup(popupId = "popup-closer") {
   const popup = document.getElementById(popupId);
   if (!popup) return;
 
@@ -353,7 +353,7 @@ function launchConfettiWithinPopup(popupId = "confirmation-popup") {
   // Optional cleanup
   setTimeout(() => {
     canvas.remove();
-  }, 3000);
+  }, 5000);
 }
 
 
