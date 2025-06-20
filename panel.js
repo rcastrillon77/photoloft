@@ -67,13 +67,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     const enrichedEvents = events.map(event => {
         const booking = bookings.find(b => Array.isArray(b.event_id) && b.event_id.includes(event.uuid));
         return {
-          ...event,
-          bookingDetails: booking?.details || null,
-          bookingUUID: booking?.uuid || null
+            ...event,
+            bookingDetails: booking?.details || null,
+            bookingUUID: booking?.uuid || null
         };
-      });
-    
-      console.log("🔗 Matched events with bookings:", enrichedEvents);
+    });
+
+    console.log("🔗 Matched events with bookings:", enrichedEvents);
+
+    const activeEvent = enrichedEvents.find(e => {
+        const now = DateTime.now().setZone(TIMEZONE);
+        return DateTime.fromISO(e.start) <= now && DateTime.fromISO(e.end) >= now;
+    });
       
+    if (activeEvent && activeEvent.bookingDetails) {
+        window.currentBooking = activeEvent.bookingDetails;
+        renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUUID, activeEvent);
+    } else {
+        console.log("🕒 No active booking at the moment");
+    } 
+      
+
   });
   
