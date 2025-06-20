@@ -2813,6 +2813,10 @@ window.initCheckoutScrollFlow = async function () {
 
       console.log("✅ Submission complete");
       if (successStep) {
+        details = await rebuildBookingDetails(bookingUuid);
+        populateReservationDetails(details);
+        applyActionButtonStates(details);
+        
         document.getElementById("confirm-popup-header").textContent = successStep.title || "Thank You";
         document.getElementById("confirm-popup-paragraph").textContent = successStep.description || "Your checkout is complete.";
         showPopupById("confirmation-popup");
