@@ -51,7 +51,7 @@ function renderCurrentBooking(bookingDetails, bookingUUID, event) {
     const user = bookingDetails.user || {};
     const listing = bookingDetails.listing || {};
   
-    document.getElementById("guest-name").textContent = `${user.first_name || ""} ${user.last_name || ""}`;
+    document.getElementById("guest-name").textContent = `${user.first_name || ""}`;
     document.getElementById("start").textContent = `${start.toFormat("h:mm a")}`;
     document.getElementById("end").textContent = `${end.toFormat("h:mm a")}`;
     document.getElementById("listing-name").textContent = listing.name || "Photoloft";
