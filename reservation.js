@@ -390,9 +390,9 @@ function launchConfettiWithinPopup(popupId = "popup-closer") {
   });
 
   myConfetti({
-    particleCount: 160,
-    spread: 90,
-    origin: { y: 0.6 }
+    particleCount: 180,
+    spread: 100,
+    origin: { y: 0.75 }
   });
 
   // Optional cleanup
