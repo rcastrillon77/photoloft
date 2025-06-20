@@ -23,7 +23,7 @@ const CAMERA_CONFIG = [
     { id: "light-loft-east", position: { vertical: 155, horizontal: 185 }, label: "tablet" }
 ]
   
-const LOCAL_API_BASE = "http://100.106.124.36:5000"; 
+const LOCAL_API_BASE = "https://100.106.124.36:5000"; 
 const SNAPSHOT_MAKE_WEBHOOK_URL = "https://hook.us1.make.com/ls3kf6o5j8mml61s13v89x9cyorf5mos";
 const HA_WEBHOOK_PREBOOKING_URL = "http://homeassistant:8123/api/webhook/pre_booking_setup";
   
