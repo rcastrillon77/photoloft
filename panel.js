@@ -37,7 +37,7 @@ async function fetchUpcomingEvents() {
   
     console.log("📅 Events in next 24 hours:", data);
     return data;
-  }
+}
   
   async function fetchBookingsForEvents(eventUUIDs = []) {
     if (!eventUUIDs.length) return [];
@@ -68,6 +68,8 @@ function renderCurrentBooking(bookingDetails, bookingUUID, event) {
     document.getElementById("start").textContent = `${start.toFormat("h:mm a")}`;
     document.getElementById("end").textContent = `${end.toFormat("h:mm a")}`;
     document.getElementById("listing-name").textContent = listing.name || "Photoloft";
+    
+    startBookingCountdown(bookingDetails.start, bookingDetails.end);
 }
   
 async function refreshBookingData() {
@@ -114,7 +116,43 @@ function scheduleQuarterHourUpdates(callback) {
         setInterval(callback, 15 * 60 * 1000); // every 15 minutes thereafter
     }, msUntilNextQuarter);
 }
-  
+
+// TIMER
+function startBookingCountdown(startISO, endISO) {
+  const start = DateTime.fromISO(startISO, { zone: TIMEZONE });
+  const end = DateTime.fromISO(endISO, { zone: TIMEZONE });
+
+  clearInterval(countdownInterval); // avoid duplicates
+
+  countdownInterval = setInterval(() => {
+    const now = DateTime.now().setZone(TIMEZONE);
+    const total = end.diff(start, 'seconds').seconds;
+    const remaining = Math.max(0, end.diff(now, 'seconds').seconds);
+    const elapsed = total - remaining;
+
+    // Format as HH:MM:SS
+    const hrs = Math.floor(remaining / 3600).toString().padStart(2, "0");
+    const mins = Math.floor((remaining % 3600) / 60).toString().padStart(2, "0");
+    const secs = Math.floor(remaining % 60).toString().padStart(2, "0");
+    const timeStr = `${hrs}:${mins}:${secs}`;
+
+    // Update UI
+    const timeEl = document.getElementById("time-remaining");
+    const barEl = document.getElementById("timer-progress");
+
+    if (timeEl) timeEl.textContent = timeStr;
+    if (barEl && total > 0) {
+      const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
+      barEl.style.width = `${pct}%`;
+    }
+
+    // Stop if complete
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+    }
+  }, 1000);
+}
+
 
 // =======================
 // INIT
