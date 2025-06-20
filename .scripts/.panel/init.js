@@ -16,7 +16,6 @@ document.getElementById("test-trigger")?.addEventListener("click", async () => {
       start: DateTime.now().toISO(),
       end: DateTime.now().plus({ hours: 1 }).toISO(),
       entry_code: "0752",
-      cameras: false,
       listing: {
         name: "Light Loft"
       },
@@ -27,12 +26,7 @@ document.getElementById("test-trigger")?.addEventListener("click", async () => {
     };
   
     try {
-      await captureAndUploadSnapshots(dummyBooking);
       await triggerHomeSetup(dummyBooking);
-      if (dummyBooking.cameras === false) {
-        await resetCameraPositions(["light-loft-back-room", "light-loft-east", "light-loft-west"]);
-      }
-  
       console.log("✅ Test pre-booking flow complete");
     } catch (err) {
       console.error("❌ Test flow failed:", err);
