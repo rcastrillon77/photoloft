@@ -188,7 +188,7 @@ function applyActionButtonStates(details) {
 
   // Always evaluate these
   if (status === "past" || status === "cancelled") {
-    ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras"].forEach(disable);
+    ["actions_cancel", "actions_reschedule", "actions_checkout", "actions_add-time", "actions_disable-cameras", "actions_entry"].forEach(disable);
   } else if (status === "upcoming") {
     disable("actions_checkout");
   } else if (status === "rescheduled") {
