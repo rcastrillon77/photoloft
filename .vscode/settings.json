@@ -11,7 +11,7 @@
         },
         {
           "match": "\\.scripts/\\.panel/.*\\.js$",
-          "cmd": "/Users/rcastrillon/.nvm/versions/node/v22.15.0/bin/node .scripts/.panel/combine.js && git add panel.js && git commit -m 'save: panel.js' && git push"
+          "cmd": "/Users/rcastrillon/.nvm/versions/node/v22.15.0/bin/node .scripts/.panel/combine.js && git add . && git commit -m 'save:' && git push"
         }
       ],
       "output": "console"
