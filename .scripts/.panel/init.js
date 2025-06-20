@@ -30,7 +30,7 @@ document.getElementById("test-trigger")?.addEventListener("click", async () => {
       await captureAndUploadSnapshots(dummyBooking);
       await triggerHomeSetup(dummyBooking);
       if (dummyBooking.cameras === false) {
-        await resetCameraPositions(["east_floor", "north_wall", "back_arch"]);
+        await resetCameraPositions(["light-loft-back-room", "light-loft-east", "light-loft-west"]);
       }
   
       console.log("✅ Test pre-booking flow complete");
