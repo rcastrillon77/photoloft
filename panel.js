@@ -85,7 +85,7 @@ function renderCurrentBooking(bookingDetails, bookingUUID, event) {
     document.getElementById("start").textContent = `${start.toFormat("h:mm a")}`;
     document.getElementById("end").textContent = `${end.toFormat("h:mm a")}`;
     document.getElementById("listing-name").textContent = listing.name || "Photoloft";
-    
+
     startBookingCountdown(bookingDetails.start, bookingDetails.end);
 }
   
@@ -108,10 +108,27 @@ async function refreshBookingData() {
     const sidePanel = document.querySelector(".side-col-wrapper");
   
     const now = DateTime.now().setZone(TIMEZONE);
-    const activeEvent = enrichedEvents.find(e =>
-        DateTime.fromISO(e.start) <= now && DateTime.fromISO(e.end) >= now
-    );
-  
+
+    enrichedEvents.forEach(e => {
+        const start = DateTime.fromISO(e.start);
+        const minutesAway = start.diff(now, 'minutes').toObject().minutes;
+
+        if (minutesAway <= 30 && minutesAway > 29 && !e.triggered) {
+            const booking = e.bookingDetails;
+
+            captureAndUploadSnapshots(booking)
+            .then(() => triggerHomeSetup(booking))
+            .then(() => {
+                if (booking.cameras === false) {
+                  return resetCameraPositions(["light-loft-back-room", "light-loft-east", "light-loft-west"]);
+                }
+              })
+            .catch(console.error);
+
+            e.triggered = true; // avoid repeat on next refresh
+        }
+    });
+
     if (activeEvent && activeEvent.bookingDetails) {
         window.currentBooking = activeEvent.bookingDetails;
         renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUUID, activeEvent);
@@ -120,6 +137,7 @@ async function refreshBookingData() {
         console.log("🕒 No active booking at the moment");
         sidePanel?.classList.add("hide");
     }
+
 }
 
 function scheduleQuarterHourUpdates(callback) {
@@ -170,6 +188,88 @@ function startBookingCountdown(startISO, endISO) {
   }, 1000);
 }
 
+// AUTOMATIONS
+async function fetchSnapshotBlob(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Snapshot failed: ${url}`);
+    return await response.blob();
+}
+  
+  async function uploadSnapshotToMake(blob, filename, folder) {
+    const form = new FormData();
+    form.append("file", blob, filename);
+    form.append("folder", folder);
+  
+    const res = await fetch(SNAPSHOT_MAKE_WEBHOOK_URL, {
+        method: "POST",
+        body: form
+    });
+  
+    if (!res.ok) throw new Error("Upload failed to Make.com");
+}
+
+async function captureAndUploadSnapshots(booking) {
+    const timestamp = DateTime.now().toFormat("yyyyMMdd-HHmmss");
+    const folderName = `${booking.start.slice(0, 10)}_${booking.uuid}`;
+  
+    for (const cam of CAMERA_CONFIG) {
+        try {
+          await fetch(`${LOCAL_API_BASE}/ptz/${cam.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cam.position)
+          });
+      
+          await new Promise(r => setTimeout(r, 1500)); // wait for move
+      
+          const snapshotUrl = `${LOCAL_API_BASE}/snapshot/${cam.id}.jpg`;
+          const blob = await fetchSnapshotBlob(snapshotUrl);
+      
+          const filename = `${cam.id}_${cam.label}_before_${timestamp}.jpg`;
+          await uploadSnapshotToMake(blob, filename, folderName);
+      
+          console.log(`📸 Uploaded ${filename}`);
+        } catch (err) {
+          console.error(`❌ Error on ${cam.id} (${cam.label}):`, err);
+        }
+      }
+      
+}
+  
+async function triggerHomeSetup(booking) {
+    try {
+      await fetch(HA_WEBHOOK_PREBOOKING_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entry_code: booking.entry_code,
+          location: booking.listing?.name || "unknown",
+          disable_cameras: booking.cameras === false
+        })
+      });
+  
+      console.log("🏠 Home Assistant setup triggered");
+    } catch (err) {
+      console.error("❌ Home setup failed:", err);
+    }
+}
+
+async function resetCameraPositions(cameraIds = []) {
+    for (const cam of cameraIds) {
+      try {
+        await fetch(`${LOCAL_API_BASE}/ptz/${cam}`, {
+            method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ vertical: 0, horizontal: 0 })
+        });
+  
+            console.log(`🔄 Reset camera position: ${cam}`);
+      } catch (err) {
+            console.error(`❌ Failed to reset camera ${cam}:`, err);
+      }
+    }
+ }
+  
 
 // =======================
 // INIT
