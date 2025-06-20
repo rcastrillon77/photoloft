@@ -24,7 +24,7 @@ async function fetchUpcomingEvents() {
       .eq("type", "booking")
       .eq("status", "confirmed")
       .gte("end", now.toISO())
-      .lte("end", tomorrow.toISO())
+      .lte("end", in24h.toISO())
       .order("start", { ascending: true });
   
     if (error) {
