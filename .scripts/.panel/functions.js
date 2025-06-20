@@ -99,6 +99,10 @@ async function refreshBookingData() {
         }
     });
 
+    const activeEvent = enrichedEvents.find(e => {
+        return DateTime.fromISO(e.start) <= now && DateTime.fromISO(e.end) >= now;
+      });
+
     if (activeEvent && activeEvent.bookingDetails) {
         window.currentBooking = activeEvent.bookingDetails;
         renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUUID, activeEvent);
