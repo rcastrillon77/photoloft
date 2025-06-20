@@ -59,4 +59,48 @@ function renderCurrentBooking(bookingDetails, bookingUUID, event) {
     document.getElementById("checkout-status").textContent = bookingDetails.checkout_completed ? "✅ Completed" : "❌ Not Completed";
 }
   
+async function refreshBookingData() {
+    console.log("🔄 Refreshing booking data...");
+  
+    const events = await fetchUpcomingEvents();
+    const eventUUIDs = events.map(e => e.uuid);
+    const bookings = await fetchBookingsForEvents(eventUUIDs);
+  
+    const enrichedEvents = events.map(event => {
+        const booking = bookings.find(b => Array.isArray(b.event_id) && b.event_id.includes(event.uuid));
+        return {
+            ...event,
+            bookingDetails: booking?.details || null,
+            bookingUUID: booking?.uuid || null
+        };
+    });
+  
+    const sidePanel = document.querySelector(".side-col-wrapper");
+  
+    const now = DateTime.now().setZone(TIMEZONE);
+    const activeEvent = enrichedEvents.find(e =>
+        DateTime.fromISO(e.start) <= now && DateTime.fromISO(e.end) >= now
+    );
+  
+    if (activeEvent && activeEvent.bookingDetails) {
+        window.currentBooking = activeEvent.bookingDetails;
+        renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUUID, activeEvent);
+        sidePanel?.classList.remove("hide");
+    } else {
+        console.log("🕒 No active booking at the moment");
+        sidePanel?.classList.add("hide");
+    }
+}
+
+function scheduleQuarterHourUpdates(callback) {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const msUntilNextQuarter = ((15 - (minutes % 15)) % 15) * 60 * 1000 - seconds * 1000;
+  
+    setTimeout(() => {
+        callback(); // initial trigger at next quarter
+        setInterval(callback, 15 * 60 * 1000); // every 15 minutes thereafter
+    }, msUntilNextQuarter);
+}
   
