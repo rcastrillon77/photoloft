@@ -1,0 +1,25 @@
+on:
+  push:
+    paths:
+      - '.scripts/.panel/**'
+      - 'panel.js'
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build panel.js
+        run: node .scripts/.panel/combine.js
+
+      - name: Upload to Supabase
+        run: |
+          curl -X PUT "$SUPABASE_URL/storage/v1/object/scripts/panel.js" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/javascript" \
+            --data-binary @panel.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
