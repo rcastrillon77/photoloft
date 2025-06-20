@@ -364,7 +364,7 @@ function showBookingConfirmationPopup() {
   }, 400); 
 }
 
-function launchConfettiWithinPopup(popupId = "confirmation-popup") {
+function launchConfettiWithinPopup(popupId = "popup-closer") {
   const popup = document.getElementById(popupId);
   if (!popup) return;
 
