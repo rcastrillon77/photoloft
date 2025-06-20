@@ -51,7 +51,24 @@ async function fetchUpcomingEvents() {
   
     console.log("📦 Bookings linked to events:", data);
     return data;
-  }
+}
+
+function renderCurrentBooking(bookingDetails, bookingUUID, event) {
+    if (!bookingDetails) return;
+  
+    const start = DateTime.fromISO(bookingDetails.start, { zone: TIMEZONE });
+    const end = DateTime.fromISO(bookingDetails.end, { zone: TIMEZONE });
+    const user = bookingDetails.user || {};
+    const listing = bookingDetails.listing || {};
+  
+    document.getElementById("guest-name").textContent = `${user.first_name || ""} ${user.last_name || ""}`;
+    document.getElementById("booking-time-range").textContent = `${start.toFormat("h:mm a")} – ${end.toFormat("h:mm a")}`;
+    document.getElementById("listing-name").textContent = listing.name || "—";
+    document.getElementById("entry-code").textContent = bookingDetails.entry_code || "—";
+    document.getElementById("transaction-id").textContent = bookingDetails.transaction_id || "—";
+    document.getElementById("checkout-status").textContent = bookingDetails.checkout_completed ? "✅ Completed" : "❌ Not Completed";
+}
+  
   
 
 // =======================
