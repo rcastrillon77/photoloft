@@ -3168,19 +3168,23 @@ document.getElementById("confirm-add-time").addEventListener("click", () => {
 // GUIDED ENTRY
 document.getElementById("actions_entry")?.addEventListener("click", async (e) => {
   await initGuidedEntry();
-  showPopupById("guided-entry");
   document.getElementById("popup").classList.add("entry");
+  showPopupById("guided-entry");
+});
+
+document.getElementById("guided-entry-trigger")?.addEventListener("click", async (e) => {
+  await initGuidedEntry();
+  document.getElementById("popup").classList.add("entry");
+  showPopupById("guided-entry");
 });
 
 // CHECKOUT
 document.getElementById("actions_checkout")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  showPopupById("checkout-process");
   await initCheckoutScrollFlow();
+  showPopupById("checkout-process");
 });
 
 document.getElementById("timer-checkout")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  showPopupById("checkout-process");
   await initCheckoutScrollFlow();
+  showPopupById("checkout-process");
 });
