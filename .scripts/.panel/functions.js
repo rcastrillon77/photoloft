@@ -163,6 +163,7 @@ function startBookingCountdown(startISO, endISO) {
 }
 
 // AUTOMATIONS
+/*
 async function fetchSnapshotBlob(url) {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Snapshot failed: ${url}`);
@@ -209,24 +210,6 @@ async function captureAndUploadSnapshots(booking) {
       }
       
 }
-  
-async function triggerHomeSetup(booking) {
-    try {
-      await fetch(HA_WEBHOOK_PREBOOKING_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entry_code: booking.entry_code,
-          location: booking.listing?.name || "unknown",
-          disable_cameras: booking.cameras === false
-        })
-      });
-  
-      console.log("🏠 Home Assistant setup triggered");
-    } catch (err) {
-      console.error("❌ Home setup failed:", err);
-    }
-}
 
 async function resetCameraPositions(cameraIds = []) {
     for (const cam of cameraIds) {
@@ -243,4 +226,21 @@ async function resetCameraPositions(cameraIds = []) {
       }
     }
  }
+      */
   
+async function triggerHomeSetup(booking) {
+    try {
+      await fetch(HA_WEBHOOK_PREBOOKING_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entry_code: booking.entry_code,
+          location: booking.listing?.name || "unknown"
+        })
+      });
+  
+      console.log("🏠 Home Assistant setup triggered");
+    } catch (err) {
+      console.error("❌ Home setup failed:", err);
+    }
+}
