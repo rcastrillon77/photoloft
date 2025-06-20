@@ -36,6 +36,23 @@ async function fetchUpcomingEvents() {
     return data;
   }
   
+  async function fetchBookingsForEvents(eventUUIDs = []) {
+    if (!eventUUIDs.length) return [];
+  
+    const { data, error } = await window.supabase
+      .from("bookings")
+      .select("uuid, event_id, details, user_id, transaction_id")
+      .overlaps("event_id", eventUUIDs); // array overlap match
+  
+    if (error) {
+      console.error("❌ Failed to fetch bookings for events:", error);
+      return [];
+    }
+  
+    console.log("📦 Bookings linked to events:", data);
+    return data;
+  }
+  
 
 // =======================
 // INIT
