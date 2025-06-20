@@ -359,20 +359,46 @@ function showBookingConfirmationPopup() {
   document.getElementById("confirm-popup-paragraph").innerHTML = `Your booking has been confirmed for <strong>${dateStr}</strong> from <strong>${timeStr}</strong>.<br><br>Please familiarize yourself with the rules and instructions.`;
   openPopup();
   showPopupById("confirmation-popup");
-  triggerConfetti();
+  launchConfettiWithinPopup("confirmation-popup");
 }
 
-function triggerConfetti() {
-  if (typeof confetti !== "function") return;
-  confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+function launchConfettiWithinPopup(popupId = "confirmation-popup") {
+  const popup = document.getElementById(popupId);
+  if (!popup) return;
+
+  // Create or reuse canvas
+  let canvas = popup.querySelector("canvas.confetti");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.classList.add("confetti");
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.zIndex = "9999";
+    canvas.style.pointerEvents = "none";
+    popup.appendChild(canvas);
+  }
+
+  // Use canvas-confetti with this canvas
+  const myConfetti = confetti.create(canvas, {
+    resize: true,
+    useWorker: true
+  });
+
+  myConfetti({
+    particleCount: 160,
+    spread: 90,
+    origin: { y: 0.6 }
+  });
+
+  // Optional cleanup
   setTimeout(() => {
-    const canvas = document.querySelector("canvas.confetti");
-    if (canvas) {
-      canvas.style.zIndex = "9999"; // Ensure it's above any popup
-      canvas.style.pointerEvents = "none"; // Don't block clicks
-    }
-  }, 0);
+    canvas.remove();
+  }, 3000);
 }
+
 
 
 // RESCHEDULE
