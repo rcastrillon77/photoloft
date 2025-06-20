@@ -320,6 +320,13 @@ function showBookingConfirmationPopup() {
 function triggerConfetti() {
   if (typeof confetti !== "function") return;
   confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+  setTimeout(() => {
+    const canvas = document.querySelector("canvas.confetti");
+    if (canvas) {
+      canvas.style.zIndex = "9999"; // Ensure it's above any popup
+      canvas.style.pointerEvents = "none"; // Don't block clicks
+    }
+  }, 0);
 }
 
 
