@@ -360,7 +360,7 @@ function showBookingConfirmationPopup() {
   openPopup();
   showPopupById("confirmation-popup");
   setTimeout(() => {
-  launchConfettiWithinPopup("confirmation-popup");
+  launchConfettiWithinPopup("popup-closer");
   }, 400); 
 }
 
