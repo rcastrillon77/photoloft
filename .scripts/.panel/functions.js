@@ -83,19 +83,13 @@ async function refreshBookingData() {
         const start = DateTime.fromISO(e.start);
         const minutesAway = start.diff(now, 'minutes').toObject().minutes;
 
-        if (minutesAway <= 30 && minutesAway > 29 && !e.triggered) {
+        if (minutesAway <= 30 && minutesAway >= 0 && !e.triggered) {
             const booking = e.bookingDetails;
+        
+            if (booking?.entry_code) {
+              triggerLockCode(booking.entry_code, "Light Loft");
+            }
 
-            captureAndUploadSnapshots(booking)
-            .then(() => triggerHomeSetup(booking))
-            .then(() => {
-                if (booking.cameras === false) {
-                  return resetCameraPositions(["light-loft-back-room", "light-loft-east", "light-loft-west"]);
-                }
-              })
-            .catch(console.error);
-
-            e.triggered = true; // avoid repeat on next refresh
         }
     });
 
@@ -109,8 +103,9 @@ async function refreshBookingData() {
         sidePanel?.classList.remove("hide");
     } else {
         console.log("🕒 No active booking at the moment");
-        sidePanel?.classList.remove("hide");
+        sidePanel?.classList.add("hide");
     }
+    
 
 }
 
