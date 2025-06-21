@@ -109,7 +109,7 @@ async function refreshBookingData() {
         sidePanel?.classList.remove("hide");
     } else {
         console.log("🕒 No active booking at the moment");
-        sidePanel?.classList.add("hide");
+        sidePanel?.classList.remove("hide");
     }
 
 }
