@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
   
 document.getElementById("test-trigger")?.addEventListener("click", async () => {
-    console.log("🧪 Triggering test pre-booking flow...");
+    console.log("🧪 Triggering full snapshot flow via Nabu Casa");
   
     const dummyBooking = {
       uuid: "test-booking-uuid",
@@ -26,10 +26,19 @@ document.getElementById("test-trigger")?.addEventListener("click", async () => {
     };
   
     try {
-      await triggerHomeSetup(dummyBooking);
-      console.log("✅ Test pre-booking flow complete");
+        const res = await fetch(HA_WEBHOOK_SNAPSHOT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+            booking_uuid: dummyBooking.uuid,
+            booking_start: dummyBooking.start
+            })
+        });
+    
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      console.log("✅ Snapshot flow successfully triggered");
     } catch (err) {
-      console.error("❌ Test flow failed:", err);
+        console.error("❌ Snapshot webhook failed:", err);
     }
-  });
+});
   
