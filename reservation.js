@@ -2831,17 +2831,22 @@ window.initCheckoutScrollFlow = async function () {
         )["show-field"]["show-field-if"];
     
         const value = el.textarea.value.trim();
-        payload.responses[key] = {
-          checked: el.checkbox.checked,
-          value: show ? (value === "" ? null : value) : null
-        };
-    
-        // Optional: skip entirely if both fields are "false" and "null"
-        // if (!el.checkbox.checked && (value === "" || !show)) return;
+        if (show && value !== "") {
+          payload.responses[key] = {
+            checked: el.checkbox.checked,
+            value
+          };
+        } else if (el.checkbox.checked) {
+          payload.responses[key] = {
+            checked: true,
+            value: null
+          };
+        }
+        // Else skip entirely
       } else if (el.checkbox) {
         payload.responses[key] = el.checkbox.checked;
       }
-    });
+    });    
 
     console.log("📤 Submitting dynamic checkout:", payload);
 
