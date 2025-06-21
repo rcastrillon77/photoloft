@@ -2826,12 +2826,18 @@ window.initCheckoutScrollFlow = async function () {
 
     Object.entries(elements).forEach(([key, el]) => {
       if (el.checkbox && el.textarea) {
-        const show = el.checkbox.checked !== steps.find(s => key.startsWith(s.title?.toLowerCase().replace(/\s+/g, "-")))["show-field"]["show-field-if"]
-        ;
+        const show = el.checkbox.checked !== steps.find(s =>
+          key.startsWith(s.title?.toLowerCase().replace(/\s+/g, "-"))
+        )["show-field"]["show-field-if"];
+    
+        const value = el.textarea.value.trim();
         payload.responses[key] = {
           checked: el.checkbox.checked,
-          value: show ? el.textarea.value : null
+          value: show ? (value === "" ? null : value) : null
         };
+    
+        // Optional: skip entirely if both fields are "false" and "null"
+        // if (!el.checkbox.checked && (value === "" || !show)) return;
       } else if (el.checkbox) {
         payload.responses[key] = el.checkbox.checked;
       }
