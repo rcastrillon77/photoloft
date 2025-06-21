@@ -221,19 +221,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // Add click listener to each .amenity_title
     document.querySelectorAll(".amenity_title").forEach(title => {
       title.addEventListener("click", () => {
-        // Remove .open from all amenities and their cross-icons
+        const amenity = title.closest(".amenity");
+        const isOpen = amenity.classList.contains("open");
+  
+        // Remove .open from all amenities and icons
         document.querySelectorAll(".amenity").forEach(el => {
           el.classList.remove("open");
           const icon = el.querySelector(".cross-icon");
           if (icon) icon.classList.remove("open");
         });
   
-        // Add .open to the clicked .amenity and its .cross-icon
-        const amenity = title.closest(".amenity");
-        const icon = title.querySelector(".cross-icon");
-        if (amenity) amenity.classList.add("open");
-        if (icon) icon.classList.add("open");
+        // If it was not already open, open it
+        if (!isOpen) {
+          amenity.classList.add("open");
+          const icon = title.querySelector(".cross-icon");
+          if (icon) icon.classList.add("open");
+        }
       });
     });
-  });
+});
   
