@@ -180,22 +180,26 @@ function startBookingCountdown(startISO, endISO) {
 }
 
 // AUTOMATIONS
-  
-async function triggerHomeSetup(booking) {
-    try {
-      await fetch(HA_WEBHOOK_PREBOOKING_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entry_code: booking.entry_code,
-          location: booking.listing?.name || "unknown"
-        })
-      });
-  
-      console.log("🏠 Home Assistant setup triggered");
-    } catch (err) {
-      console.error("❌ Home setup failed:", err);
-    }
+
+
+async function triggerLockCode(entryCode, location) {
+  try {
+    const res = await fetch(HA_WEBHOOK_PREBOOKING_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        entry_code: entryCode,
+        location: location
+      })
+    });
+
+    if (!res.ok) throw new Error(`Failed: ${res.status}`);
+    console.log("✅ Lock code webhook sent:", { entryCode, location });
+  } catch (err) {
+    console.error("❌ Failed to trigger lock code webhook:", err);
+  }
 }
 
 // =======================
