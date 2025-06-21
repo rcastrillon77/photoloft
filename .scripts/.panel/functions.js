@@ -26,7 +26,7 @@ async function fetchUpcomingEvents() {
     return data;
 }
   
-  async function fetchBookingsForEvents(eventUUIDs = []) {
+async function fetchBookingsForEvents(eventUUIDs = []) {
     if (!eventUUIDs.length) return [];
   
     const { data, error } = await window.supabase
@@ -163,8 +163,6 @@ function startBookingCountdown(startISO, endISO) {
 }
 
 // AUTOMATIONS
-
-
 async function triggerLockCode(entryCode, location) {
   try {
     const res = await fetch(HA_WEBHOOK_PREBOOKING_URL, {
