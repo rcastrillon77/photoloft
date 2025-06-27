@@ -264,7 +264,7 @@ async function triggerPrebooking(entryCode, location) {
 
 async function triggerPostbooking(entryCode, hasNextBooking) {
   try {
-    const res = await fetch("https://g1tsatjpileqd6zlkmhhrnlhbit9isyo.ui.nabu.casa/api/webhook/post_booking_cleanup", {
+    const res = await fetch(HA_WEBHOOK_POSTBOOKING_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ entry_code: entryCode, has_next: hasNextBooking })
