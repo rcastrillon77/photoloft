@@ -62,7 +62,7 @@ document.getElementById("actions_add-time")?.addEventListener("click", async () 
   const originalEnd = luxon.DateTime.fromISO(details.end, { zone: TIMEZONE });
   const interval = 30; // or fetch from listing config
 
-  addTimeExtension = {
+  window.addTimeExtension = {
     originalStart: luxon.DateTime.fromISO(details.start, { zone: TIMEZONE }),
     originalEnd,
     current: { end: originalEnd },
@@ -76,7 +76,7 @@ document.getElementById("actions_add-time")?.addEventListener("click", async () 
 });
 
 document.getElementById("end-more-btn")?.addEventListener("click", () => {
-  const { current, originalEnd, interval } = addTimeExtension;
+  const { current, originalEnd, interval } = window.addTimeExtension;
   const newEnd = current.end.plus({ minutes: interval });
   if (newEnd <= originalEnd.plus({ minutes: 120 })) {
     current.end = newEnd;
@@ -85,7 +85,7 @@ document.getElementById("end-more-btn")?.addEventListener("click", () => {
 });
 
 document.getElementById("end-less-btn")?.addEventListener("click", () => {
-  const { current, originalEnd, interval } = addTimeExtension;
+  const { current, originalEnd, interval } = window.addTimeExtension;
   const newEnd = current.end.minus({ minutes: interval });
   if (newEnd >= originalEnd) {
     current.end = newEnd;
