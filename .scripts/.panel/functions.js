@@ -169,6 +169,7 @@ async function refreshBookingData() {
 
   if (activeEvent && activeEvent.bookingDetails) {
     window.currentBooking = activeEvent.bookingDetails;
+    bookingUuid = activeEvent.bookingUuid;
     renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUuid, activeEvent);
     sidePanel?.classList.remove("hide");
   } else {
