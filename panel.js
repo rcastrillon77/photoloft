@@ -311,7 +311,7 @@ function closePopup() {
   document.body?.classList.remove("no-scroll");
 }
 
-// TIMER
+// TIMER & CHECKOUT
 function startBookingCountdown(startISO, endISO) {
   const start = DateTime.fromISO(startISO, { zone: TIMEZONE });
   const end = DateTime.fromISO(endISO, { zone: TIMEZONE });
@@ -345,6 +345,22 @@ function startBookingCountdown(startISO, endISO) {
       clearInterval(countdownInterval);
     }
   }, 1000);
+}
+
+async function loadCheckoutProcess(listingId) {
+  const { data, error } = await window.supabase
+    .from("listings")
+    .select("details")
+    .eq("uuid", listingId)
+    .maybeSingle();
+
+  if (error || !data?.details?.["checkout-process"]) {
+    console.warn("⚠️ Failed to load checkout-process for listing:", listingId, error);
+    return [];
+  }
+
+  console.log("📦 checkout-process loaded from Supabase:", data.details["checkout-process"]);
+  return data.details["checkout-process"];
 }
 
 // AUTOMATIONS
