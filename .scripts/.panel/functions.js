@@ -396,7 +396,7 @@ function updateAddTimeUI() {
 
   const added = current.end.diff(originalEnd, 'minutes').minutes;
   document.getElementById("add-time-end-text").textContent =
-    `${originalEnd.toFormat("h:mm a")} to ${current.end.toFormat("h:mm a")}`;
+    `${addTimeExtension.originalStart.toFormat("h:mm a")} to ${current.end.toFormat("h:mm a")}`;
   document.getElementById("add-time-end-text").classList.toggle("green", added > 0);
   document.getElementById("confirm-add-time").classList.toggle("disabled", added <= 0);
   document.getElementById("end-less-btn").classList.toggle("disabled", added <= 0);
