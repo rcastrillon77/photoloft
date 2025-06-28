@@ -82,6 +82,91 @@ function renderCurrentBooking(bookingDetails, bookingUuid, event) {
 
     startBookingCountdown(bookingDetails.start, bookingDetails.end);
 }
+
+async function rebuildBookingDetails(bookingUuid) {
+  const { data: bookingData, error } = await supabase
+    .from("bookings")
+    .select("uuid, user_id, transaction_id, details, entry_code, listing_id, location_id, event_id, status, type")
+    .eq("uuid", bookingUuid)
+    .maybeSingle();
+
+  if (error || !bookingData) {
+    console.error("❌ Booking not found or error:", error);
+    return null;
+  }
+
+  // Fetch payment method from the transaction
+  const { data: transactionData, error: txError } = await supabase
+    .from("transactions")
+    .select("payment_method")
+    .eq("uuid", bookingData.transaction_id)
+    .maybeSingle();
+
+  if (txError) {
+    console.error("❌ Failed to fetch transaction:", txError);
+    return null;
+  }
+
+  window.payment_method = transactionData?.payment_method || null;
+  window.user_id = bookingData.user_id;
+  window.LOCATION_UUID = bookingData.location_id;
+  bookingUuid = bookingData.uuid;
+
+  console.log(`✅ PM: ${window.payment_method}, UID: ${window.user_id}`);
+
+  const details = {
+    start: bookingData.details?.start || null,
+    end: bookingData.details?.end || null,
+    status: bookingData.status || null,
+    type: bookingData.type || null,
+    duration: bookingData.details?.duration || null,
+    activities: bookingData.details?.activities || [],
+    event_id: bookingData.event_id || [],
+
+    user: {
+      first_name: bookingData.details?.user?.first_name || "",
+      last_name: bookingData.details?.user?.last_name || "",
+      email: bookingData.details?.user?.email || "",
+      phone: bookingData.details?.user?.phone || "",
+      membership: bookingData.details?.user?.membership || "non-member"
+    },
+
+    listing: bookingData.details?.listing || {
+      name: "",
+      timezone: "America/Chicago"
+    },
+
+    transaction: {
+      subtotal: bookingData.details?.transaction?.subtotal || 0,
+      total: bookingData.details?.transaction?.total || 0,
+      tax_rate: bookingData.details?.transaction?.tax_rate || 0,
+      tax_total: bookingData.details?.transaction?.tax_total || 0,
+      discount_total: bookingData.details?.transaction?.discount_total || 0,
+      base_rate: bookingData.details?.transaction?.base_rate || 0,
+      final_rate: bookingData.details?.transaction?.final_rate || 0,
+      rate_label: bookingData.details?.transaction?.rate_label || "",
+      user_credits_applied: bookingData.details?.transaction?.user_credits_applied || 0,
+      discounts: bookingData.details?.transaction?.discounts || []
+    },
+
+    added_charges: bookingData.details?.added_charges || []
+  };
+
+  // Update global details
+  window.details = details;
+
+  // Optional: Update booking.details in Supabase (only if needed for Make.com or consistency)
+  const { error: updateError } = await supabase
+    .from("bookings")
+    .update({ details })
+    .eq("uuid", bookingUuid);
+
+  if (updateError) {
+    console.error("❌ Failed to update booking details:", updateError);
+  }
+
+  return details;
+}
   
 async function refreshBookingData() {
   console.log("🔄 Refreshing booking data...");
@@ -195,6 +280,7 @@ async function refreshBookingData() {
     window.currentBooking = activeEvent.bookingDetails;
     bookingUuid = activeEvent.bookingUuid;
     renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUuid, activeEvent);
+    await rebuildBookingDetails(bookingUuid);
     sidePanel?.classList.remove("hide");
   } else {
     console.log("🕒 No active booking at the moment");
