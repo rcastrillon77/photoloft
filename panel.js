@@ -319,6 +319,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("🟢 Studio control panel script loaded");
     await refreshBookingData();
     scheduleQuarterHourUpdates(refreshBookingData);
+
+    if (window.currentBookingUUID) {
+      await rebuildBookingDetails(window.currentBookingUUID);
+      await initBookingConfig(LISTING_UUID);
+      populateReservationDetails(window.details);
+      applyActionButtonStates(window.details);
+    }
+
 });
   
 document.getElementById("test-trigger")?.addEventListener("click", async () => {
@@ -355,5 +363,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     });
+});
+
+// ADD TIME
+document.getElementById("actions_add-time")?.addEventListener("click", async () => {
+  showPopupById("add-time-popup");
+  await setupRescheduleFlow(window.details);
 });
   
