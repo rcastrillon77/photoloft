@@ -101,7 +101,7 @@ document.getElementById("confirm-add-time")?.addEventListener("click", async () 
   if (addedMinutes <= 0) return;
 
   const subtotal = (details.transaction.final_rate / 60) * addedMinutes;
-  const taxRate = details.transaction.tax_rate || 0.0825;
+  const taxRate = details.transaction.tax_rate / 100 || 0.0825;
   const taxTotal = subtotal * taxRate;
   const total = subtotal + taxTotal;
 
