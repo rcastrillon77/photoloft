@@ -67,7 +67,7 @@ async function fetchBookingsForEvents(eventUUIDs = []) {
     return data;
 }
 
-function renderCurrentBooking(bookingDetails, bookingUUID, event) {
+function renderCurrentBooking(bookingDetails, bookingUuid, event) {
     if (!bookingDetails) return;
   
     const start = DateTime.fromISO(bookingDetails.start, { zone: TIMEZONE });
@@ -128,7 +128,7 @@ async function refreshBookingData() {
       ...event,
       booking,
       bookingDetails: booking?.details || null,
-      bookingUUID: booking?.uuid || null
+      bookingUuid: booking?.uuid || null
     };
   });
 
@@ -193,7 +193,7 @@ async function refreshBookingData() {
 
   if (activeEvent && activeEvent.bookingDetails) {
     window.currentBooking = activeEvent.bookingDetails;
-    renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUUID, activeEvent);
+    renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUuid, activeEvent);
     sidePanel?.classList.remove("hide");
   } else {
     console.log("🕒 No active booking at the moment");
