@@ -10,8 +10,15 @@ const TIMEZONE = "America/Chicago";
 
 let countdownInterval = null;
 
-// AUTOMATIONS
+let stripe, elements, cardElement;
+let bookingUuid = null;
 
+let addChargeDetails = null;
+let bookingGlobals = {};
+let addTimeExtension = {}; 
+
+
+// ENDPOINTS
 const HA_WEBHOOK_PREBOOKING_URL = "https://g1tsatjpileqd6zlkmhhrnlhbit9isyo.ui.nabu.casa/api/webhook/pre_booking_setup";
 const HA_WEBHOOK_POSTBOOKING_URL = "https://g1tsatjpileqd6zlkmhhrnlhbit9isyo.ui.nabu.casa/api/webhook/post_booking_cleanup";
 const HA_WEBHOOK_SNAPSHOT_URL = "https://g1tsatjpileqd6zlkmhhrnlhbit9isyo.ui.nabu.casa/api/webhook/snapshot_trigger"; 
