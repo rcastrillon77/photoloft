@@ -12,7 +12,7 @@ let countdownInterval = null;
 let stripe, elements, cardElement;
 let bookingUuid = null;
 
-let addChargeDetails = null;
+let addChargeDetails = {};
 let bookingGlobals = {};
 let addTimeExtension = {}; 
 
