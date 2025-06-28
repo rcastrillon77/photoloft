@@ -195,7 +195,6 @@ async function refreshBookingData() {
   }
 }
 
-
 function scheduleQuarterHourUpdates(callback) {
     const now = new Date();
     const minutes = now.getMinutes();
@@ -206,6 +205,18 @@ function scheduleQuarterHourUpdates(callback) {
         callback(); // initial trigger at next quarter
         setInterval(callback, 15 * 60 * 1000); // every 15 minutes thereafter
     }, msUntilNextQuarter);
+}
+
+function showPopupById(id) {
+  document.querySelectorAll(".popup-content").forEach(el => el.classList.add("hidden"));
+  document.getElementById(id)?.classList.remove("hidden");
+  document.getElementById("popup-container")?.classList.remove("hide");
+  document.body?.classList.add("no-scroll");
+}
+
+function closePopup() {
+  document.getElementById("popup-container")?.classList.add("hide");
+  document.body?.classList.remove("no-scroll");
 }
 
 // TIMER
@@ -308,6 +319,412 @@ async function triggerMakeWebhook(bookingId, type) {
   } catch (err) {
     console.error("❌ Make webhook failed:", err);
   }
+}
+
+// ADD TIME
+function updateAddTimeUI() {
+  const { originalEnd, current } = addTimeExtension;
+
+  const added = current.end.diff(originalEnd, 'minutes').minutes;
+  document.getElementById("add-time-end-text").textContent =
+    `${originalEnd.toFormat("h:mm a")} to ${current.end.toFormat("h:mm a")}`;
+  document.getElementById("add-time-end-text").classList.toggle("green", added > 0);
+  document.getElementById("confirm-add-time").classList.toggle("disabled", added <= 0);
+  document.getElementById("end-less-btn").classList.toggle("disabled", added <= 0);
+  document.getElementById("end-more-btn").classList.toggle("disabled", added >= 120); // 2 hour cap
+}
+
+// ADD CHARGE
+async function setupStripeElements({ containerId, amount, userEmail, buttonSelector }) {
+
+  if (!window.stripe) window.stripe = Stripe("pk_live_51Pc8eHHPk1zi7F68Lfo7LHLTmpxCNsSidfCzjFELM9Ajum07WIMljcsbU9L1R2Tejvue1BaZ0xuDwcpiXjwMgrdq00eUxlyH9D");
+  if (!window.elements) window.elements = window.stripe.elements();
+  const elements = window.elements;
+  const stripe = window.stripe;
+
+  const style = {
+    base: {
+      color: "#191918",
+      fontFamily: "Founders Grotesk, Arial, sans-serif",
+      fontWeight: "300",
+      letterSpacing: "2px",
+      fontSize: "24px",
+      "::placeholder": {
+        color: "rgba(25, 25, 24, 0.65)"
+      }
+    },
+    invalid: {
+      color: "#e53e3e"
+    }
+  };
+  
+  const cardNumber = elements.create("cardNumber", { style });
+  const cardExpiry = elements.create("cardExpiry", { style });
+  const cardCvc = elements.create("cardCvc", { style });
+
+  cardNumber.mount("#card-number-element");
+  cardExpiry.mount("#card-expiry-element");
+  cardCvc.mount("#card-cvc-element");
+
+  const clientSecret = window.bookingGlobals?.client_secret;
+  if (!clientSecret || !amount) return console.warn("Missing clientSecret or amount");
+
+  const paymentRequest = stripe.paymentRequest({
+    country: "US",
+    currency: "usd",
+    total: {
+      label: "Total",
+      amount: Math.round(amount * 100)
+    },
+    requestPayerName: true,
+    requestPayerEmail: true
+  });
+
+  const prButton = elements.create("paymentRequestButton", {
+    paymentRequest,
+    style: {
+      paymentRequestButton: {
+        type: "default",
+        theme: "dark",
+        height: "57.6px",
+        borderRadius: "30px"
+      }
+    }
+  });
+
+
+  paymentRequest.canMakePayment().then((result) => {
+    const prContainer = document.getElementById("payment-request-button");
+    if (result) {
+      prButton.mount("#payment-request-button");
+      prContainer.style.display = "block";
+    } else {
+      prContainer.style.display = "none";
+    }
+  });
+
+  paymentRequest.on("paymentmethod", async (ev) => {
+    try {
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: ev.paymentMethod.id
+      });
+  
+      if (error || !paymentIntent) {
+        ev.complete("fail");
+        alert("Payment failed: " + (error?.message || "Unknown error"));
+        return;
+      }
+  
+      ev.complete("success");
+  
+      // Now trigger your backend webhook
+      try {
+        const result = await confirmCharge({
+          lineItem: window.addChargeDetails.lineItem,
+          subtotal: window.addChargeDetails.subtotal,
+          taxTotal: window.addChargeDetails.taxTotal,
+          total: window.addChargeDetails.total,
+          creditsToApply: window.addChargeDetails.creditsToApply,
+          paymentMethod: ev.paymentMethod.id,
+          savedCard: false
+        });
+  
+        console.log("✅ PR Button charge complete:", result.transaction_uuid);
+  
+        if (typeof window.bookingGlobals.onSuccess === "function") {
+          window.bookingGlobals.onSuccess(result.transaction_uuid);
+        }
+      } catch (webhookErr) {
+        console.error("❌ Webhook failed after PRB payment:", webhookErr);
+        alert("Payment succeeded but transaction could not be finalized.");
+      }
+  
+    } catch (err) {
+      ev.complete("fail");
+      alert("Stripe error: " + err.message);
+    }
+  });  
+
+  window.stripe = stripe;
+  window.cardElements = { cardNumber, cardExpiry, cardCvc };
+  window.paymentRequest = paymentRequest;
+}
+
+async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total, creditsToApply = 0 }) {
+  const taxRate = window.details.transaction?.tax_rate || 0;
+  const payload = {
+    subtotal,
+    tax_total: taxTotal,
+    tax_rate: taxRate,
+    total,
+    user_credits_applied: creditsToApply,
+    user_id: window.user_id,
+    booking_id: window.details.uuid,
+    line_item: lineItem,
+    email: window.details.user?.email,
+    payment_intent_id: window.bookingGlobals?.payment_intent_id || null,
+    transaction_id: window.bookingGlobals?.transaction_uuid || null
+  };
+
+  const url = payload.payment_intent_id
+    ? "https://hook.us1.make.com/mh3tg5aoxaa9b3d4qm7dicfu76k9q9k1"
+    : "https://hook.us1.make.com/isy5nbt7kyv7op25nsh5gph4k3xy4vbw";
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+
+  const data = await res.json();
+
+  // Store or update bookingGlobals
+  window.bookingGlobals.payment_intent_id = data.payment_intent_id;
+  window.bookingGlobals.client_secret = data.client_secret || window.bookingGlobals.client_secret;
+  window.bookingGlobals.transaction_uuid = data.transaction_uuid || window.bookingGlobals.transaction_uuid;
+  window.bookingGlobals.total = data.amount / 100;
+
+  window.addChargeDetails = {
+    lineItem,
+    subtotal,
+    taxTotal,
+    total,
+    creditsToApply,
+    paymentIntentId: data.payment_intent_id,
+    transactionId: data.transaction_uuid,
+    taxRate
+  };
+
+  return data;
+}
+
+async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
+  const chargePopup = document.getElementById("add-charge");
+  const actionPopup = document.getElementById("popup");
+  const useCreditsBtn = document.querySelector("#use-credits");
+  const savedCardBtn = document.querySelector("#add-charge_original-pm");
+  const payNowBtn = document.querySelector("#pay-now-btn");
+  const summaryLine = document.getElementById("add-charge_line-item");
+  const summaryLinePrice = document.getElementById("add-charge_line-item-price");
+  const taxRateEl = document.getElementById("add-charge_tax-rate");
+  const taxTotalEl = document.getElementById("add-charge_taxes");
+  const totalEl = document.getElementById("add-charge_total");
+  const savedCardText = savedCardBtn.querySelectorAll(".button-text");
+
+  const creditAmountRaw = window.details.user?.credits || 0;
+  let creditsToApply = 0;
+  let useCredits = false;
+
+  // Create or update charge
+  try {
+    const intent = await createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total, creditsToApply });
+
+    summaryLine.textContent = lineItem;
+    summaryLinePrice.textContent = `$${subtotal.toFixed(2)}`;
+    taxRateEl.textContent = `${(window.details.transaction?.tax_rate || 0).toFixed(2)}%`;
+    taxTotalEl.textContent = `$${taxTotal.toFixed(2)}`;
+    totalEl.textContent = `$${(total - creditsToApply).toFixed(2)}`;
+    savedCardText.forEach(t => t.textContent = `Pay $${(total - creditsToApply).toFixed(2)} with Saved Card`);
+
+    await setupStripeElements({
+      containerId: "stripe-card-container",
+      amount: total,
+      userEmail: window.details.user?.email,
+      buttonSelector: "#pay-now-btn"
+    });
+  } catch (err) {
+    console.error("❌ Error preparing charge:", err);
+    return;
+  }
+
+  if (creditAmountRaw === 0) {
+    document.getElementById("credits-section")?.classList.add("hidden");
+  }
+
+  if (!window.payment_method) {
+    document.getElementById("saved-payment-container")?.classList.add("hidden");
+  } else {
+    document.getElementById("saved-payment-container")?.classList.remove("hidden");
+  }  
+
+  // Show popup
+  chargePopup.classList.remove("hidden");
+  actionPopup.classList.add("background");
+
+  // Toggle credits
+  useCreditsBtn.onclick = async () => {
+    useCredits = !useCredits;
+    useCreditsBtn.classList.toggle("active");
+
+    creditsToApply = useCredits && creditAmountRaw > 0.5 ? Math.min(creditAmountRaw, total) : 0;
+    window.addChargeDetails.creditsToApply = creditsToApply;
+    useCreditsBtn.textContent = useCredits
+      ? `$${creditsToApply.toFixed(2)} in credits applied`
+      : "Use your credits for this transaction";
+
+    totalEl.textContent = `$${(total - creditsToApply).toFixed(2)}`;
+    savedCardText.forEach(t => t.textContent = `Pay $${(total - creditsToApply).toFixed(2)} with Saved Card`);
+
+    try {
+      const updatedTotal = total - creditsToApply;
+      const updatedTaxTotal = roundDecimals(updatedTotal * (window.details.transaction?.tax_rate || 0) / (1 + (window.details.transaction?.tax_rate || 0) / 100));
+      const updatedSubtotal = roundDecimals(updatedTotal - updatedTaxTotal);
+
+      window.addChargeDetails = {
+        lineItem,
+        subtotal: updatedSubtotal,
+        taxTotal: updatedTaxTotal,
+        total: updatedTotal,
+        creditsToApply
+      };
+
+      await createOrUpdateChargeIntent({
+        lineItem,
+        subtotal: updatedSubtotal,
+        taxTotal: updatedTaxTotal,
+        total: updatedTotal,
+        creditsToApply
+      });
+
+    } catch (err) {
+      console.warn("⚠️ Failed to update payment intent with credits:", err);
+    }
+  };
+
+  // Pay with saved card
+  savedCardBtn.onclick = async (e) => {
+    e.preventDefault();
+    savedCardBtn.classList.add("processing");
+    savedCardBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Processing...");
+
+    try {
+      const result = await confirmCharge({
+        lineItem: window.addChargeDetails.lineItem,
+        subtotal: window.addChargeDetails.subtotal,
+        taxTotal: window.addChargeDetails.taxTotal,
+        total: window.addChargeDetails.total,
+        creditsToApply: window.addChargeDetails.creditsToApply,
+        paymentMethod: window.payment_method,
+        savedCard: true
+      });
+
+      console.log("✅ Charge complete:", result.transaction_uuid);
+      chargePopup.classList.add("hidden");
+      actionPopup.classList.remove("background");
+
+      if (onSuccess) onSuccess(result.transaction_uuid);
+
+      setTimeout(() => {
+        delete window.bookingGlobals.payment_intent_id;
+        delete window.bookingGlobals.transaction_uuid;
+      }, 3000); 
+    } catch (err) {
+      savedCardBtn.classList.remove("processing");
+      savedCardText.forEach(t => t.textContent = `Pay $${total.toFixed(2)} with Saved Card`);
+      console.error("❌ Error during saved card charge:", err);
+      alert("Payment failed. Try again with a new payment method.");
+      document.getElementById("saved-payment-container")?.classList.add("hidden");
+    }
+  };
+
+  // Pay with new card
+  payNowBtn.onclick = async () => {
+    if (payNowBtn.classList.contains("disabled")) return;
+
+    payNowBtn.classList.add("disabled");
+    payNowBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Processing...");
+
+    const finalCredits = useCredits ? creditsToApply : 0;
+    const finalTotal = parseFloat((total - creditsToApply).toFixed(2));
+    const clientSecret = window.bookingGlobals?.client_secret;
+
+    try {
+      const { paymentMethod, error } = await window.stripe.createPaymentMethod({
+        type: "card",
+        card: window.cardElements.cardNumber,
+        billing_details: {
+          email: window.details.user?.email || ""
+        }
+      });
+
+      if (error) throw error;
+
+      const result = await window.stripe.confirmCardPayment(clientSecret, {
+        payment_method: paymentMethod.id,
+        setup_future_usage: "off_session"
+      });
+
+      if (result.error) throw result.error;
+
+      const confirmResult = await confirmCharge({
+        lineItem: window.addChargeDetails.lineItem,
+        subtotal: window.addChargeDetails.subtotal,
+        taxTotal: window.addChargeDetails.taxTotal,
+        total: window.addChargeDetails.total,
+        creditsToApply: window.addChargeDetails.creditsToApply,
+        paymentMethod: paymentMethod.id,
+        savedCard: false
+      });
+
+      console.log("✅ New card charge complete:", confirmResult.transaction_uuid);
+      chargePopup.classList.add("hidden");
+      actionPopup.classList.remove("background");
+
+      if (onSuccess) onSuccess(confirmResult.transaction_uuid);
+
+      setTimeout(() => {
+        delete window.bookingGlobals.payment_intent_id;
+        delete window.bookingGlobals.transaction_uuid;
+      }, 3000); 
+
+    } catch (err) {
+      console.error("❌ Error with new card payment:", err);
+      alert("Payment failed. Try again.");
+    } finally {
+      payNowBtn.classList.remove("processing");
+      payNowBtn.querySelectorAll(".button-text").forEach(t => t.textContent = "Pay with Card");
+    }
+  };
+}
+
+async function confirmCharge({
+  lineItem,
+  subtotal,
+  taxTotal,
+  total,
+  creditsToApply,
+  paymentMethod,
+  savedCard
+}) {
+  const payload = {
+    line_item: lineItem,
+    subtotal,
+    tax_rate: window.details.transaction?.tax_rate || 0,
+    tax_total: taxTotal,
+    total,
+    booking_id: bookingUuid,
+    user_id: window.user_id,
+    payment_method: paymentMethod,
+    saved_card: savedCard,
+    user_credits_applied: creditsToApply,
+    payment_intent_id: window.bookingGlobals.payment_intent_id,
+    transaction_id: window.bookingGlobals.transaction_uuid
+  };
+
+  const res = await fetch("https://hook.us1.make.com/b7m5qiaw6udii3xpalks2jxjljms6elj", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+
+  const data = await res.json();
+  window.transaction_id = data.transaction_uuid;
+
+  return data;
 }
 
 
