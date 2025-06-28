@@ -164,6 +164,8 @@ async function rebuildBookingDetails(bookingUuid) {
     console.error("❌ Failed to update booking details:", updateError);
   }
 
+  window.LISTING_UUID = bookingData.listing_id;
+
   return details;
 }
   
