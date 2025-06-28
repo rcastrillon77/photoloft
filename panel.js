@@ -347,15 +347,15 @@ function startBookingCountdown(startISO, endISO) {
   }, 1000);
 }
 
-async function loadCheckoutProcess(listingId) {
+async function loadCheckoutProcess(LISTING_UUID) {
   const { data, error } = await window.supabase
     .from("listings")
     .select("details")
-    .eq("uuid", listingId)
+    .eq("uuid", LISTING_UUID)
     .maybeSingle();
 
   if (error || !data?.details?.["checkout-process"]) {
-    console.warn("⚠️ Failed to load checkout-process for listing:", listingId, error);
+    console.warn("⚠️ Failed to load checkout-process for listing:", LISTING_UUID, error);
     return [];
   }
 
