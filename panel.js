@@ -12,10 +12,9 @@ let countdownInterval = null;
 let stripe, elements, cardElement;
 let bookingUuid = null;
 
-let addChargeDetails = {};
-let bookingGlobals = {};
-let addTimeExtension = {}; 
-
+window.addChargeDetails = {};
+window.bookingGlobals = {};
+window.addTimeExtension = {}; 
 
 // ENDPOINTS
 const HA_WEBHOOK_PREBOOKING_URL = "https://g1tsatjpileqd6zlkmhhrnlhbit9isyo.ui.nabu.casa/api/webhook/pre_booking_setup";
