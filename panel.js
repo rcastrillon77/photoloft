@@ -594,6 +594,8 @@ async function createOrUpdateChargeIntent({ lineItem, subtotal, taxTotal, total,
 }
 
 async function addChargeHandler({ lineItem, subtotal, taxTotal, total, onSuccess }) {
+  if (!addChargeDetails) addChargeDetails = {};
+  
   const chargePopup = document.getElementById("add-charge");
   const actionPopup = document.getElementById("popup");
   const useCreditsBtn = document.querySelector("#use-credits");
