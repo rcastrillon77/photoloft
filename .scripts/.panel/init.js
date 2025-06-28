@@ -11,6 +11,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 document.getElementById("test-trigger")?.addEventListener("click", async () => {
     await triggerLockCode("0752", "Light Loft");
 });
+
+// POPUP CLOSE & OPEN
+document.getElementById("popup-closer")?.addEventListener("click", () => {
+  closePopup();
+  setTimeout(() => {
+    document.getElementById("popup")?.classList.remove("entry");
+  }, 300);
+});
+document.getElementById("popup-close-btn").addEventListener("click", closePopup);
+document.getElementById("popup-confirm-closer").addEventListener("click", closePopup);
   
 // AMENITIES ACCORDION
 document.addEventListener("DOMContentLoaded", () => {
