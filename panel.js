@@ -276,17 +276,44 @@ async function refreshBookingData() {
   const activeEvent = enrichedEvents.find(e =>
     DateTime.fromISO(e.start) <= now && DateTime.fromISO(e.end) >= now
   );
-
+  
   if (activeEvent && activeEvent.bookingDetails) {
     window.currentBooking = activeEvent.bookingDetails;
     bookingUuid = activeEvent.bookingUuid;
-    renderCurrentBooking(activeEvent.bookingDetails, activeEvent.bookingUuid, activeEvent);
+  
+    // ✅ Mark booking as "active" if needed
+    try {
+      await supabase.rpc("set_booking_active", { b_uuid: bookingUuid });
+      console.log("✅ Booking status set to active");
+    } catch (err) {
+      console.error("❌ Failed to update booking status:", err);
+    }
+  
     await rebuildBookingDetails(bookingUuid);
+    renderCurrentBooking(activeEvent.bookingDetails, bookingUuid, activeEvent);
     sidePanel?.classList.remove("hide");
   } else {
     console.log("🕒 No active booking at the moment");
     sidePanel?.classList.add("hide");
   }
+  
+
+  // If the booking just ended and checkout not completed, prompt
+  const lastBooking = enrichedEvents.find(e => {
+    const end = DateTime.fromISO(e.end);
+    const minsAgo = now.diff(end, "minutes").minutes;
+    return minsAgo >= 0 && minsAgo <= 15 && !e.booking?.checkout_completed;
+  });
+
+  if (lastBooking) {
+    console.log("📣 Prompting user to complete checkout process for just-ended booking");
+    bookingUuid = lastBooking.bookingUuid;
+    window.currentBooking = lastBooking.bookingDetails;
+    await rebuildBookingDetails(bookingUuid);
+    await initCheckoutScrollFlow();
+    showPopupById("checkout-process");
+  }
+
 }
 
 function scheduleQuarterHourUpdates(callback) {
