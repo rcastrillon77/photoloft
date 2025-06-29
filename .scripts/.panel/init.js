@@ -351,8 +351,37 @@ window.initCheckoutScrollFlow = async function () {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
+      
       console.log("✅ Submission complete");
+
+      // ✅ Check if post-booking is needed
+      const now = DateTime.now().setZone(TIMEZONE);
+      const bookingEnd = DateTime.fromISO(window.details.end, { zone: TIMEZONE });
+      const minutesSinceEnd = now.diff(bookingEnd, "minutes").minutes;
+
+      if (minutesSinceEnd >= 15 && !window.details.postbooking) {
+        const currentCode = window.details.entry_code;
+        const { data: nextEvents } = await supabase
+          .from("events")
+          .select("uuid, start")
+          .eq("location_id", LOCATION_UUID)
+          .gte("start", now.toISO())
+          .lte("start", now.plus({ hours: 1 }).toISO());
+
+        const nextBooking = (nextEvents || []).find(evt =>
+          Array.isArray(window.details.event_id) && window.details.event_id.includes(evt.uuid)
+        );
+
+        const upcomingCode = nextBooking?.entry_code || null;
+        const sameCode = currentCode === upcomingCode;
+        const acShouldStayOn = !!upcomingCode && sameCode;
+
+        if (!sameCode) {
+          await triggerPostbooking(currentCode, acShouldStayOn);
+        }
+
+        await triggerMakeWebhook(bookingUuid, "post");
+      }
       if (successStep) {
         details = await rebuildBookingDetails(bookingUuid);
         populateReservationDetails(details);
@@ -366,6 +395,7 @@ window.initCheckoutScrollFlow = async function () {
       console.error("❌ Submission failed:", err);
       alert("Checkout submission failed. Please try again.");
     }
+
   });
 
   container.appendChild(submitBtn);
