@@ -635,6 +635,7 @@ async function submitFinalBooking() {
     const payload = {
         listing_uuid: LISTING_UUID,
         user_uuid: window.supabaseUser?.id || g.user_uuid_override || null,
+        reservation_path: RESERVATION_PATH,
         date: g.booking_date,
         start: bookingStart.toISO(),
         end: bookingEnd.toISO(),
